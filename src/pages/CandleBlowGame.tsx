@@ -133,7 +133,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setBlowStrength(strength);
 
       // Check if blow is strong enough to extinguish candle
-      if (strength > 50 && candlesLit[currentCandle]) {
+      if (strength > 20 && candlesLit[currentCandle]) {
         console.log('Candle extinguished with strength:', strength);
         extinguishCandle();
       }
