@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, BookOpen, BarChart3, Settings } from 'lucide-react';
+import { Home, BookOpen, BarChart3, Settings, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -17,6 +17,7 @@ interface BottomNavigationProps {
 const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
   const navItems: NavItem[] = [
     { id: 'home', label: 'Home', icon: <Home className="w-6 h-6" /> },
+    { id: 'practice', label: 'Practice', icon: <Target className="w-6 h-6" /> },
     { id: 'library', label: 'Library', icon: <BookOpen className="w-6 h-6" /> },
     { id: 'progress', label: 'Progress', icon: <BarChart3 className="w-6 h-6" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="w-6 h-6" /> },
