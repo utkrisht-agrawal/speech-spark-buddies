@@ -10,6 +10,12 @@ import AssessmentTest from './AssessmentTest';
 import CurriculumView from './CurriculumView';
 import ExerciseView from './ExerciseView';
 import CandleBlowGame from './CandleBlowGame';
+import PopTheBalloonGame from './PopTheBalloonGame';
+import FeedTheMonsterGame from './FeedTheMonsterGame';
+import PhonemeRaceGame from './PhonemeRaceGame';
+import SniffSnailGame from './SniffSnailGame';
+import SayItToBuildItGame from './SayItToBuildItGame';
+import WordPuzzlesGame from './WordPuzzlesGame';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Exercise } from '@/types/curriculum';
 
@@ -24,6 +30,7 @@ const Index = () => {
   const [needsAssessment, setNeedsAssessment] = useState(false);
   const [studentLevel, setStudentLevel] = useState(1);
   const [currentView, setCurrentView] = useState<'main' | 'curriculum' | 'exercise' | 'game'>('main');
+  const [currentGameType, setCurrentGameType] = useState<string>('candle-blow');
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
   const handleLogin = (userType: 'child' | 'parent' | 'therapist', userData: any) => {
@@ -100,10 +107,20 @@ const Index = () => {
   }
 
   if (currentView === 'game') {
-    return <CandleBlowGame 
-      onComplete={(score) => setCurrentView('main')}
-      onBack={() => setCurrentView('main')}
-    />;
+    const gameProps = {
+      onComplete: (score: number) => setCurrentView('main'),
+      onBack: () => setCurrentView('main')
+    };
+
+    switch (currentGameType) {
+      case 'pop-balloon': return <PopTheBalloonGame {...gameProps} />;
+      case 'feed-monster': return <FeedTheMonsterGame {...gameProps} />;
+      case 'phoneme-race': return <PhonemeRaceGame {...gameProps} />;
+      case 'sniff-snail': return <SniffSnailGame {...gameProps} />;
+      case 'say-build': return <SayItToBuildItGame {...gameProps} />;
+      case 'word-puzzles': return <WordPuzzlesGame {...gameProps} />;
+      default: return <CandleBlowGame {...gameProps} />;
+    }
   }
 
   // Child interface (original app functionality)
