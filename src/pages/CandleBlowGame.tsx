@@ -155,8 +155,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setBlowStrength(strength);
 
       // Check if blow is strong enough to extinguish candle
-      if (strength > 70) {
-        console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1));
+      if (strength > 70 && candlesLit[currentCandle]) {
+        console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1), 'Current candle:', currentCandle);
         extinguishCandle();
       }
 
@@ -168,6 +168,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const extinguishCandle = () => {
+    console.log('🔥 Extinguishing candle', currentCandle, 'of', totalCandles);
     const newCandlesLit = [...candlesLit];
     newCandlesLit[currentCandle] = false;
     setCandlesLit(newCandlesLit);
@@ -176,9 +177,12 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
     setScore(newScore);
     
     if (currentCandle < totalCandles - 1) {
-      setCurrentCandle(prev => prev + 1);
+      const nextCandle = currentCandle + 1;
+      console.log('🎯 Moving to next candle:', nextCandle);
+      setCurrentCandle(nextCandle);
     } else {
       // All candles extinguished
+      console.log('🎉 All candles extinguished! Game complete!');
       setGameComplete(true);
       stopListening();
       onComplete?.(newScore);
