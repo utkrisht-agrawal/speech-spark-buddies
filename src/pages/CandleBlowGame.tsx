@@ -113,11 +113,22 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
+    console.log('Buffer length:', bufferLength, 'Listening:', isListening);
 
     const checkLevel = () => {
-      if (!isListening || !analyserRef.current) return;
+      if (!isListening || !analyserRef.current) {
+        console.log('Stopped checking - isListening:', isListening, 'analyser exists:', !!analyserRef.current);
+        return;
+      }
 
       analyserRef.current.getByteFrequencyData(dataArray);
+      
+      // Check overall audio level first
+      let totalSum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        totalSum += dataArray[i];
+      }
+      const overallAverage = totalSum / bufferLength;
       
       // Focus on lower frequencies for breath detection (0-500Hz range)
       const breathRange = Math.floor(bufferLength * 0.1); // First 10% of frequencies
@@ -127,9 +138,9 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       }
       
       const average = sum / breathRange;
-      const strength = Math.min((average / 80) * 100, 100); // Adjusted threshold
+      const strength = Math.min((average / 50) * 100, 100); // More sensitive threshold
       
-      console.log('Audio level:', average, 'Strength:', strength);
+      console.log('Overall audio:', overallAverage, 'Breath range audio:', average, 'Calculated strength:', strength, 'Current candle:', currentCandle);
       setBlowStrength(strength);
 
       // Check if blow is strong enough to extinguish candle
