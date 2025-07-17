@@ -81,11 +81,12 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const stopListening = () => {
-    console.log('Stopping audio monitoring...');
+    console.log('🛑 stopListening called - Stack trace:', new Error().stack);
     
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
+      console.log('Cancelled animation frame');
     }
     
     if (streamRef.current) {
@@ -99,10 +100,12 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
       audioContextRef.current = null;
+      console.log('Closed audio context');
     }
     
     setIsListening(false);
     setBlowStrength(0);
+    console.log('🛑 Audio monitoring stopped');
   };
 
   const monitorAudioLevel = () => {
