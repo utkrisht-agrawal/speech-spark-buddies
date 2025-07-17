@@ -196,12 +196,14 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       const nextCandle = currentCandle + 1;
       console.log('🎯 Moving to next candle:', nextCandle);
       setCurrentCandle(nextCandle);
+      // Reset the debounce timer for the next candle
+      lastExtinguishTime.current = 0;
     } else {
-      // All candles extinguished
+      // All candles extinguished - stay in game to show completion screen
       console.log('🎉 All candles extinguished! Game complete!');
       setGameComplete(true);
       stopListening();
-      onComplete?.(newScore);
+      // Don't call onComplete immediately - let user choose to restart or go back
     }
   };
 
@@ -395,17 +397,24 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
                 <p className="text-green-700">You scored {score} points!</p>
               </div>
               
-              <div className="flex justify-center space-x-4">
-                <Button onClick={resetGame}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Play Again
-                </Button>
-                {onBack && (
-                  <Button variant="outline" onClick={onBack}>
-                    Back to Exercises
-                  </Button>
-                )}
-              </div>
+               <div className="flex justify-center space-x-4">
+                 <Button onClick={resetGame}>
+                   <RotateCcw className="w-4 h-4 mr-2" />
+                   Play Again
+                 </Button>
+                 <Button 
+                   onClick={() => onComplete?.(score)}
+                   className="bg-blue-500 hover:bg-blue-600"
+                 >
+                   <Trophy className="w-4 h-4 mr-2" />
+                   Complete Game
+                 </Button>
+                 {onBack && (
+                   <Button variant="outline" onClick={onBack}>
+                     Back to Exercises
+                   </Button>
+                 )}
+               </div>
             </div>
           )}
         </div>
