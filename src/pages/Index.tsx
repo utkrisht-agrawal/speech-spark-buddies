@@ -36,7 +36,18 @@ const Index = () => {
   const handleLogout = () => {
     setUser(null);
     setActiveTab('home');
+    setCurrentView('main');
   };
+
+  // Listen for candle game events
+  React.useEffect(() => {
+    const handleCandleGame = () => {
+      setCurrentView('game');
+    };
+    
+    window.addEventListener('startCandleGame', handleCandleGame);
+    return () => window.removeEventListener('startCandleGame', handleCandleGame);
+  }, []);
 
   // Show login page if no user is logged in
   if (!user) {
@@ -90,8 +101,8 @@ const Index = () => {
 
   if (currentView === 'game') {
     return <CandleBlowGame 
-      onComplete={(score) => setCurrentView('curriculum')}
-      onBack={() => setCurrentView('curriculum')}
+      onComplete={(score) => setCurrentView('main')}
+      onBack={() => setCurrentView('main')}
     />;
   }
 
@@ -100,8 +111,6 @@ const Index = () => {
     switch (activeTab) {
       case 'home':
         return <Dashboard />;
-      case 'library':
-        return <WordLibrary />;
       case 'practice':
         return <CurriculumView 
           studentLevel={studentLevel}
@@ -109,8 +118,10 @@ const Index = () => {
             setCurrentExercise(exercise);
             setCurrentView('exercise');
           }}
-          onStartGame={() => setCurrentView('game')}
+          onStartGame={(game) => setCurrentView('game')}
         />;
+      case 'library':
+        return <WordLibrary />;
       case 'progress':
         return <div className="min-h-screen bg-gray-50 pb-20 flex items-center justify-center">
           <div className="text-center">

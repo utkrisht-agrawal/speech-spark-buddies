@@ -124,11 +124,27 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Quick Action Button */}
-        <div className="mt-8 text-center">
-          <button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all duration-200 hover:scale-105">
-            Start Practicing! 🎯
-          </button>
+        {/* Quick Action Buttons */}
+        <div className="mt-8 space-y-4">
+          {/* Candle Blow Game */}
+          <div className="bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl p-6 shadow-lg">
+            <div className="text-center text-white">
+              <h3 className="text-xl font-bold mb-2">🕯️ Candle Blow Game</h3>
+              <p className="text-sm opacity-90 mb-4">Blow out candles with your voice!</p>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('startCandleGame'))}
+                className="bg-white text-orange-600 font-bold py-3 px-6 rounded-xl hover:bg-orange-50 transition-all duration-200"
+              >
+                Start Blowing! 💨
+              </button>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all duration-200 hover:scale-105">
+              Start Practicing! 🎯
+            </button>
+          </div>
         </div>
       </div>
     </div>
