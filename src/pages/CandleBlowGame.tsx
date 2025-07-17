@@ -31,6 +31,16 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  
+  // Use refs to avoid stale closure issues
+  const currentCandleRef = useRef(currentCandle);
+  const candlesLitRef = useRef(candlesLit);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    currentCandleRef.current = currentCandle;
+    candlesLitRef.current = candlesLit;
+  }, [currentCandle, candlesLit]);
 
   const maxAttempts = 10;
   const totalCandles = candlesLit.length;
@@ -154,9 +164,12 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       
       setBlowStrength(strength);
 
-      // Check if blow is strong enough to extinguish candle
-      if (strength > 70 && candlesLit[currentCandle]) {
-        console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1), 'Current candle:', currentCandle);
+      // Check if blow is strong enough to extinguish candle using refs to avoid stale closure
+      const currentCandleIndex = currentCandleRef.current;
+      const currentCandlesLit = candlesLitRef.current;
+      
+      if (strength > 70 && currentCandlesLit[currentCandleIndex]) {
+        console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1), 'Current candle:', currentCandleIndex, 'Candle lit:', currentCandlesLit[currentCandleIndex]);
         extinguishCandle();
       }
 
