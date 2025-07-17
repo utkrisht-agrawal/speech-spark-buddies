@@ -16,6 +16,9 @@ import PhonemeRaceGame from './PhonemeRaceGame';
 import SniffSnailGame from './SniffSnailGame';
 import SayItToBuildItGame from './SayItToBuildItGame';
 import WordPuzzlesGame from './WordPuzzlesGame';
+import GuessTheObjectGame from './GuessTheObjectGame';
+import ColorItRightGame from './ColorItRightGame';
+import BuildTheSentenceGame from './BuildTheSentenceGame';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Exercise } from '@/types/curriculum';
 
@@ -97,10 +100,16 @@ const Index = () => {
           setCurrentGameType('phoneme-race');
         } else if (game.includes('Sniff') || game.includes('Snail')) {
           setCurrentGameType('sniff-snail');
-        } else if (game.includes('Say It') || game.includes('Build')) {
+        } else if (game.includes('Say It') || game.includes('Build It')) {
           setCurrentGameType('say-build');
         } else if (game.includes('Word Puzzles')) {
           setCurrentGameType('word-puzzles');
+        } else if (game.includes('Guess') || game.includes('Object')) {
+          setCurrentGameType('guess-object');
+        } else if (game.includes('Color') || game.includes('Right')) {
+          setCurrentGameType('color-right');
+        } else if (game.includes('Build') && game.includes('Sentence')) {
+          setCurrentGameType('build-sentence');
         } else {
           setCurrentGameType('candle-blow');
         }
@@ -133,6 +142,9 @@ const Index = () => {
       case 'sniff-snail': return <SniffSnailGame {...gameProps} />;
       case 'say-build': return <SayItToBuildItGame {...gameProps} />;
       case 'word-puzzles': return <WordPuzzlesGame {...gameProps} />;
+      case 'guess-object': return <GuessTheObjectGame {...gameProps} />;
+      case 'color-right': return <ColorItRightGame {...gameProps} />;
+      case 'build-sentence': return <BuildTheSentenceGame {...gameProps} />;
       default: return <CandleBlowGame {...gameProps} />;
     }
   }
