@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,11 +24,13 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const [gameComplete, setGameComplete] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [currentCandle, setCurrentCandle] = useState(0);
+  const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   const maxAttempts = 10;
   const totalCandles = candlesLit.length;
@@ -40,81 +43,105 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
   const startListening = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicrophoneError(null);
+      console.log('Requesting microphone access...');
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+      
       streamRef.current = stream;
+      console.log('Microphone access granted');
 
-      audioContextRef.current = new AudioContext();
+      // Create audio context
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       analyserRef.current = audioContextRef.current.createAnalyser();
       microphoneRef.current = audioContextRef.current.createMediaStreamSource(stream);
 
+      // Configure analyser for better breath detection
+      analyserRef.current.fftSize = 2048;
+      analyserRef.current.smoothingTimeConstant = 0.3;
+      analyserRef.current.minDecibels = -90;
+      analyserRef.current.maxDecibels = -10;
+
       microphoneRef.current.connect(analyserRef.current);
-      analyserRef.current.fftSize = 512;
 
       setIsListening(true);
       monitorAudioLevel();
+      console.log('Audio monitoring started');
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      // Fallback to manual controls
-      setIsListening(true);
-      simulateBlowDetection();
+      setMicrophoneError('Microphone access denied or not available');
+      setIsListening(false);
     }
   };
 
   const stopListening = () => {
+    console.log('Stopping audio monitoring...');
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Stopped audio track');
+      });
+      streamRef.current = null;
     }
-    if (audioContextRef.current) {
+    
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
+      audioContextRef.current = null;
     }
+    
     setIsListening(false);
     setBlowStrength(0);
   };
 
   const monitorAudioLevel = () => {
-    if (!analyserRef.current || !isListening) return;
+    if (!analyserRef.current || !isListening) {
+      console.log('Stopping monitoring - analyser or listening state changed');
+      return;
+    }
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
     const checkLevel = () => {
-      if (!isListening) return;
+      if (!isListening || !analyserRef.current) return;
 
-      analyserRef.current!.getByteFrequencyData(dataArray);
+      analyserRef.current.getByteFrequencyData(dataArray);
       
-      // Calculate average amplitude
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
-      const strength = Math.min((average / 50) * 100, 100);
+      // Focus on lower frequencies for breath detection (0-500Hz range)
+      const breathRange = Math.floor(bufferLength * 0.1); // First 10% of frequencies
+      let sum = 0;
+      for (let i = 0; i < breathRange; i++) {
+        sum += dataArray[i];
+      }
       
+      const average = sum / breathRange;
+      const strength = Math.min((average / 80) * 100, 100); // Adjusted threshold
+      
+      console.log('Audio level:', average, 'Strength:', strength);
       setBlowStrength(strength);
 
       // Check if blow is strong enough to extinguish candle
-      if (strength > 70 && candlesLit[currentCandle]) {
+      if (strength > 50 && candlesLit[currentCandle]) {
+        console.log('Candle extinguished with strength:', strength);
         extinguishCandle();
       }
 
-      requestAnimationFrame(checkLevel);
+      animationFrameRef.current = requestAnimationFrame(checkLevel);
     };
 
     checkLevel();
-  };
-
-  const simulateBlowDetection = () => {
-    // Fallback simulation for when microphone access fails
-    let intensity = 0;
-    const interval = setInterval(() => {
-      if (!isListening) {
-        clearInterval(interval);
-        return;
-      }
-      
-      intensity = Math.random() * 100;
-      setBlowStrength(intensity);
-      
-      if (intensity > 70 && candlesLit[currentCandle]) {
-        extinguishCandle();
-      }
-    }, 100);
   };
 
   const extinguishCandle = () => {
@@ -163,6 +190,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
     setCurrentCandle(0);
     setGameComplete(false);
     setBlowStrength(0);
+    setMicrophoneError(null);
     stopListening();
   };
 
@@ -237,13 +265,17 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
             <Progress 
               value={blowStrength} 
               className="h-4 mb-2"
-              
             />
             <p className="text-sm text-center text-gray-600">
-              {blowStrength > 70 ? '🌬️ Perfect blow!' : 
-               blowStrength > 40 ? '💨 Good, blow harder!' : 
+              {blowStrength > 50 ? '🌬️ Perfect blow!' : 
+               blowStrength > 25 ? '💨 Good, blow harder!' : 
                '🤏 Blow stronger!'}
             </p>
+            {microphoneError && (
+              <p className="text-sm text-center text-red-600 mt-2">
+                {microphoneError}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -254,7 +286,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
             mood={gameComplete ? 'celebrating' : 'encouraging'}
             message={
               gameComplete ? '🎉 Excellent work!' :
-              isListening ? `Say "/${targetPhoneme}/" and blow!` :
+              isListening ? `Say "/${targetPhoneme}/" and blow into your microphone!` :
               'Press start to begin!'
             }
           />
@@ -275,7 +307,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
             <div className="text-center">
               <h3 className="font-semibold text-blue-800 mb-2">How to Play:</h3>
               <p className="text-sm text-blue-700">
-                Say "/{targetPhoneme}/" sound while blowing air to extinguish each candle. 
+                Say "/{targetPhoneme}/" sound while blowing air into your microphone to extinguish each candle. 
                 The stronger your blow, the easier it is to put out the flame!
               </p>
             </div>
