@@ -82,7 +82,7 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
       setAudioLevel(level);
 
       // Feed monster if sound is strong enough
-      if (level > 50 && Date.now() - lastFeedTime.current > 1000 && monsterHunger > 0) {
+      if (level > 30 && Date.now() - lastFeedTime.current > 1000 && monsterHunger > 0) {
         feedMonster();
         lastFeedTime.current = Date.now();
       }

@@ -96,7 +96,7 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
       setAudioLevel(level);
       
       // Detect nasal sounds (m, n sounds have more energy in lower frequencies)
-      const isNasal = level > 35;
+      const isNasal = level > 25;
       setNasalDetected(isNasal);
 
       // Move snail if nasal sound detected

@@ -103,7 +103,7 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
       setAudioLevel(level);
 
       // Advance in race if sound is strong enough
-      if (level > 45 && Date.now() - lastAdvanceTime.current > 300) {
+      if (level > 30 && Date.now() - lastAdvanceTime.current > 300) {
         advancePlayer();
         lastAdvanceTime.current = Date.now();
       }

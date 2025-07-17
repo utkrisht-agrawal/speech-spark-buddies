@@ -86,7 +86,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       setAudioLevel(level);
       
       // Detect word attempt
-      const detected = level > 40;
+      const detected = level > 25;
       setWordDetected(detected);
 
       // Add building block if word detected

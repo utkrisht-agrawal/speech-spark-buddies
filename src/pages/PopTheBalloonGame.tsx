@@ -87,7 +87,7 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
       setAudioLevel(level);
 
       // Pop balloon if sound is strong enough
-      if (level > 60 && Date.now() - lastPopTime.current > 500) {
+      if (level > 30 && Date.now() - lastPopTime.current > 500) {
         popBalloon();
         lastPopTime.current = Date.now();
       }

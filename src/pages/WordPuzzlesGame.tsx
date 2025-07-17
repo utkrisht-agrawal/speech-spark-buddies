@@ -91,7 +91,7 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
       setAudioLevel(level);
       
       // Detect word attempt
-      const attempted = level > 35;
+      const attempted = level > 25;
       setWordAttempted(attempted);
 
       // Process word attempt
