@@ -88,9 +88,23 @@ const Index = () => {
         setCurrentView('exercise');
       }}
       onStartGame={(game) => {
-        if (game.includes('Candle') || game.includes('Blow')) {
-          setCurrentView('game');
+        // Map game names to game types
+        if (game.includes('Pop') || game.includes('Balloon')) {
+          setCurrentGameType('pop-balloon');
+        } else if (game.includes('Feed') || game.includes('Monster')) {
+          setCurrentGameType('feed-monster');
+        } else if (game.includes('Phoneme Race')) {
+          setCurrentGameType('phoneme-race');
+        } else if (game.includes('Sniff') || game.includes('Snail')) {
+          setCurrentGameType('sniff-snail');
+        } else if (game.includes('Say It') || game.includes('Build')) {
+          setCurrentGameType('say-build');
+        } else if (game.includes('Word Puzzles')) {
+          setCurrentGameType('word-puzzles');
+        } else {
+          setCurrentGameType('candle-blow');
         }
+        setCurrentView('game');
       }}
     />;
   }
@@ -135,7 +149,25 @@ const Index = () => {
             setCurrentExercise(exercise);
             setCurrentView('exercise');
           }}
-          onStartGame={(game) => setCurrentView('game')}
+          onStartGame={(game) => {
+            // Map game names to game types
+            if (game.includes('Pop') || game.includes('Balloon')) {
+              setCurrentGameType('pop-balloon');
+            } else if (game.includes('Feed') || game.includes('Monster')) {
+              setCurrentGameType('feed-monster');
+            } else if (game.includes('Phoneme Race')) {
+              setCurrentGameType('phoneme-race');
+            } else if (game.includes('Sniff') || game.includes('Snail')) {
+              setCurrentGameType('sniff-snail');
+            } else if (game.includes('Say It') || game.includes('Build')) {
+              setCurrentGameType('say-build');
+            } else if (game.includes('Word Puzzles')) {
+              setCurrentGameType('word-puzzles');
+            } else {
+              setCurrentGameType('candle-blow');
+            }
+            setCurrentView('game');
+          }}
         />;
       case 'library':
         return <WordLibrary />;
