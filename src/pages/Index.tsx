@@ -19,6 +19,8 @@ import WordPuzzlesGame from './WordPuzzlesGame';
 import GuessTheObjectGame from './GuessTheObjectGame';
 import ColorItRightGame from './ColorItRightGame';
 import BuildTheSentenceGame from './BuildTheSentenceGame';
+import BubbleSpeechGame from './BubbleSpeechGame';
+import ConnectTheSentenceGame from './ConnectTheSentenceGame';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Exercise } from '@/types/curriculum';
 
@@ -110,6 +112,10 @@ const Index = () => {
           setCurrentGameType('color-right');
         } else if (game.includes('Build') && game.includes('Sentence')) {
           setCurrentGameType('build-sentence');
+        } else if (game.includes('Bubble') || game.includes('Speech')) {
+          setCurrentGameType('bubble-speech');
+        } else if (game.includes('Connect') || game.includes('Sentence')) {
+          setCurrentGameType('connect-sentence');
         } else {
           setCurrentGameType('candle-blow');
         }
@@ -145,6 +151,8 @@ const Index = () => {
       case 'guess-object': return <GuessTheObjectGame {...gameProps} />;
       case 'color-right': return <ColorItRightGame {...gameProps} />;
       case 'build-sentence': return <BuildTheSentenceGame {...gameProps} />;
+      case 'bubble-speech': return <BubbleSpeechGame {...gameProps} />;
+      case 'connect-sentence': return <ConnectTheSentenceGame {...gameProps} />;
       default: return <CandleBlowGame {...gameProps} />;
     }
   }
