@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -35,11 +35,41 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const maxAttempts = 10;
   const totalCandles = candlesLit.length;
 
+  const stopListening = useCallback(() => {
+    console.log('🛑 stopListening called');
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+      console.log('Cancelled animation frame');
+    }
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Stopped audio track');
+      });
+      streamRef.current = null;
+    }
+    
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+      console.log('Closed audio context');
+    }
+    
+    setIsListening(false);
+    setBlowStrength(0);
+    console.log('🛑 Audio monitoring stopped');
+  }, []);
+
   useEffect(() => {
+    // Only cleanup on unmount, not on re-renders
     return () => {
+      console.log('Component unmounting, cleaning up...');
       stopListening();
     };
-  }, []);
+  }, [stopListening]);
 
   const startListening = async () => {
     try {
@@ -80,33 +110,6 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
     }
   };
 
-  const stopListening = () => {
-    console.log('🛑 stopListening called - Stack trace:', new Error().stack);
-    
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-      console.log('Cancelled animation frame');
-    }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log('Stopped audio track');
-      });
-      streamRef.current = null;
-    }
-    
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-      console.log('Closed audio context');
-    }
-    
-    setIsListening(false);
-    setBlowStrength(0);
-    console.log('🛑 Audio monitoring stopped');
-  };
 
   const monitorAudioLevel = () => {
     if (!analyserRef.current) {
