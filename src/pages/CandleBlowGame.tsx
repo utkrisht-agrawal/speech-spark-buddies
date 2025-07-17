@@ -113,17 +113,18 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
   const monitorAudioLevel = () => {
     if (!analyserRef.current) {
-      console.log('No analyser available');
+      console.log('❌ No analyser available');
       return;
     }
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    console.log('Starting audio level monitoring, buffer length:', bufferLength);
+    console.log('📊 Starting audio level monitoring, buffer length:', bufferLength);
 
     const checkLevel = () => {
-      if (!analyserRef.current) {
-        console.log('Analyser lost, stopping monitoring');
+      // Check if we still have the necessary objects (don't rely on state)
+      if (!analyserRef.current || !streamRef.current) {
+        console.log('❌ Analyser or stream lost, stopping monitoring');
         return;
       }
 
@@ -137,27 +138,30 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       const overallAverage = totalSum / bufferLength;
       
       // Focus on lower frequencies for breath detection (0-500Hz range)
-      const breathRange = Math.floor(bufferLength * 0.1); // First 10% of frequencies
+      const breathRange = Math.floor(bufferLength * 0.1);
       let sum = 0;
       for (let i = 0; i < breathRange; i++) {
         sum += dataArray[i];
       }
       
       const average = sum / breathRange;
-      const strength = Math.min((average / 30) * 100, 100); // Even more sensitive threshold
+      const strength = Math.min((average / 30) * 100, 100);
       
-      console.log('Overall audio:', overallAverage.toFixed(1), 'Breath range audio:', average.toFixed(1), 'Calculated strength:', strength.toFixed(1), 'Current candle:', currentCandle);
+      // Only log when there's actual audio input
+      if (overallAverage > 0.1 || average > 0.1) {
+        console.log('🎵 Overall audio:', overallAverage.toFixed(1), 'Breath range:', average.toFixed(1), 'Strength:', strength.toFixed(1));
+      }
+      
       setBlowStrength(strength);
 
       // Check if blow is strong enough to extinguish candle
-      if (strength > 15 && candlesLit[currentCandle]) {
-        console.log('🎯 Candle extinguished with strength:', strength.toFixed(1));
+      if (strength > 15) {
+        console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1));
         extinguishCandle();
       }
 
-      if (isListening) {
-        animationFrameRef.current = requestAnimationFrame(checkLevel);
-      }
+      // Continue monitoring (removed isListening check that was causing issues)
+      animationFrameRef.current = requestAnimationFrame(checkLevel);
     };
 
     checkLevel();
