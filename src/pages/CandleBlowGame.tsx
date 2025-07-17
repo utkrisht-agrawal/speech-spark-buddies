@@ -106,18 +106,18 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const monitorAudioLevel = () => {
-    if (!analyserRef.current || !isListening) {
-      console.log('Stopping monitoring - analyser or listening state changed');
+    if (!analyserRef.current) {
+      console.log('No analyser available');
       return;
     }
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    console.log('Buffer length:', bufferLength, 'Listening:', isListening);
+    console.log('Starting audio level monitoring, buffer length:', bufferLength);
 
     const checkLevel = () => {
-      if (!isListening || !analyserRef.current) {
-        console.log('Stopped checking - isListening:', isListening, 'analyser exists:', !!analyserRef.current);
+      if (!analyserRef.current) {
+        console.log('Analyser lost, stopping monitoring');
         return;
       }
 
@@ -138,18 +138,20 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       }
       
       const average = sum / breathRange;
-      const strength = Math.min((average / 50) * 100, 100); // More sensitive threshold
+      const strength = Math.min((average / 30) * 100, 100); // Even more sensitive threshold
       
-      console.log('Overall audio:', overallAverage, 'Breath range audio:', average, 'Calculated strength:', strength, 'Current candle:', currentCandle);
+      console.log('Overall audio:', overallAverage.toFixed(1), 'Breath range audio:', average.toFixed(1), 'Calculated strength:', strength.toFixed(1), 'Current candle:', currentCandle);
       setBlowStrength(strength);
 
       // Check if blow is strong enough to extinguish candle
-      if (strength > 20 && candlesLit[currentCandle]) {
-        console.log('Candle extinguished with strength:', strength);
+      if (strength > 15 && candlesLit[currentCandle]) {
+        console.log('🎯 Candle extinguished with strength:', strength.toFixed(1));
         extinguishCandle();
       }
 
-      animationFrameRef.current = requestAnimationFrame(checkLevel);
+      if (isListening) {
+        animationFrameRef.current = requestAnimationFrame(checkLevel);
+      }
     };
 
     checkLevel();
