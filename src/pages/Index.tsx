@@ -21,6 +21,11 @@ import ColorItRightGame from './ColorItRightGame';
 import BuildTheSentenceGame from './BuildTheSentenceGame';
 import BubbleSpeechGame from './BubbleSpeechGame';
 import ConnectTheSentenceGame from './ConnectTheSentenceGame';
+import EmotionMatchGame from './EmotionMatchGame';
+import RolePlayRoomGame from './RolePlayRoomGame';
+import ChooseYourDialogGame from './ChooseYourDialogGame';
+import StorySpinnerGame from './StorySpinnerGame';
+import SpeakYourComicStripGame from './SpeakYourComicStripGame';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Exercise } from '@/types/curriculum';
 
@@ -116,6 +121,16 @@ const Index = () => {
           setCurrentGameType('bubble-speech');
         } else if (game.includes('Connect') || game.includes('Sentence')) {
           setCurrentGameType('connect-sentence');
+        } else if (game.includes('Emotion') || game.includes('Match')) {
+          setCurrentGameType('emotion-match');
+        } else if (game.includes('Role Play') || game.includes('Room')) {
+          setCurrentGameType('role-play');
+        } else if (game.includes('Choose') || game.includes('Dialog')) {
+          setCurrentGameType('choose-dialog');
+        } else if (game.includes('Story') || game.includes('Spinner')) {
+          setCurrentGameType('story-spinner');
+        } else if (game.includes('Comic') || game.includes('Strip')) {
+          setCurrentGameType('comic-strip');
         } else {
           setCurrentGameType('candle-blow');
         }
@@ -153,6 +168,11 @@ const Index = () => {
       case 'build-sentence': return <BuildTheSentenceGame {...gameProps} />;
       case 'bubble-speech': return <BubbleSpeechGame {...gameProps} />;
       case 'connect-sentence': return <ConnectTheSentenceGame {...gameProps} />;
+      case 'emotion-match': return <EmotionMatchGame {...gameProps} />;
+      case 'role-play': return <RolePlayRoomGame {...gameProps} />;
+      case 'choose-dialog': return <ChooseYourDialogGame {...gameProps} />;
+      case 'story-spinner': return <StorySpinnerGame {...gameProps} />;
+      case 'comic-strip': return <SpeakYourComicStripGame {...gameProps} />;
       default: return <CandleBlowGame {...gameProps} />;
     }
   }
