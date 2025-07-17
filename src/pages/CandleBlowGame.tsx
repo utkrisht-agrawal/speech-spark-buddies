@@ -35,6 +35,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   // Use refs to avoid stale closure issues
   const currentCandleRef = useRef(currentCandle);
   const candlesLitRef = useRef(candlesLit);
+  const lastExtinguishTime = useRef(0);
   
   // Update refs when state changes
   useEffect(() => {
@@ -167,9 +168,11 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       // Check if blow is strong enough to extinguish candle using refs to avoid stale closure
       const currentCandleIndex = currentCandleRef.current;
       const currentCandlesLit = candlesLitRef.current;
+      const now = Date.now();
       
-      if (strength > 70 && currentCandlesLit[currentCandleIndex]) {
+      if (strength > 70 && currentCandlesLit[currentCandleIndex] && (now - lastExtinguishTime.current) > 1000) {
         console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1), 'Current candle:', currentCandleIndex, 'Candle lit:', currentCandlesLit[currentCandleIndex]);
+        lastExtinguishTime.current = now;
         extinguishCandle();
       }
 
