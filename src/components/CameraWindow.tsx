@@ -81,39 +81,41 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-lg"
+            style={{ transform: 'scaleX(-1)' }}
           />
           <div className="absolute top-2 right-2">
             <Button
               size="sm"
               variant="secondary"
               onClick={stopCamera}
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 bg-black/20 hover:bg-black/40"
             >
-              <CameraOff className="h-3 w-3" />
+              <CameraOff className="h-3 w-3 text-white" />
             </Button>
           </div>
-          <div className="absolute bottom-1 left-1 text-xs text-white bg-black/50 px-1 rounded">
+          <div className="absolute bottom-1 left-1 text-xs text-white bg-red-500 px-2 py-1 rounded-full flex items-center gap-1">
+            <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
             Live
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full p-2">
+        <div className="flex flex-col items-center justify-center h-full p-2 bg-gray-100 rounded-lg">
           {error ? (
-            <div className="text-xs text-muted-foreground text-center">
+            <div className="text-xs text-red-500 text-center font-medium">
               {error}
             </div>
           ) : (
             <>
               <Button
                 size="sm"
-                variant="secondary"
+                variant="outline"
                 onClick={startCamera}
-                className="h-8 w-8 p-0 mb-1"
+                className="h-10 w-10 p-0 mb-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
               >
-                <Camera className="h-4 w-4" />
+                <Camera className="h-5 w-5 text-gray-500" />
               </Button>
-              <div className="text-xs text-muted-foreground text-center">
+              <div className="text-xs text-gray-500 text-center font-medium">
                 Camera
               </div>
             </>
