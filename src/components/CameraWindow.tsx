@@ -37,17 +37,13 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         console.log('Video element found:', videoRef.current);
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        setIsCameraOn(true);
         
-        // Wait for loadedmetadata before setting camera on
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded');
-          setIsCameraOn(true);
-          videoRef.current?.play().then(() => {
-            console.log('Video playing successfully');
-          }).catch(err => {
-            console.error('Error playing video:', err);
-          });
-        };
+        videoRef.current.play().then(() => {
+          console.log('Video playing successfully');
+        }).catch(err => {
+          console.error('Error playing video:', err);
+        });
       } else {
         console.error('Video element not found');
       }
@@ -69,17 +65,12 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   };
 
   useEffect(() => {
-    // Small delay to ensure video element is rendered
-    const timer = setTimeout(() => {
-      if (isActive && !isCameraOn) {
-        startCamera();
-      } else if (!isActive && isCameraOn) {
-        stopCamera();
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [isActive, isCameraOn]);
+    if (isActive && !isCameraOn) {
+      startCamera();
+    } else if (!isActive && isCameraOn) {
+      stopCamera();
+    }
+  }, [isActive]);
 
   useEffect(() => {
     return () => {
@@ -89,33 +80,17 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
 
   return (
     <Card className={`relative overflow-hidden bg-muted/50 ${className}`}>
-      {isCameraOn ? (
-        <>
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover rounded-lg"
-            style={{ transform: 'scaleX(-1)' }}
-          />
-          <div className="absolute top-2 right-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={stopCamera}
-              className="h-6 w-6 p-0 bg-black/20 hover:bg-black/40"
-            >
-              <CameraOff className="h-3 w-3 text-white" />
-            </Button>
-          </div>
-          <div className="absolute bottom-1 left-1 text-xs text-white bg-red-500 px-2 py-1 rounded-full flex items-center gap-1">
-            <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-            Live
-          </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center justify-center h-full p-2 bg-gray-100 rounded-lg">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className={`w-full h-full object-cover rounded-lg ${isCameraOn ? 'block' : 'hidden'}`}
+        style={{ transform: 'scaleX(-1)' }}
+      />
+      
+      {!isCameraOn && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-2 bg-gray-100 rounded-lg">
           {error ? (
             <div className="text-xs text-red-500 text-center font-medium">
               {error}
@@ -136,6 +111,25 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
             </>
           )}
         </div>
+      )}
+
+      {isCameraOn && (
+        <>
+          <div className="absolute top-2 right-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={stopCamera}
+              className="h-6 w-6 p-0 bg-black/20 hover:bg-black/40"
+            >
+              <CameraOff className="h-3 w-3 text-white" />
+            </Button>
+          </div>
+          <div className="absolute bottom-1 left-1 text-xs text-white bg-red-500 px-2 py-1 rounded-full flex items-center gap-1">
+            <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
+            Live
+          </div>
+        </>
       )}
     </Card>
   );
