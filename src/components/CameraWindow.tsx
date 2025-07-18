@@ -2,8 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff } from 'lucide-react';
-import { FaceMesh } from '@mediapipe/face_mesh';
-import { Camera as MediaPipeCamera } from '@mediapipe/camera_utils';
+import '@mediapipe/face_mesh';
+import '@mediapipe/camera_utils';
+
+declare global {
+  interface Window {
+    FaceMesh: any;
+    Camera: any;
+  }
+}
 
 interface CameraWindowProps {
   isActive?: boolean;
@@ -17,7 +24,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const faceMeshRef = useRef<FaceMesh | null>(null);
+  const faceMeshRef = useRef<any>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [error, setError] = useState<string>('');
 
@@ -69,7 +76,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   };
 
   const initializeFaceMesh = () => {
-    const faceMesh = new FaceMesh({
+    const faceMesh = new window.FaceMesh({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
     });
     
