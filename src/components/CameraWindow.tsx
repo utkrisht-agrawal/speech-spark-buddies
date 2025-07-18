@@ -2,15 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff } from 'lucide-react';
-import '@mediapipe/face_mesh';
-import '@mediapipe/camera_utils';
-
-declare global {
-  interface Window {
-    FaceMesh: any;
-    Camera: any;
-  }
-}
+import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
+import '@tensorflow/tfjs';
 
 interface CameraWindowProps {
   isActive?: boolean;
@@ -24,7 +17,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const faceMeshRef = useRef<any>(null);
+  const detectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [error, setError] = useState<string>('');
 
@@ -75,48 +68,79 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     setIsCameraOn(false);
   };
 
-  const initializeFaceMesh = () => {
-    const faceMesh = new window.FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-    });
-    
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-    
-    faceMesh.onResults((results) => {
-      if (canvasRef.current && videoRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (ctx && results.multiFaceLandmarks) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const initializeFaceDetection = async () => {
+    try {
+      console.log('Initializing face detection...');
+      const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+      const detectorConfig = {
+        runtime: 'tfjs' as const,
+        maxFaces: 1,
+        refineLandmarks: true,
+      };
+      
+      const detector = await faceLandmarksDetection.createDetector(model, detectorConfig);
+      detectorRef.current = detector;
+      console.log('Face detector initialized');
+      
+      // Start face detection loop
+      if (videoRef.current && isCameraOn) {
+        detectFaces();
+      }
+    } catch (error) {
+      console.error('Error initializing face detection:', error);
+    }
+  };
+
+  const detectFaces = async () => {
+    if (!detectorRef.current || !videoRef.current || !canvasRef.current) {
+      return;
+    }
+
+    try {
+      const faces = await detectorRef.current.estimateFaces(videoRef.current);
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx && faces.length > 0) {
+        // Set canvas size to match video
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw lip landmarks for the first face
+        const face = faces[0];
+        if (face.keypoints) {
+          // MediaPipe face mesh lip indices (simplified for outer lips)
+          const lipIndices = [61, 62, 63, 64, 65, 66, 67, 68, 78, 79, 80, 81, 82];
           
-          for (const landmarks of results.multiFaceLandmarks) {
-            // Draw lip landmarks (indices 61-68 and 78-82 for outer lips)
-            const lipIndices = [61, 62, 63, 64, 65, 66, 67, 68, 78, 79, 80, 81, 82];
-            ctx.strokeStyle = '#FF0000';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            
-            lipIndices.forEach((index, i) => {
-              const landmark = landmarks[index];
-              const x = landmark.x * canvas.width;
-              const y = landmark.y * canvas.height;
-              
-              if (i === 0) ctx.moveTo(x, y);
-              else ctx.lineTo(x, y);
-            });
-            ctx.closePath();
-            ctx.stroke();
-          }
+          ctx.strokeStyle = '#FF0000';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          
+          lipIndices.forEach((index, i) => {
+            if (face.keypoints[index]) {
+              const point = face.keypoints[index];
+              if (i === 0) {
+                ctx.moveTo(point.x, point.y);
+              } else {
+                ctx.lineTo(point.x, point.y);
+              }
+            }
+          });
+          
+          ctx.closePath();
+          ctx.stroke();
         }
       }
-    });
-    
-    faceMeshRef.current = faceMesh;
+      
+      // Continue detection loop
+      if (isCameraOn) {
+        requestAnimationFrame(detectFaces);
+      }
+    } catch (error) {
+      console.error('Error detecting faces:', error);
+    }
   };
 
   useEffect(() => {
@@ -128,11 +152,30 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   }, [isActive]);
 
   useEffect(() => {
-    initializeFaceMesh();
+    initializeFaceDetection();
     return () => {
       stopCamera();
     };
   }, []);
+
+  // Initialize face detection when camera starts
+  useEffect(() => {
+    if (isCameraOn && videoRef.current) {
+      // Wait for video to load metadata before initializing detection
+      const handleLoadedMetadata = () => {
+        initializeFaceDetection();
+      };
+      
+      if (videoRef.current.readyState >= 1) {
+        initializeFaceDetection();
+      } else {
+        videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+        return () => {
+          videoRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        };
+      }
+    }
+  }, [isCameraOn]);
 
   return (
     <Card className={`relative overflow-hidden bg-muted/50 ${className}`}>
