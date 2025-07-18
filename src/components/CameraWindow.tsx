@@ -57,7 +57,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     } else if (!isActive && isCameraOn) {
       stopCamera();
     }
-  }, [isActive]);
+  }, [isActive, isCameraOn]);
 
   useEffect(() => {
     return () => {
