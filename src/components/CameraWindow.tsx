@@ -3,6 +3,15 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff } from 'lucide-react';
 
+declare global {
+  interface Window {
+    FaceMesh: any;
+    Camera: any;
+    drawConnectors: any;
+    FACEMESH_LIPS: any;
+  }
+}
+
 interface CameraWindowProps {
   isActive?: boolean;
   className?: string;
@@ -15,10 +24,10 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const faceMeshRef = useRef<any>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [error, setError] = useState<string>('');
-  const [faceDetector, setFaceDetector] = useState<any>(null);
+  const [lipColor, setLipColor] = useState('#FF0000');
 
   const startCamera = async () => {
     try {
@@ -34,7 +43,6 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       });
       
       console.log('Camera stream obtained:', stream);
-      console.log('Video tracks:', stream.getVideoTracks());
       
       if (videoRef.current) {
         console.log('Video element found:', videoRef.current);
@@ -44,6 +52,8 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         
         videoRef.current.play().then(() => {
           console.log('Video playing successfully');
+          // Initialize MediaPipe after video starts
+          initializeMediaPipe();
         }).catch(err => {
           console.error('Error playing video:', err);
         });
@@ -64,600 +74,153 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+    if (faceMeshRef.current) {
+      faceMeshRef.current.close();
+      faceMeshRef.current = null;
     }
     setIsCameraOn(false);
   };
 
-  // Advanced lip boundary detection
-  const detectLips = async () => {
-    if (!videoRef.current || !canvasRef.current || !isCameraOn) {
+  const initializeMediaPipe = () => {
+    console.log('Initializing MediaPipe FaceMesh...');
+    
+    // Load MediaPipe scripts dynamically
+    const loadMediaPipeScripts = async () => {
+      // Load drawing utils
+      if (!window.drawConnectors) {
+        await new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js';
+          script.onload = resolve;
+          document.head.appendChild(script);
+        });
+      }
+
+      // Load face mesh
+      if (!window.FaceMesh) {
+        await new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js';
+          script.onload = resolve;
+          document.head.appendChild(script);
+        });
+      }
+
+      // Wait a bit for everything to load
+      setTimeout(() => {
+        setupFaceMesh();
+      }, 1000);
+    };
+
+    loadMediaPipeScripts();
+  };
+
+  const setupFaceMesh = () => {
+    if (!window.FaceMesh || !videoRef.current || !canvasRef.current) {
+      console.error('MediaPipe or DOM elements not ready');
       return;
     }
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const video = videoRef.current;
+    console.log('Setting up FaceMesh...');
 
-    if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+    const faceMesh = new window.FaceMesh({
+      locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults((results: any) => {
+      const canvasElement = canvasRef.current;
+      const canvasCtx = canvasElement?.getContext('2d');
+      
+      if (!canvasElement || !canvasCtx) return;
+
       // Set canvas size to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvasElement.width = videoRef.current?.videoWidth || 640;
+      canvasElement.height = videoRef.current?.videoHeight || 480;
+
+      // Clear canvas
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw the image (optional - comment out if you don't want to see the video feed on canvas)
+      // canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
       
-      try {
-        // Use browser's Face Detection API if available
-        if ('FaceDetector' in window) {
-          const faceDetector = new (window as any).FaceDetector({
-            maxDetectedFaces: 1,
-            fastMode: false
+      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0];
+        
+        // Draw lip connections using MediaPipe's FACEMESH_LIPS
+        if (window.drawConnectors && window.FACEMESH_LIPS) {
+          window.drawConnectors(canvasCtx, landmarks, window.FACEMESH_LIPS, { 
+            color: lipColor, 
+            lineWidth: 2 
           });
-          
-          const faces = await faceDetector.detect(video);
-          
-          if (faces.length > 0) {
-            const face = faces[0];
-            const boundingBox = face.boundingBox;
-            
-            // Calculate detailed lip boundary points
-            detectLipBoundary(ctx, boundingBox, video);
-          }
         } else {
-          // Fallback: Advanced color-based lip boundary detection
-          detectLipBoundaryByColor(ctx, canvas, video);
+          // Fallback: Draw basic lip landmarks manually
+          drawLipLandmarks(canvasCtx, landmarks);
         }
-      } catch (error) {
-        console.log('Face detection not available, using advanced color-based detection');
-        detectLipBoundaryByColor(ctx, canvas, video);
-      }
-    }
 
-    // Continue animation loop
-    if (isCameraOn) {
-      animationFrameRef.current = requestAnimationFrame(detectLips);
-    }
-  };
-
-  // Detect precise lip boundary using face detection
-  const detectLipBoundary = (ctx: CanvasRenderingContext2D, boundingBox: any, video: HTMLVideoElement) => {
-    // Calculate lip region based on facial proportions
-    const faceWidth = boundingBox.width;
-    const faceHeight = boundingBox.height;
-    const faceX = boundingBox.x;
-    const faceY = boundingBox.y;
-    
-    // Lip region is typically at 65-75% down the face
-    const lipCenterY = faceY + faceHeight * 0.7;
-    const lipCenterX = faceX + faceWidth * 0.5;
-    const lipWidth = faceWidth * 0.35;
-    const lipHeight = faceHeight * 0.12;
-    
-    // Create detailed lip boundary points (similar to MediaPipe landmarks)
-    const lipPoints = generateLipLandmarks(lipCenterX, lipCenterY, lipWidth, lipHeight);
-    
-    // Draw outer lip boundary
-    ctx.strokeStyle = '#FF0000';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    
-    // Upper lip contour
-    const upperLipPoints = lipPoints.slice(0, 6);
-    ctx.moveTo(upperLipPoints[0].x, upperLipPoints[0].y);
-    for (let i = 1; i < upperLipPoints.length; i++) {
-      ctx.lineTo(upperLipPoints[i].x, upperLipPoints[i].y);
-    }
-    
-    // Lower lip contour
-    const lowerLipPoints = lipPoints.slice(6, 12);
-    for (let i = 0; i < lowerLipPoints.length; i++) {
-      ctx.lineTo(lowerLipPoints[i].x, lowerLipPoints[i].y);
-    }
-    
-    ctx.closePath();
-    ctx.stroke();
-    
-    // Draw inner lip boundary
-    ctx.strokeStyle = '#FF6666';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    
-    const innerLipPoints = generateInnerLipLandmarks(lipCenterX, lipCenterY, lipWidth * 0.7, lipHeight * 0.6);
-    ctx.moveTo(innerLipPoints[0].x, innerLipPoints[0].y);
-    for (let i = 1; i < innerLipPoints.length; i++) {
-      ctx.lineTo(innerLipPoints[i].x, innerLipPoints[i].y);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    
-    // Draw landmark points
-    ctx.fillStyle = '#FF0000';
-    lipPoints.forEach(point => {
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-  };
-
-  // Generate lip landmark points (similar to MediaPipe's 468 face landmarks for lips)
-  const generateLipLandmarks = (centerX: number, centerY: number, width: number, height: number) => {
-    const points = [];
-    
-    // Outer lip contour - 12 key points
-    // Upper lip (left to right)
-    points.push({x: centerX - width/2, y: centerY}); // Left corner
-    points.push({x: centerX - width/3, y: centerY - height/3}); // Left upper
-    points.push({x: centerX - width/6, y: centerY - height/2}); // Left cupid's bow
-    points.push({x: centerX, y: centerY - height/3}); // Center upper
-    points.push({x: centerX + width/6, y: centerY - height/2}); // Right cupid's bow
-    points.push({x: centerX + width/3, y: centerY - height/3}); // Right upper
-    points.push({x: centerX + width/2, y: centerY}); // Right corner
-    
-    // Lower lip (right to left)
-    points.push({x: centerX + width/3, y: centerY + height/3}); // Right lower
-    points.push({x: centerX + width/6, y: centerY + height/2}); // Right lower curve
-    points.push({x: centerX, y: centerY + height/2}); // Center lower
-    points.push({x: centerX - width/6, y: centerY + height/2}); // Left lower curve
-    points.push({x: centerX - width/3, y: centerY + height/3}); // Left lower
-    
-    return points;
-  };
-
-  // Generate inner lip boundary points
-  const generateInnerLipLandmarks = (centerX: number, centerY: number, width: number, height: number) => {
-    const points = [];
-    
-    // Inner lip contour - 8 points
-    points.push({x: centerX - width/2, y: centerY});
-    points.push({x: centerX - width/4, y: centerY - height/4});
-    points.push({x: centerX, y: centerY - height/3});
-    points.push({x: centerX + width/4, y: centerY - height/4});
-    points.push({x: centerX + width/2, y: centerY});
-    points.push({x: centerX + width/4, y: centerY + height/4});
-    points.push({x: centerX, y: centerY + height/3});
-    points.push({x: centerX - width/4, y: centerY + height/4});
-    
-    return points;
-  };
-
-  // Advanced face-aware lip detection with multiple validation layers
-  const detectLipBoundaryByColor = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, video: HTMLVideoElement) => {
-    // Create temporary canvas for analysis
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    if (!tempCtx) return;
-    
-    tempCanvas.width = video.videoWidth;
-    tempCanvas.height = video.videoHeight;
-    tempCtx.drawImage(video, 0, 0);
-    
-    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-    const data = imageData.data;
-    
-    // Step 1: Detect face region first
-    const faceRegion = detectFaceRegion(data, tempCanvas.width, tempCanvas.height);
-    
-    if (faceRegion) {
-      // Step 2: Find lips within face region only
-      const lipFeatures = findLipsInFace(data, faceRegion, tempCanvas.width, tempCanvas.height);
-      
-      if (lipFeatures) {
-        drawAccurateLips(ctx, lipFeatures);
+        console.log('Face detected and lips drawn');
       } else {
-        showFaceSearchIndicator(ctx, canvas, faceRegion, "Analyzing lips in detected face...");
+        console.log('No face detected');
       }
-    } else {
-      showGlobalSearchIndicator(ctx, canvas, "Looking for face...");
-    }
-  };
-
-  // Detect face region using skin tone and facial proportions
-  const detectFaceRegion = (data: Uint8ClampedArray, width: number, height: number) => {
-    const skinPixels: {x: number, y: number, confidence: number}[] = [];
-    
-    // Scan for skin-colored pixels
-    for (let y = Math.floor(height * 0.1); y < Math.floor(height * 0.9); y += 4) {
-      for (let x = Math.floor(width * 0.1); x < Math.floor(width * 0.9); x += 4) {
-        const index = (y * width + x) * 4;
-        const r = data[index];
-        const g = data[index + 1];
-        const b = data[index + 2];
-        
-        // Enhanced skin detection for multiple skin tones
-        const skinConfidence = calculateSkinConfidence(r, g, b);
-        
-        if (skinConfidence > 0.6) {
-          skinPixels.push({x, y, confidence: skinConfidence});
-        }
-      }
-    }
-    
-    if (skinPixels.length < 50) return null;
-    
-    // Find the largest connected skin region (likely the face)
-    const faceCluster = findLargestSkinCluster(skinPixels);
-    
-    if (faceCluster.length < 30) return null;
-    
-    // Calculate bounding box of face
-    const minX = Math.min(...faceCluster.map(p => p.x));
-    const maxX = Math.max(...faceCluster.map(p => p.x));
-    const minY = Math.min(...faceCluster.map(p => p.y));
-    const maxY = Math.max(...faceCluster.map(p => p.y));
-    
-    const faceWidth = maxX - minX;
-    const faceHeight = maxY - minY;
-    
-    // Validate face proportions
-    const aspectRatio = faceWidth / faceHeight;
-    if (aspectRatio < 0.6 || aspectRatio > 1.4 || faceWidth < 60 || faceHeight < 80) {
-      return null;
-    }
-    
-    return {
-      x: minX,
-      y: minY,
-      width: faceWidth,
-      height: faceHeight,
-      centerX: (minX + maxX) / 2,
-      centerY: (minY + maxY) / 2
-    };
-  };
-
-  // Calculate skin confidence for various skin tones
-  const calculateSkinConfidence = (r: number, g: number, b: number) => {
-    // Multiple skin tone detection criteria
-    const criteria = [
-      // Light skin
-      {
-        condition: r > 95 && g > 40 && b > 20 && r > g && r > b && (r - g) > 15,
-        weight: 1.0
-      },
-      // Medium skin  
-      {
-        condition: r > 80 && g > 35 && b > 15 && r > g && (r - b) > 10 && (r - g) > 5,
-        weight: 0.9
-      },
-      // Darker skin
-      {
-        condition: r > 45 && g > 28 && b > 15 && r > g && r >= b && (r - g) > 3,
-        weight: 0.8
-      },
-      // Asian/yellow undertone
-      {
-        condition: r > 60 && g > 40 && b > 20 && r > b && g > b * 0.8 && (r + g) > b * 2,
-        weight: 0.85
-      }
-    ];
-    
-    for (const criterion of criteria) {
-      if (criterion.condition) {
-        // Additional validation: check if colors are in reasonable skin range
-        const avg = (r + g + b) / 3;
-        const saturation = (Math.max(r, g, b) - Math.min(r, g, b)) / Math.max(r, g, b, 1);
-        
-        if (avg > 30 && avg < 220 && saturation < 0.6) {
-          return criterion.weight;
-        }
-      }
-    }
-    
-    return 0;
-  };
-
-  // Find largest connected skin region
-  const findLargestSkinCluster = (skinPixels: {x: number, y: number, confidence: number}[]) => {
-    const clusters: {x: number, y: number, confidence: number}[][] = [];
-    const visited = new Set<number>();
-    
-    skinPixels.forEach((pixel, index) => {
-      if (visited.has(index)) return;
-      
-      const cluster = [pixel];
-      visited.add(index);
-      
-      // BFS to find connected pixels
-      const queue = [pixel];
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        
-        skinPixels.forEach((otherPixel, otherIndex) => {
-          if (visited.has(otherIndex)) return;
-          
-          const distance = Math.sqrt(
-            Math.pow(current.x - otherPixel.x, 2) + 
-            Math.pow(current.y - otherPixel.y, 2)
-          );
-          
-          if (distance < 12) { // Close enough to be connected
-            cluster.push(otherPixel);
-            queue.push(otherPixel);
-            visited.add(otherIndex);
-          }
-        });
-      }
-      
-      clusters.push(cluster);
     });
-    
-    // Return largest cluster
-    return clusters.reduce((largest, current) => 
-      current.length > largest.length ? current : largest, []);
-  };
 
-  // Find lips specifically within the detected face region
-  const findLipsInFace = (data: Uint8ClampedArray, faceRegion: any, width: number, height: number) => {
-    // Focus on lower third of face where lips are located
-    const lipSearchArea = {
-      x: faceRegion.x,
-      y: faceRegion.y + faceRegion.height * 0.6, // Lips in lower 40% of face
-      width: faceRegion.width,
-      height: faceRegion.height * 0.4,
-      centerX: faceRegion.centerX,
-      centerY: faceRegion.y + faceRegion.height * 0.75
-    };
-    
-    // Look for lip-specific features in this constrained area
-    const lipCandidates = [];
-    
-    // Method 1: Look for horizontal dark lines (lip parting)
-    const horizontalLines = findHorizontalLipLines(data, lipSearchArea, width);
-    
-    // Method 2: Look for lip color contrast within face context
-    const colorContrast = findLipColorContrast(data, lipSearchArea, width, faceRegion);
-    
-    // Method 3: Look for lip texture patterns
-    const textureFeatures = findLipTexture(data, lipSearchArea, width);
-    
-    // Combine all methods for robust detection
-    const combinedScore = {
-      horizontal: horizontalLines.confidence,
-      color: colorContrast.confidence,
-      texture: textureFeatures.confidence
-    };
-    
-    // Need at least 2 out of 3 methods to agree
-    const validMethods = Object.values(combinedScore).filter(score => score > 0.5).length;
-    
-    if (validMethods >= 2) {
-      return {
-        centerX: lipSearchArea.centerX,
-        centerY: lipSearchArea.centerY,
-        width: Math.max(horizontalLines.width, colorContrast.width, textureFeatures.width),
-        height: faceRegion.height * 0.08, // Proportional to face
-        confidence: Math.max(...Object.values(combinedScore)),
-        methods: combinedScore
-      };
+    faceMeshRef.current = faceMesh;
+
+    // Start processing video
+    if (videoRef.current) {
+      const camera = new window.Camera(videoRef.current, {
+        onFrame: async () => {
+          if (faceMeshRef.current && videoRef.current) {
+            await faceMeshRef.current.send({ image: videoRef.current });
+          }
+        },
+        width: 640,
+        height: 480
+      });
+      camera.start();
     }
-    
-    return null;
   };
 
-  // Find horizontal lip parting lines
-  const findHorizontalLipLines = (data: Uint8ClampedArray, area: any, width: number) => {
-    let bestLine = { y: area.centerY, width: 0, confidence: 0 };
-    
-    for (let y = area.y; y < area.y + area.height; y += 2) {
-      let darkPixels = 0;
-      let lineWidth = 0;
-      
-      for (let x = area.x + area.width * 0.2; x < area.x + area.width * 0.8; x += 2) {
-        const index = (y * width + x) * 4;
-        const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
-        
-        // Look for darker pixels that could be lip parting
-        if (brightness < 100) {
-          darkPixels++;
-          lineWidth = x - (area.x + area.width * 0.2);
-        }
-      }
-      
-      const confidence = darkPixels / (area.width * 0.6 / 2);
-      if (confidence > bestLine.confidence && lineWidth > area.width * 0.3) {
-        bestLine = { y, width: lineWidth, confidence };
-      }
-    }
-    
-    return bestLine;
-  };
+  // Fallback function to draw lip landmarks manually
+  const drawLipLandmarks = (ctx: CanvasRenderingContext2D, landmarks: any[]) => {
+    // MediaPipe lip landmark indices
+    const lipIndices = [
+      // Outer lip
+      [61, 62, 63, 64, 65, 66, 67],
+      [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81],
+      [81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 267, 269, 270, 271, 272],
+      // Inner lip  
+      [78, 81, 13, 82, 18, 17, 84, 308, 324, 318]
+    ];
 
-  // Find lip color contrast within face context
-  const findLipColorContrast = (data: Uint8ClampedArray, area: any, width: number, faceRegion: any) => {
-    // Calculate average face skin color for comparison
-    const faceColor = calculateAverageFaceColor(data, faceRegion, width);
-    
-    let lipColorPixels = 0;
-    let totalPixels = 0;
-    
-    for (let y = area.y; y < area.y + area.height; y += 3) {
-      for (let x = area.x + area.width * 0.25; x < area.x + area.width * 0.75; x += 3) {
-        const index = (y * width + x) * 4;
-        const r = data[index];
-        const g = data[index + 1];
-        const b = data[index + 2];
-        
-        // Check if pixel is significantly different from face skin color
-        const colorDiff = Math.sqrt(
-          Math.pow(r - faceColor.r, 2) + 
-          Math.pow(g - faceColor.g, 2) + 
-          Math.pow(b - faceColor.b, 2)
-        );
-        
-        // Lips are usually redder/darker than surrounding skin
-        const isLipLike = (r > faceColor.r || (r > g && r > b)) && colorDiff > 15;
-        
-        if (isLipLike) lipColorPixels++;
-        totalPixels++;
-      }
-    }
-    
-    const confidence = lipColorPixels / totalPixels;
-    return { confidence, width: area.width * 0.5 };
-  };
-
-  // Calculate average face color for comparison
-  const calculateAverageFaceColor = (data: Uint8ClampedArray, faceRegion: any, width: number) => {
-    let totalR = 0, totalG = 0, totalB = 0, count = 0;
-    
-    // Sample from forehead and cheek areas (not lip area)
-    for (let y = faceRegion.y; y < faceRegion.y + faceRegion.height * 0.6; y += 5) {
-      for (let x = faceRegion.x; x < faceRegion.x + faceRegion.width; x += 5) {
-        const index = (y * width + x) * 4;
-        totalR += data[index];
-        totalG += data[index + 1];
-        totalB += data[index + 2];
-        count++;
-      }
-    }
-    
-    return {
-      r: totalR / count,
-      g: totalG / count,
-      b: totalB / count
-    };
-  };
-
-  // Find lip texture patterns
-  const findLipTexture = (data: Uint8ClampedArray, area: any, width: number) => {
-    // Simplified texture analysis - look for consistent horizontal patterns
-    let textureScore = 0;
-    let samples = 0;
-    
-    for (let y = area.y; y < area.y + area.height; y += 4) {
-      let horizontalVariation = 0;
-      let verticalVariation = 0;
-      
-      for (let x = area.x + 10; x < area.x + area.width - 10; x += 4) {
-        const index = (y * width + x) * 4;
-        const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
-        
-        // Compare with neighboring pixels
-        const rightIndex = (y * width + (x + 4)) * 4;
-        const bottomIndex = ((y + 4) * width + x) * 4;
-        
-        if (rightIndex < data.length && bottomIndex < data.length) {
-          const rightBrightness = (data[rightIndex] + data[rightIndex + 1] + data[rightIndex + 2]) / 3;
-          const bottomBrightness = (data[bottomIndex] + data[bottomIndex + 1] + data[bottomIndex + 2]) / 3;
-          
-          horizontalVariation += Math.abs(brightness - rightBrightness);
-          verticalVariation += Math.abs(brightness - bottomBrightness);
-        }
-        
-        samples++;
-      }
-      
-      // Lips typically have more horizontal texture than vertical
-      if (samples > 0 && horizontalVariation > verticalVariation * 1.2) {
-        textureScore++;
-      }
-    }
-    
-    const confidence = textureScore / (area.height / 4);
-    return { confidence: Math.min(confidence, 1), width: area.width * 0.4 };
-  };
-
-  // Draw accurate lips based on face-aware detection
-  const drawAccurateLips = (ctx: CanvasRenderingContext2D, lipFeatures: any) => {
-    const { centerX, centerY, width: lipWidth, height: lipHeight, confidence, methods } = lipFeatures;
-    
-    // Generate anatomically correct lip points
-    const lipPoints = generateAnatomicalLipPoints(centerX, centerY, lipWidth, lipHeight);
-    
-    // Draw confidence indicator
-    ctx.fillStyle = `rgba(0, 255, 0, ${confidence})`;
-    ctx.font = '12px Arial';
-    ctx.fillText(`Confidence: ${Math.round(confidence * 100)}%`, centerX - 40, centerY - lipHeight);
-    
-    // Draw lip boundary
-    ctx.strokeStyle = '#FF0000';
+    ctx.strokeStyle = lipColor;
     ctx.lineWidth = 2;
-    ctx.setLineDash([]);
+
+    // Draw outer lip boundary
     ctx.beginPath();
+    const outerLip = [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100];
     
-    lipPoints.forEach((point, i) => {
-      if (i === 0) ctx.moveTo(point.x, point.y);
-      else ctx.lineTo(point.x, point.y);
+    outerLip.forEach((index, i) => {
+      if (landmarks[index]) {
+        const point = landmarks[index];
+        const x = point.x * ctx.canvas.width;
+        const y = point.y * ctx.canvas.height;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
     });
     ctx.closePath();
     ctx.stroke();
-    
-    // Draw method indicators
-    const methodColors = { horizontal: '#00FF00', color: '#0080FF', texture: '#FF8000' };
-    let labelY = centerY + lipHeight + 20;
-    
-    Object.entries(methods).forEach(([method, score]) => {
-      if (typeof score === 'number' && score > 0.5) {
-        ctx.fillStyle = methodColors[method as keyof typeof methodColors];
-        ctx.fillText(`${method}: ${Math.round(score * 100)}%`, centerX - 30, labelY);
-        labelY += 15;
-      }
-    });
-    
-    // Draw landmark points
-    lipPoints.forEach((point, i) => {
-      ctx.fillStyle = i < 7 ? '#FF6666' : '#FF3333'; // Upper vs lower lip
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-  };
-
-  // Generate anatomical lip points
-  const generateAnatomicalLipPoints = (centerX: number, centerY: number, width: number, height: number) => {
-    return [
-      // Upper lip
-      {x: centerX - width/2, y: centerY},
-      {x: centerX - width/3, y: centerY - height/3},
-      {x: centerX - width/6, y: centerY - height/2},
-      {x: centerX, y: centerY - height/3},
-      {x: centerX + width/6, y: centerY - height/2},
-      {x: centerX + width/3, y: centerY - height/3},
-      {x: centerX + width/2, y: centerY},
-      // Lower lip
-      {x: centerX + width/3, y: centerY + height/3},
-      {x: centerX + width/6, y: centerY + height/2},
-      {x: centerX, y: centerY + height/2},
-      {x: centerX - width/6, y: centerY + height/2},
-      {x: centerX - width/3, y: centerY + height/3}
-    ];
-  };
-
-  // Show face search indicator
-  const showFaceSearchIndicator = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, faceRegion: any, message: string) => {
-    // Highlight detected face region
-    ctx.strokeStyle = '#00FF00';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(faceRegion.x, faceRegion.y, faceRegion.width, faceRegion.height);
-    
-    // Show lip search area
-    ctx.strokeStyle = '#FFFF00';
-    ctx.strokeRect(
-      faceRegion.x, 
-      faceRegion.y + faceRegion.height * 0.6, 
-      faceRegion.width, 
-      faceRegion.height * 0.4
-    );
-    
-    ctx.fillStyle = '#FFFF00';
-    ctx.font = '12px Arial';
-    ctx.fillText(message, faceRegion.x, faceRegion.y - 10);
-    ctx.setLineDash([]);
-  };
-
-  // Show global search indicator
-  const showGlobalSearchIndicator = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, message: string) => {
-    ctx.strokeStyle = '#FF8000';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
-    
-    ctx.fillStyle = '#FF8000';
-    ctx.font = '16px Arial';
-    ctx.fillText(message, 30, 50);
-    ctx.setLineDash([]);
   };
 
   useEffect(() => {
@@ -668,25 +231,11 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     }
   }, [isActive]);
 
-  // Start lip detection when camera is on
   useEffect(() => {
-    if (isCameraOn && videoRef.current) {
-      const startDetection = () => {
-        detectLips();
-      };
-      
-      if (videoRef.current.readyState >= 1) {
-        startDetection();
-      } else {
-        videoRef.current.addEventListener('loadedmetadata', startDetection);
-        return () => {
-          videoRef.current?.removeEventListener('loadedmetadata', startDetection);
-        };
-      }
-    } else if (!isCameraOn && animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-  }, [isCameraOn]);
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   return (
     <Card className={`relative overflow-hidden bg-muted/50 ${className}`}>
@@ -743,6 +292,21 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
           <div className="absolute bottom-1 left-1 text-xs text-white bg-red-500 px-2 py-1 rounded-full flex items-center gap-1">
             <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
             Live
+          </div>
+          {/* Lip color controls */}
+          <div className="absolute top-2 left-2 flex gap-1">
+            <button 
+              className="w-4 h-4 bg-red-500 rounded-full border border-white"
+              onClick={() => setLipColor('#FF0000')}
+            />
+            <button 
+              className="w-4 h-4 bg-blue-500 rounded-full border border-white"
+              onClick={() => setLipColor('#0066FF')}
+            />
+            <button 
+              className="w-4 h-4 bg-green-500 rounded-full border border-white"
+              onClick={() => setLipColor('#00FF00')}
+            />
           </div>
         </>
       )}
