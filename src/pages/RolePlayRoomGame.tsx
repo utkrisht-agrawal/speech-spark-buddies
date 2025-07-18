@@ -216,7 +216,7 @@ const RolePlayRoomGame: React.FC<RolePlayRoomGameProps> = ({ onComplete, onBack 
               
               <CameraWindow 
                 isActive={true}
-                className="w-48 h-40"
+                className="w-64 h-52"
               />
             </div>
             

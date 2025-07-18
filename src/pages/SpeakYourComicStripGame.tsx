@@ -244,7 +244,7 @@ const SpeakYourComicStripGame: React.FC<SpeakYourComicStripGameProps> = ({ onCom
               
               <CameraWindow 
                 isActive={true}
-                className="w-48 h-40"
+                className="w-64 h-52"
               />
             </div>
             

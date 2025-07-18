@@ -339,7 +339,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
             />
             <CameraWindow 
               isActive={isListening}
-              className="w-64 h-48"
+              className="w-80 h-60"
             />
           </div>
         </div>

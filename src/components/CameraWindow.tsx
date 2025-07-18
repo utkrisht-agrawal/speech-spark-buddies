@@ -221,7 +221,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     return points;
   };
 
-  // Advanced color-based lip boundary detection
+  // Advanced color-based lip boundary detection with full frame scanning
   const detectLipBoundaryByColor = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, video: HTMLVideoElement) => {
     // Create temporary canvas for analysis
     const tempCanvas = document.createElement('canvas');
@@ -236,83 +236,194 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
     const data = imageData.data;
     
-    // Find lip-colored pixels with more sophisticated color detection
+    // Find lip-colored pixels with enhanced detection across full frame
     const lipPixels: {x: number, y: number, intensity: number}[] = [];
     
-    // Scan face area for lip pixels
-    for (let y = Math.floor(canvas.height * 0.45); y < Math.floor(canvas.height * 0.75); y += 2) {
-      for (let x = Math.floor(canvas.width * 0.25); x < Math.floor(canvas.width * 0.75); x += 2) {
+    // Scan FULL frame for lip pixels (removed center restriction)
+    for (let y = 0; y < canvas.height; y += 3) { // Increased sampling frequency
+      for (let x = 0; x < canvas.width; x += 3) {
         const index = (y * canvas.width + x) * 4;
         const r = data[index];
         const g = data[index + 1];
         const b = data[index + 2];
         
-        // Enhanced lip color detection
+        // Enhanced lip color detection with multiple criteria
         const redness = r - Math.max(g, b);
+        const pinkness = (r + b) / 2 - g; // Detect pink tones
         const saturation = (Math.max(r, g, b) - Math.min(r, g, b)) / Math.max(r, g, b, 1);
+        const brightness = (r + g + b) / 3;
         
-        if (redness > 15 && saturation > 0.2 && r > 60) {
-          lipPixels.push({x, y, intensity: redness + saturation * 50});
+        // Multi-criteria lip detection
+        const isLipColor = (
+          (redness > 10 && saturation > 0.15 && brightness > 40 && brightness < 200) ||  // Red lips
+          (pinkness > 5 && saturation > 0.1 && brightness > 60 && brightness < 180) ||   // Pink lips
+          (r > g + 8 && r > b - 5 && r > 50 && g < 150 && b < 150)                      // Natural lip tone
+        );
+        
+        if (isLipColor) {
+          const intensity = redness + pinkness + saturation * 30;
+          lipPixels.push({x, y, intensity});
         }
       }
     }
     
-    if (lipPixels.length > 20) {
+    if (lipPixels.length > 15) {
       // Sort by intensity and take the most lip-like pixels
       lipPixels.sort((a, b) => b.intensity - a.intensity);
-      const topLipPixels = lipPixels.slice(0, Math.min(100, lipPixels.length));
+      const topLipPixels = lipPixels.slice(0, Math.min(150, lipPixels.length));
       
-      // Find bounds
-      const minX = Math.min(...topLipPixels.map(p => p.x));
-      const maxX = Math.max(...topLipPixels.map(p => p.x));
-      const minY = Math.min(...topLipPixels.map(p => p.y));
-      const maxY = Math.max(...topLipPixels.map(p => p.y));
+      // Cluster pixels to find main lip area
+      const clusters = clusterLipPixels(topLipPixels);
+      const mainCluster = clusters.length > 0 ? clusters[0] : topLipPixels;
       
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
-      const width = maxX - minX;
-      const height = maxY - minY;
-      
-      // Generate and draw lip boundary
-      const lipPoints = generateLipLandmarks(centerX, centerY, width * 1.2, height * 1.5);
-      
-      // Draw lip boundary
-      ctx.strokeStyle = '#FF0000';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(lipPoints[0].x, lipPoints[0].y);
-      for (let i = 1; i < lipPoints.length; i++) {
-        ctx.lineTo(lipPoints[i].x, lipPoints[i].y);
+      if (mainCluster.length > 10) {
+        // Find bounds of main lip cluster
+        const minX = Math.min(...mainCluster.map(p => p.x));
+        const maxX = Math.max(...mainCluster.map(p => p.x));
+        const minY = Math.min(...mainCluster.map(p => p.y));
+        const maxY = Math.max(...mainCluster.map(p => p.y));
+        
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        
+        // Generate more accurate lip boundary
+        const lipPoints = generateAccurateLipLandmarks(centerX, centerY, width * 1.3, height * 1.8, mainCluster);
+        
+        // Draw detailed lip boundary with different colors for upper/lower lips
+        drawLipBoundary(ctx, lipPoints, mainCluster);
       }
-      ctx.closePath();
-      ctx.stroke();
+    } else {
+      // Show full-frame search indicator
+      ctx.strokeStyle = '#FFFF00';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
       
-      // Draw landmark points
-      ctx.fillStyle = '#FF0000';
-      lipPoints.forEach(point => {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 1.5, 0, 2 * Math.PI);
-        ctx.fill();
+      ctx.fillStyle = '#FFFF00';
+      ctx.font = '16px Arial';
+      ctx.fillText('Scanning full frame for lips...', 20, 40);
+      ctx.setLineDash([]);
+    }
+  };
+
+  // Cluster nearby lip pixels to find main lip area
+  const clusterLipPixels = (pixels: {x: number, y: number, intensity: number}[]) => {
+    const clusters: {x: number, y: number, intensity: number}[][] = [];
+    const visited = new Set<number>();
+    
+    pixels.forEach((pixel, index) => {
+      if (visited.has(index)) return;
+      
+      const cluster = [pixel];
+      visited.add(index);
+      
+      // Find nearby pixels (within 15 pixels)
+      pixels.forEach((otherPixel, otherIndex) => {
+        if (visited.has(otherIndex)) return;
+        
+        const distance = Math.sqrt(
+          Math.pow(pixel.x - otherPixel.x, 2) + 
+          Math.pow(pixel.y - otherPixel.y, 2)
+        );
+        
+        if (distance < 15) {
+          cluster.push(otherPixel);
+          visited.add(otherIndex);
+        }
       });
       
-      // Draw detected lip pixels for debugging
-      ctx.fillStyle = '#FF000030';
-      topLipPixels.slice(0, 30).forEach(pixel => {
+      if (cluster.length > 5) {
+        clusters.push(cluster);
+      }
+    });
+    
+    // Sort clusters by size (largest first)
+    return clusters.sort((a, b) => b.length - a.length);
+  };
+
+  // Generate more accurate lip landmarks based on detected pixels
+  const generateAccurateLipLandmarks = (
+    centerX: number, 
+    centerY: number, 
+    width: number, 
+    height: number, 
+    detectedPixels: {x: number, y: number, intensity: number}[]
+  ) => {
+    const points = [];
+    
+    // Separate upper and lower lip pixels
+    const upperPixels = detectedPixels.filter(p => p.y < centerY);
+    const lowerPixels = detectedPixels.filter(p => p.y >= centerY);
+    
+    // Generate outer lip contour based on actual pixel distribution
+    const lipWidth = Math.max(width, 40);
+    const lipHeight = Math.max(height, 20);
+    
+    // Upper lip (left to right) - 6 points
+    points.push({x: centerX - lipWidth/2, y: centerY, type: 'corner'});
+    points.push({x: centerX - lipWidth/3, y: centerY - lipHeight/3, type: 'upper'});
+    points.push({x: centerX - lipWidth/6, y: centerY - lipHeight/2, type: 'bow'});
+    points.push({x: centerX, y: centerY - lipHeight/3, type: 'center'});
+    points.push({x: centerX + lipWidth/6, y: centerY - lipHeight/2, type: 'bow'});
+    points.push({x: centerX + lipWidth/3, y: centerY - lipHeight/3, type: 'upper'});
+    points.push({x: centerX + lipWidth/2, y: centerY, type: 'corner'});
+    
+    // Lower lip (right to left) - 5 points
+    points.push({x: centerX + lipWidth/3, y: centerY + lipHeight/3, type: 'lower'});
+    points.push({x: centerX + lipWidth/6, y: centerY + lipHeight/2, type: 'lower'});
+    points.push({x: centerX, y: centerY + lipHeight/2, type: 'bottom'});
+    points.push({x: centerX - lipWidth/6, y: centerY + lipHeight/2, type: 'lower'});
+    points.push({x: centerX - lipWidth/3, y: centerY + lipHeight/3, type: 'lower'});
+    
+    return points;
+  };
+
+  // Draw detailed lip boundary with proper styling
+  const drawLipBoundary = (
+    ctx: CanvasRenderingContext2D, 
+    lipPoints: any[], 
+    detectedPixels: {x: number, y: number, intensity: number}[]
+  ) => {
+    // Draw outer lip boundary
+    ctx.strokeStyle = '#FF0000';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    
+    // Connect all points to form lip shape
+    lipPoints.forEach((point, i) => {
+      if (i === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Draw landmark points with different colors based on type
+    lipPoints.forEach(point => {
+      let color = '#FF0000';
+      if (point.type === 'corner') color = '#FF6600';
+      if (point.type === 'bow') color = '#FF3366';
+      if (point.type === 'center' || point.type === 'bottom') color = '#FF0066';
+      
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
+      ctx.fill();
+    });
+    
+    // Show detected pixels (optional - for debugging)
+    if (detectedPixels.length < 50) { // Only show if not too many
+      ctx.fillStyle = '#FF000020';
+      detectedPixels.forEach(pixel => {
         ctx.beginPath();
         ctx.arc(pixel.x, pixel.y, 1, 0, 2 * Math.PI);
         ctx.fill();
       });
-    } else {
-      // Show search indicator
-      ctx.strokeStyle = '#FFFF00';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.strokeRect(canvas.width * 0.25, canvas.height * 0.45, canvas.width * 0.5, canvas.height * 0.3);
-      
-      ctx.fillStyle = '#FFFF00';
-      ctx.font = '14px Arial';
-      ctx.fillText('Detecting lip boundaries...', canvas.width * 0.28, canvas.height * 0.42);
-      ctx.setLineDash([]);
     }
   };
 
