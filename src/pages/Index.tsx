@@ -199,10 +199,30 @@ const Index = () => {
               setCurrentGameType('phoneme-race');
             } else if (game.includes('Sniff') || game.includes('Snail')) {
               setCurrentGameType('sniff-snail');
-            } else if (game.includes('Say It') || game.includes('Build')) {
+            } else if (game.includes('Say It') || game.includes('Build It')) {
               setCurrentGameType('say-build');
             } else if (game.includes('Word Puzzles')) {
               setCurrentGameType('word-puzzles');
+            } else if (game.includes('Guess') || game.includes('Object')) {
+              setCurrentGameType('guess-object');
+            } else if (game.includes('Color') || game.includes('Right')) {
+              setCurrentGameType('color-right');
+            } else if (game.includes('Build') && game.includes('Sentence')) {
+              setCurrentGameType('build-sentence');
+            } else if (game.includes('Bubble') || game.includes('Speech')) {
+              setCurrentGameType('bubble-speech');
+            } else if (game.includes('Connect') || game.includes('Sentence')) {
+              setCurrentGameType('connect-sentence');
+            } else if (game.includes('Emotion') || game.includes('Match')) {
+              setCurrentGameType('emotion-match');
+            } else if (game.includes('Role Play') || game.includes('Room')) {
+              setCurrentGameType('role-play');
+            } else if (game.includes('Choose') || game.includes('Dialog')) {
+              setCurrentGameType('choose-dialog');
+            } else if (game.includes('Story') || game.includes('Spinner')) {
+              setCurrentGameType('story-spinner');
+            } else if (game.includes('Comic') || game.includes('Strip')) {
+              setCurrentGameType('comic-strip');
             } else {
               setCurrentGameType('candle-blow');
             }
