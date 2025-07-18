@@ -26,6 +26,7 @@ import RolePlayRoomGame from './RolePlayRoomGame';
 import ChooseYourDialogGame from './ChooseYourDialogGame';
 import StorySpinnerGame from './StorySpinnerGame';
 import SpeakYourComicStripGame from './SpeakYourComicStripGame';
+import VisemePractice from './VisemePractice';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Exercise } from '@/types/curriculum';
 
@@ -39,7 +40,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [needsAssessment, setNeedsAssessment] = useState(false);
   const [studentLevel, setStudentLevel] = useState(1);
-  const [currentView, setCurrentView] = useState<'main' | 'curriculum' | 'exercise' | 'game'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'curriculum' | 'exercise' | 'game' | 'viseme'>('main');
   const [currentGameType, setCurrentGameType] = useState<string>('candle-blow');
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
@@ -56,14 +57,22 @@ const Index = () => {
     setCurrentView('main');
   };
 
-  // Listen for candle game events
+  // Listen for game and practice events
   React.useEffect(() => {
     const handleCandleGame = () => {
       setCurrentView('game');
     };
     
+    const handleVisemePractice = () => {
+      setCurrentView('viseme');
+    };
+    
     window.addEventListener('startCandleGame', handleCandleGame);
-    return () => window.removeEventListener('startCandleGame', handleCandleGame);
+    window.addEventListener('startVisemePractice', handleVisemePractice);
+    return () => {
+      window.removeEventListener('startCandleGame', handleCandleGame);
+      window.removeEventListener('startVisemePractice', handleVisemePractice);
+    };
   }, []);
 
   // Show login page if no user is logged in
@@ -175,6 +184,13 @@ const Index = () => {
       case 'comic-strip': return <SpeakYourComicStripGame {...gameProps} />;
       default: return <CandleBlowGame {...gameProps} />;
     }
+  }
+
+  if (currentView === 'viseme') {
+    return <VisemePractice 
+      onBack={() => setCurrentView('main')}
+      onComplete={(score) => setCurrentView('main')}
+    />;
   }
 
   // Child interface (original app functionality)

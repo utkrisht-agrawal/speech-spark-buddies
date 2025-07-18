@@ -126,6 +126,20 @@ const Dashboard = () => {
 
         {/* Quick Action Buttons */}
         <div className="mt-8 space-y-4">
+          {/* Viseme Practice */}
+          <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl p-6 shadow-lg">
+            <div className="text-center text-white">
+              <h3 className="text-xl font-bold mb-2">👄 Viseme Practice</h3>
+              <p className="text-sm opacity-90 mb-4">Learn lip movements for better pronunciation!</p>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('startVisemePractice'))}
+                className="bg-white text-purple-600 font-bold py-3 px-6 rounded-xl hover:bg-purple-50 transition-all duration-200"
+              >
+                Start Learning! 📚
+              </button>
+            </div>
+          </div>
+          
           {/* Candle Blow Game */}
           <div className="bg-gradient-to-r from-orange-400 to-red-500 rounded-2xl p-6 shadow-lg">
             <div className="text-center text-white">
