@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff } from 'lucide-react';
+import { FaceMesh } from '@mediapipe/face_mesh';
+import { Camera as MediaPipeCamera } from '@mediapipe/camera_utils';
 
 interface CameraWindowProps {
   isActive?: boolean;
@@ -13,7 +15,9 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   className = "w-100 h-100" 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const faceMeshRef = useRef<FaceMesh | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [error, setError] = useState<string>('');
 
@@ -64,6 +68,50 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     setIsCameraOn(false);
   };
 
+  const initializeFaceMesh = () => {
+    const faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+    });
+    
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+    
+    faceMesh.onResults((results) => {
+      if (canvasRef.current && videoRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx && results.multiFaceLandmarks) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          for (const landmarks of results.multiFaceLandmarks) {
+            // Draw lip landmarks (indices 61-68 and 78-82 for outer lips)
+            const lipIndices = [61, 62, 63, 64, 65, 66, 67, 68, 78, 79, 80, 81, 82];
+            ctx.strokeStyle = '#FF0000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            lipIndices.forEach((index, i) => {
+              const landmark = landmarks[index];
+              const x = landmark.x * canvas.width;
+              const y = landmark.y * canvas.height;
+              
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+      }
+    });
+    
+    faceMeshRef.current = faceMesh;
+  };
+
   useEffect(() => {
     if (isActive && !isCameraOn) {
       startCamera();
@@ -73,6 +121,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   }, [isActive]);
 
   useEffect(() => {
+    initializeFaceMesh();
     return () => {
       stopCamera();
     };
@@ -86,6 +135,11 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         muted
         playsInline
         className={`w-full h-full object-cover rounded-lg ${isCameraOn ? 'block' : 'hidden'}`}
+        style={{ transform: 'scaleX(-1)' }}
+      />
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 w-full h-full pointer-events-none ${isCameraOn ? 'block' : 'hidden'}`}
         style={{ transform: 'scaleX(-1)' }}
       />
       
