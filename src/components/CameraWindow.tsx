@@ -13,9 +13,12 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   className = "w-100 h-100" 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [error, setError] = useState<string>('');
+  const [faceDetector, setFaceDetector] = useState<any>(null);
 
   const startCamera = async () => {
     try {
@@ -61,7 +64,57 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
     setIsCameraOn(false);
+  };
+
+  // Simple lip area detection using basic facial geometry
+  const detectLipArea = () => {
+    if (!videoRef.current || !canvasRef.current || !isCameraOn) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const video = videoRef.current;
+
+    if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+      // Set canvas size to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw a simple lip detection overlay in the lower third of face area
+      const centerX = canvas.width / 2;
+      const faceAreaY = canvas.height * 0.6; // Approximate lip area
+      const lipWidth = canvas.width * 0.15;
+      const lipHeight = canvas.height * 0.08;
+      
+      // Draw lip outline
+      ctx.strokeStyle = '#FF0000';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]); // Dashed line to indicate detection area
+      
+      // Upper lip curve
+      ctx.beginPath();
+      ctx.ellipse(centerX, faceAreaY, lipWidth, lipHeight/2, 0, 0, Math.PI);
+      ctx.stroke();
+      
+      // Lower lip curve
+      ctx.beginPath();
+      ctx.ellipse(centerX, faceAreaY + lipHeight/4, lipWidth, lipHeight/2, 0, 0, Math.PI);
+      ctx.stroke();
+      
+      ctx.setLineDash([]); // Reset line dash
+    }
+
+    // Continue animation loop
+    if (isCameraOn) {
+      animationFrameRef.current = requestAnimationFrame(detectLipArea);
+    }
   };
 
   useEffect(() => {
@@ -72,6 +125,26 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     }
   }, [isActive]);
 
+  // Start lip detection when camera is on
+  useEffect(() => {
+    if (isCameraOn && videoRef.current) {
+      const startDetection = () => {
+        detectLipArea();
+      };
+      
+      if (videoRef.current.readyState >= 1) {
+        startDetection();
+      } else {
+        videoRef.current.addEventListener('loadedmetadata', startDetection);
+        return () => {
+          videoRef.current?.removeEventListener('loadedmetadata', startDetection);
+        };
+      }
+    } else if (!isCameraOn && animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+  }, [isCameraOn]);
+
   return (
     <Card className={`relative overflow-hidden bg-muted/50 ${className}`}>
       <video
@@ -80,6 +153,11 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         muted
         playsInline
         className={`w-full h-full object-cover rounded-lg ${isCameraOn ? 'block' : 'hidden'}`}
+        style={{ transform: 'scaleX(-1)' }}
+      />
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 w-full h-full pointer-events-none ${isCameraOn ? 'block' : 'hidden'}`}
         style={{ transform: 'scaleX(-1)' }}
       />
       
