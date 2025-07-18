@@ -31,15 +31,25 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       });
       
       console.log('Camera stream obtained:', stream);
+      console.log('Video tracks:', stream.getVideoTracks());
       
       if (videoRef.current) {
+        console.log('Video element found:', videoRef.current);
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
-        setIsCameraOn(true);
-        console.log('Camera set to video element');
         
-        // Ensure video plays
-        await videoRef.current.play();
+        // Wait for loadedmetadata before setting camera on
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded');
+          setIsCameraOn(true);
+          videoRef.current?.play().then(() => {
+            console.log('Video playing successfully');
+          }).catch(err => {
+            console.error('Error playing video:', err);
+          });
+        };
+      } else {
+        console.error('Video element not found');
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
