@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { CameraWindow } from '@/components/CameraWindow';
 import { VisemeGuide } from '@/components/VisemeGuide';
 import ScoreCard from '@/components/ScoreCard';
+import AnimatedLips from '@/components/AnimatedLips';
 
 interface VisemePracticeProps {
   onBack?: () => void;
@@ -27,6 +28,8 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [attempts, setAttempts] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(true);
+  const [currentPhonemeIndex, setCurrentPhonemeIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const currentWord = practiceWords[currentWordIndex];
 
@@ -146,22 +149,64 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
             />
           </div>
 
-          {/* Mascot/Avatar - Middle Column */}
+          {/* Animated Lips - Middle Column */}
           <div className="lg:col-span-1">
             <Card className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 h-full">
               <div className="text-center h-full flex flex-col justify-center">
-                <div className="text-8xl mb-4">🦊</div>
-                <h3 className="text-lg font-bold text-gray-800 mb-2">
-                  Practice Buddy
+                <h3 className="text-lg font-bold text-gray-800 mb-4">
+                  Lip Animation Guide
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Watch the guide and copy the lip movements!
+                <p className="text-sm text-gray-600 mb-6">
+                  Watch the lip movements for each sound
                 </p>
+                
+                <div className="flex-1 flex items-center justify-center mb-4">
+                  <AnimatedLips
+                    phoneme={currentWord.phonemes[currentPhonemeIndex]}
+                    isAnimating={isAnimating}
+                    className="transform scale-150"
+                  />
+                </div>
+                
                 <div className="bg-white rounded-xl p-4 border border-gray-100">
                   <p className="text-xs text-gray-500 mb-2">Current Word:</p>
-                  <p className="text-2xl font-bold text-orange-600">
+                  <p className="text-2xl font-bold text-orange-600 mb-2">
                     {currentWord.word}
                   </p>
+                  <p className="text-sm text-gray-600">
+                    Phoneme {currentPhonemeIndex + 1} of {currentWord.phonemes.length}: 
+                    <span className="font-semibold ml-1">{currentWord.phonemes[currentPhonemeIndex]}</span>
+                  </p>
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPhonemeIndex === 0}
+                  >
+                    ← Prev Sound
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsAnimating(!isAnimating);
+                      setTimeout(() => setIsAnimating(false), 2000);
+                    }}
+                    variant="default"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    {isAnimating ? 'Stop' : 'Animate'}
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
+                  >
+                    Next Sound →
+                  </Button>
                 </div>
               </div>
             </Card>
