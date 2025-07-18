@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
+import { CameraWindow } from '@/components/CameraWindow';
 
 interface FeedTheMonsterGameProps {
   targetPhoneme?: string;
@@ -193,15 +194,21 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
         </Card>
 
         <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 Monster is full and happy!' :
-              isListening ? `Say "/${targetPhoneme}/" to feed the monster!` :
-              'Press start to feed the hungry monster!'
-            }
-          />
+          <div className="flex gap-4 justify-center items-start">
+            <AvatarGuide
+              isListening={isListening}
+              mood={gameComplete ? 'celebrating' : 'encouraging'}
+              message={
+                gameComplete ? '🎉 Monster is full and happy!' :
+                isListening ? `Say "/${targetPhoneme}/" to feed the monster!` :
+                'Press start to feed the hungry monster!'
+              }
+            />
+            <CameraWindow 
+              isActive={isListening}
+              className="w-32 h-24"
+            />
+          </div>
         </div>
 
         {/* Monster Display */}

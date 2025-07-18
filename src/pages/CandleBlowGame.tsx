@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Wind, RotateCcw, Trophy, Target } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
+import { CameraWindow } from '@/components/CameraWindow';
 
 interface CandleBlowGameProps {
   targetPhoneme?: string;
@@ -324,17 +325,23 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
           </CardContent>
         </Card>
 
-        {/* Avatar Guide */}
+        {/* Avatar Guide and Camera */}
         <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 Excellent work!' :
-              isListening ? `Say "/${targetPhoneme}/" and blow into your microphone!` :
-              'Press start to begin!'
-            }
-          />
+          <div className="flex gap-4 justify-center items-start">
+            <AvatarGuide
+              isListening={isListening}
+              mood={gameComplete ? 'celebrating' : 'encouraging'}
+              message={
+                gameComplete ? '🎉 Excellent work!' :
+                isListening ? `Say "/${targetPhoneme}/" and blow into your microphone!` :
+                'Press start to begin!'
+              }
+            />
+            <CameraWindow 
+              isActive={isListening}
+              className="w-32 h-24"
+            />
+          </div>
         </div>
 
         {/* Candles */}

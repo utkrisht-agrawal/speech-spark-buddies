@@ -8,6 +8,7 @@ import { Exercise } from '@/types/curriculum';
 import AvatarGuide from '@/components/AvatarGuide';
 import RecordButton from '@/components/RecordButton';
 import ScoreCard from '@/components/ScoreCard';
+import { CameraWindow } from '@/components/CameraWindow';
 
 interface ExerciseViewProps {
   exercise: Exercise;
@@ -232,17 +233,23 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
           </CardContent>
         </Card>
 
-        {/* Avatar Guide */}
+        {/* Avatar Guide and Camera */}
         <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isRecording}
-            mood={showScore ? 'celebrating' : 'encouraging'}
-            message={
-              isRecording ? "I'm listening..." :
-              showScore ? "Great job!" :
-              "Press the microphone when ready!"
-            }
-          />
+          <div className="flex gap-4 justify-center items-start">
+            <AvatarGuide
+              isListening={isRecording}
+              mood={showScore ? 'celebrating' : 'encouraging'}
+              message={
+                isRecording ? "I'm listening..." :
+                showScore ? "Great job!" :
+                "Press the microphone when ready!"
+              }
+            />
+            <CameraWindow 
+              isActive={isRecording}
+              className="w-32 h-24"
+            />
+          </div>
         </div>
 
         {/* Recording Interface */}

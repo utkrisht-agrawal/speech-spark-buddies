@@ -4,6 +4,7 @@ import { ArrowLeft, Volume2 } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
 import RecordButton from '@/components/RecordButton';
 import ScoreCard from '@/components/ScoreCard';
+import { CameraWindow } from '@/components/CameraWindow';
 
 const PracticeView = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -87,20 +88,26 @@ const PracticeView = () => {
           </button>
         </div>
 
-        {/* Avatar Guide */}
+        {/* Avatar Guide and Camera */}
         <div className="mb-8">
-          <AvatarGuide
-            isListening={isRecording}
-            isSpeaking={false}
-            mood={hasRecorded ? 'encouraging' : 'happy'}
-            message={
-              isRecording 
-                ? "I'm listening..." 
-                : hasRecorded 
-                  ? "Processing your speech..." 
-                  : "Say the word clearly!"
-            }
-          />
+          <div className="flex gap-4 justify-center items-start">
+            <AvatarGuide
+              isListening={isRecording}
+              isSpeaking={false}
+              mood={hasRecorded ? 'encouraging' : 'happy'}
+              message={
+                isRecording 
+                  ? "I'm listening..." 
+                  : hasRecorded 
+                    ? "Processing your speech..." 
+                    : "Say the word clearly!"
+              }
+            />
+            <CameraWindow 
+              isActive={isRecording}
+              className="w-32 h-24"
+            />
+          </div>
         </div>
 
         {/* Recording Interface */}

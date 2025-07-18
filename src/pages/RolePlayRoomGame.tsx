@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, Mic, Volume2, Users } from 'lucide-react';
+import { CameraWindow } from '@/components/CameraWindow';
 
 interface RolePlayRoomGameProps {
   onComplete: (score: number) => void;
@@ -199,16 +200,24 @@ const RolePlayRoomGame: React.FC<RolePlayRoomGameProps> = ({ onComplete, onBack 
           {/* Voice Input */}
           <Card className="p-8 text-center">
             <h3 className="text-xl font-semibold mb-4">Your Response</h3>
-            <div className="relative w-32 h-32 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-full border-4 border-gray-300"></div>
-              <div 
-                className="absolute inset-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all duration-300"
-                style={{
-                  transform: `scale(${Math.max(0.3, level / 100)})`,
-                  opacity: Math.max(0.3, level / 100)
-                }}
-              ></div>
-              <Users className="absolute inset-0 m-auto w-8 h-8 text-white z-10" />
+            
+            <div className="flex gap-4 justify-center items-center mb-6">
+              <div className="relative w-24 h-24">
+                <div className="absolute inset-0 rounded-full border-4 border-gray-300"></div>
+                <div 
+                  className="absolute inset-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all duration-300"
+                  style={{
+                    transform: `scale(${Math.max(0.3, level / 100)})`,
+                    opacity: Math.max(0.3, level / 100)
+                  }}
+                ></div>
+                <Users className="absolute inset-0 m-auto w-6 h-6 text-white z-10" />
+              </div>
+              
+              <CameraWindow 
+                isActive={true}
+                className="w-24 h-20"
+              />
             </div>
             
             <div className="text-center">
