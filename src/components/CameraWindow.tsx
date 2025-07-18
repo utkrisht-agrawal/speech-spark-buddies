@@ -3,15 +3,6 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff } from 'lucide-react';
 
-declare global {
-  interface Window {
-    FaceMesh: any;
-    Camera: any;
-    drawConnectors: any;
-    FACEMESH_LIPS: any;
-  }
-}
-
 interface CameraWindowProps {
   isActive?: boolean;
   className?: string;
@@ -25,14 +16,51 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const faceMeshRef = useRef<any>(null);
+  const cameraRef = useRef<any>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [error, setError] = useState<string>('');
   const [lipColor, setLipColor] = useState('#FF0000');
+  const [scriptsLoaded, setScriptsLoaded] = useState(false);
+
+  const loadScript = (src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+      document.head.appendChild(script);
+    });
+  };
+
+  const loadMediaPipeScripts = async () => {
+    try {
+      console.log('Loading MediaPipe scripts...');
+      
+      // Load in the correct order
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+      
+      // Wait a bit for everything to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('MediaPipe scripts loaded successfully');
+      setScriptsLoaded(true);
+    } catch (error) {
+      console.error('Error loading MediaPipe scripts:', error);
+      setError('Failed to load MediaPipe scripts');
+    }
+  };
 
   const startCamera = async () => {
     try {
       console.log('Starting camera...');
       setError('');
+      
+      if (!scriptsLoaded) {
+        await loadMediaPipeScripts();
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: { ideal: 640 },
@@ -53,7 +81,9 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         videoRef.current.play().then(() => {
           console.log('Video playing successfully');
           // Initialize MediaPipe after video starts
-          initializeMediaPipe();
+          setTimeout(() => {
+            initializeMediaPipe();
+          }, 1000);
         }).catch(err => {
           console.error('Error playing video:', err);
         });
@@ -78,52 +108,30 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       faceMeshRef.current.close();
       faceMeshRef.current = null;
     }
+    if (cameraRef.current) {
+      cameraRef.current.stop();
+      cameraRef.current = null;
+    }
     setIsCameraOn(false);
   };
 
   const initializeMediaPipe = () => {
     console.log('Initializing MediaPipe FaceMesh...');
     
-    // Load MediaPipe scripts dynamically
-    const loadMediaPipeScripts = async () => {
-      // Load drawing utils
-      if (!window.drawConnectors) {
-        await new Promise((resolve) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js';
-          script.onload = resolve;
-          document.head.appendChild(script);
-        });
-      }
+    // Check if MediaPipe is available
+    if (typeof (window as any).FaceMesh === 'undefined') {
+      console.error('FaceMesh not available');
+      return;
+    }
 
-      // Load face mesh
-      if (!window.FaceMesh) {
-        await new Promise((resolve) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js';
-          script.onload = resolve;
-          document.head.appendChild(script);
-        });
-      }
-
-      // Wait a bit for everything to load
-      setTimeout(() => {
-        setupFaceMesh();
-      }, 1000);
-    };
-
-    loadMediaPipeScripts();
-  };
-
-  const setupFaceMesh = () => {
-    if (!window.FaceMesh || !videoRef.current || !canvasRef.current) {
-      console.error('MediaPipe or DOM elements not ready');
+    if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas element not ready');
       return;
     }
 
     console.log('Setting up FaceMesh...');
 
-    const faceMesh = new window.FaceMesh({
+    const faceMesh = new (window as any).FaceMesh({
       locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
     });
 
@@ -147,24 +155,21 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       // Clear canvas
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       
-      // Draw the image (optional - comment out if you don't want to see the video feed on canvas)
-      // canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-      
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
         
         // Draw lip connections using MediaPipe's FACEMESH_LIPS
-        if (window.drawConnectors && window.FACEMESH_LIPS) {
-          window.drawConnectors(canvasCtx, landmarks, window.FACEMESH_LIPS, { 
+        if ((window as any).drawConnectors && (window as any).FACEMESH_LIPS) {
+          (window as any).drawConnectors(canvasCtx, landmarks, (window as any).FACEMESH_LIPS, { 
             color: lipColor, 
             lineWidth: 2 
           });
+          console.log('Face detected and lips drawn with MediaPipe');
         } else {
           // Fallback: Draw basic lip landmarks manually
           drawLipLandmarks(canvasCtx, landmarks);
+          console.log('Face detected and lips drawn manually');
         }
-
-        console.log('Face detected and lips drawn');
       } else {
         console.log('No face detected');
       }
@@ -172,9 +177,9 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
 
     faceMeshRef.current = faceMesh;
 
-    // Start processing video
-    if (videoRef.current) {
-      const camera = new window.Camera(videoRef.current, {
+    // Start processing video using MediaPipe Camera
+    if (videoRef.current && typeof (window as any).Camera !== 'undefined') {
+      const camera = new (window as any).Camera(videoRef.current, {
         onFrame: async () => {
           if (faceMeshRef.current && videoRef.current) {
             await faceMeshRef.current.send({ image: videoRef.current });
@@ -183,30 +188,51 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         width: 640,
         height: 480
       });
+      
+      cameraRef.current = camera;
       camera.start();
+      console.log('MediaPipe camera started');
+    } else {
+      console.error('MediaPipe Camera not available');
     }
   };
 
   // Fallback function to draw lip landmarks manually
   const drawLipLandmarks = (ctx: CanvasRenderingContext2D, landmarks: any[]) => {
-    // MediaPipe lip landmark indices
-    const lipIndices = [
-      // Outer lip
-      [61, 62, 63, 64, 65, 66, 67],
-      [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81],
-      [81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 267, 269, 270, 271, 272],
-      // Inner lip  
-      [78, 81, 13, 82, 18, 17, 84, 308, 324, 318]
+    // MediaPipe lip landmark indices for outer lip contour
+    const outerLipIndices = [
+      61, 146, 91, 181, 84, 17, 314, 405, 320, 307, 375, 321, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95
+    ];
+    
+    // Inner lip contour
+    const innerLipIndices = [
+      78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311, 312, 13, 82, 81, 80, 78
     ];
 
     ctx.strokeStyle = lipColor;
     ctx.lineWidth = 2;
 
-    // Draw outer lip boundary
+    // Draw outer lip
     ctx.beginPath();
-    const outerLip = [61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100];
-    
-    outerLip.forEach((index, i) => {
+    outerLipIndices.forEach((index, i) => {
+      if (landmarks[index]) {
+        const point = landmarks[index];
+        const x = point.x * ctx.canvas.width;
+        const y = point.y * ctx.canvas.height;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+    });
+    ctx.closePath();
+    ctx.stroke();
+
+    // Draw inner lip
+    ctx.beginPath();
+    innerLipIndices.forEach((index, i) => {
       if (landmarks[index]) {
         const point = landmarks[index];
         const x = point.x * ctx.canvas.width;
