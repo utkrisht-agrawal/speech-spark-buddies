@@ -6,165 +6,146 @@ interface AnimatedLipsProps {
   className?: string;
 }
 
-// Enhanced Preston Blair phoneme mouth shapes with proper lip and tongue positioning
+// Enhanced realistic mouth shapes with connected lips
 const phonemeShapes = {
-  // A and I - wide open mouth, jaw dropped
+  // A and I - wide open mouth
   'A': { 
-    upperLip: 'M15 45 Q30 38 50 42 Q70 38 85 45',
-    lowerLip: 'M20 65 Q35 72 50 68 Q65 72 80 65', 
-    innerMouth: 'M25 50 Q50 45 75 50 Q50 70 25 50 Z',
+    mouth: 'M20 50 Q15 45 25 42 Q35 40 50 41 Q65 40 75 42 Q85 45 80 50 Q75 58 65 62 Q50 65 35 62 Q25 58 20 50 Z',
+    innerMouth: 'M30 48 Q50 45 70 48 Q65 58 50 60 Q35 58 30 48 Z',
     teeth: 'visible',
     tongue: null,
     jawDrop: 8
   },
   'I': { 
-    upperLip: 'M20 48 Q35 42 50 44 Q65 42 80 48',
-    lowerLip: 'M22 60 Q37 64 50 62 Q63 64 78 60', 
-    innerMouth: 'M28 52 Q50 48 72 52 Q50 62 28 52 Z',
+    mouth: 'M25 50 Q20 47 30 45 Q40 44 50 44 Q60 44 70 45 Q80 47 75 50 Q70 55 60 56 Q50 57 40 56 Q30 55 25 50 Z',
+    innerMouth: 'M32 48 Q50 47 68 48 Q65 54 50 55 Q35 54 32 48 Z',
     teeth: 'visible',
     tongue: null,
     jawDrop: 4
   },
   'AH': { 
-    upperLip: 'M18 46 Q33 39 50 41 Q67 39 82 46',
-    lowerLip: 'M22 64 Q37 70 50 68 Q63 70 78 64', 
-    innerMouth: 'M26 51 Q50 46 74 51 Q50 68 26 51 Z',
+    mouth: 'M22 50 Q17 46 27 43 Q37 41 50 42 Q63 41 73 43 Q83 46 78 50 Q73 57 63 60 Q50 62 37 60 Q27 57 22 50 Z',
+    innerMouth: 'M31 48 Q50 46 69 48 Q65 57 50 59 Q35 57 31 48 Z',
     teeth: 'visible',
     tongue: null,
     jawDrop: 6
   },
   
-  // E - wide smile, corners pulled back
+  // E - wide smile
   'E': { 
-    upperLip: 'M10 50 Q25 44 50 46 Q75 44 90 50',
-    lowerLip: 'M12 58 Q27 61 50 59 Q73 61 88 58', 
-    innerMouth: 'M18 52 Q50 50 82 52 Q50 60 18 52 Z',
+    mouth: 'M15 52 Q10 50 20 48 Q30 47 50 47 Q70 47 80 48 Q90 50 85 52 Q80 56 70 57 Q50 58 30 57 Q20 56 15 52 Z',
+    innerMouth: 'M25 50 Q50 49 75 50 Q70 55 50 56 Q30 55 25 50 Z',
     teeth: 'visible',
     tongue: null,
     jawDrop: 2
   },
   'EH': { 
-    upperLip: 'M15 49 Q30 43 50 45 Q70 43 85 49',
-    lowerLip: 'M17 59 Q32 62 50 60 Q68 62 83 59', 
-    innerMouth: 'M22 52 Q50 50 78 52 Q50 61 22 52 Z',
+    mouth: 'M18 51 Q13 49 23 47 Q33 46 50 46 Q67 46 77 47 Q87 49 82 51 Q77 56 67 57 Q50 58 33 57 Q23 56 18 51 Z',
+    innerMouth: 'M27 49 Q50 48 73 49 Q68 55 50 56 Q32 55 27 49 Z',
     teeth: 'visible',
     tongue: null,
     jawDrop: 3
   },
   
-  // O - rounded lips, protruded
+  // O - rounded lips
   'O': { 
-    upperLip: 'M35 45 Q42 41 50 42 Q58 41 65 45',
-    lowerLip: 'M35 65 Q42 69 50 68 Q58 69 65 65', 
-    innerMouth: 'M40 50 Q50 45 60 50 Q50 65 40 50 Z',
+    mouth: 'M38 46 Q33 42 42 40 Q47 39 50 39 Q53 39 58 40 Q67 42 62 46 Q58 54 53 56 Q50 57 47 56 Q42 54 38 46 Z',
+    innerMouth: 'M42 45 Q50 43 58 45 Q55 52 50 53 Q45 52 42 45 Z',
     teeth: 'hidden',
     tongue: null,
     jawDrop: 8
   },
   'OH': { 
-    upperLip: 'M32 44 Q39 39 50 40 Q61 39 68 44',
-    lowerLip: 'M32 66 Q39 71 50 70 Q61 71 68 66', 
-    innerMouth: 'M38 49 Q50 43 62 49 Q50 67 38 49 Z',
+    mouth: 'M35 45 Q30 40 40 38 Q45 37 50 37 Q55 37 60 38 Q70 40 65 45 Q60 55 55 58 Q50 59 45 58 Q40 55 35 45 Z',
+    innerMouth: 'M40 44 Q50 41 60 44 Q57 54 50 56 Q43 54 40 44 Z',
     teeth: 'hidden',
     tongue: null,
     jawDrop: 10
   },
   
-  // U - very small rounded opening
+  // U - small rounded opening
   'U': { 
-    upperLip: 'M42 48 Q46 46 50 46 Q54 46 58 48',
-    lowerLip: 'M42 62 Q46 64 50 64 Q54 64 58 62', 
-    innerMouth: 'M45 52 Q50 50 55 52 Q50 60 45 52 Z',
+    mouth: 'M43 49 Q40 47 45 46 Q47 45 50 45 Q53 45 55 46 Q60 47 57 49 Q55 53 53 54 Q50 55 47 54 Q45 53 43 49 Z',
+    innerMouth: 'M46 48 Q50 47 54 48 Q52 52 50 53 Q48 52 46 48 Z',
     teeth: 'hidden',
     tongue: null,
     jawDrop: 2
   },
   'UH': { 
-    upperLip: 'M40 47 Q45 45 50 45 Q55 45 60 47',
-    lowerLip: 'M40 63 Q45 65 50 65 Q55 65 60 63', 
-    innerMouth: 'M43 51 Q50 49 57 51 Q50 61 43 51 Z',
+    mouth: 'M41 48 Q38 46 43 45 Q46 44 50 44 Q54 44 57 45 Q62 46 59 48 Q57 52 54 53 Q50 54 46 53 Q43 52 41 48 Z',
+    innerMouth: 'M45 47 Q50 46 55 47 Q53 51 50 52 Q47 51 45 47 Z',
     teeth: 'hidden',
     tongue: null,
     jawDrop: 3
   },
   
-  // Consonants - neutral but slightly open
+  // Consonants - neutral position
   'C': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: null,
     jawDrop: 1
   },
   'D': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: 'tip',
     jawDrop: 1
   },
   'G': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: 'back',
     jawDrop: 1
   },
   'K': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: 'back',
     jawDrop: 1
   },
   'N': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: 'tip',
     jawDrop: 1
   },
   'R': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: 'curved',
     jawDrop: 1
   },
   'S': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M30 52 Q25 50 35 49 Q42 48 50 48 Q58 48 65 49 Q75 50 70 52 Q65 54 58 54 Q50 54 42 54 Q35 54 30 52 Z',
+    innerMouth: 'M37 51 Q50 50 63 51 Q58 53 50 53 Q42 53 37 51 Z',
     teeth: 'visible',
     tongue: 'groove',
     jawDrop: 0
   },
   'TH': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'visible',
     tongue: 'between',
     jawDrop: 1
   },
   'Y': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'slight',
     tongue: 'high',
     jawDrop: 1
   },
   'Z': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M30 52 Q25 50 35 49 Q42 48 50 48 Q58 48 65 49 Q75 50 70 52 Q65 54 58 54 Q50 54 42 54 Q35 54 30 52 Z',
+    innerMouth: 'M37 51 Q50 50 63 51 Q58 53 50 53 Q42 53 37 51 Z',
     teeth: 'visible',
     tongue: 'groove',
     jawDrop: 0
@@ -172,27 +153,24 @@ const phonemeShapes = {
   
   // F and V - lower lip touches upper teeth
   'F': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 55 Q37 53 50 53 Q63 53 75 55', 
-    innerMouth: 'M30 53 Q50 51 70 53 Q50 57 30 53 Z',
+    mouth: 'M28 52 Q23 50 33 49 Q40 48 50 48 Q60 48 67 49 Q77 50 72 52 Q67 54 60 54 Q50 54 40 54 Q33 54 28 52 Z',
+    innerMouth: 'M35 51 Q50 50 65 51 Q60 53 50 53 Q40 53 35 51 Z',
     teeth: 'upper',
     tongue: null,
     jawDrop: 0
   },
   'V': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 55 Q37 53 50 53 Q63 53 75 55', 
-    innerMouth: 'M30 53 Q50 51 70 53 Q50 57 30 53 Z',
+    mouth: 'M28 52 Q23 50 33 49 Q40 48 50 48 Q60 48 67 49 Q77 50 72 52 Q67 54 60 54 Q50 54 40 54 Q33 54 28 52 Z',
+    innerMouth: 'M35 51 Q50 50 65 51 Q60 53 50 53 Q40 53 35 51 Z',
     teeth: 'upper',
     tongue: null,
     jawDrop: 0
   },
   
-  // L - tongue tip visible at teeth
+  // L - tongue tip visible
   'L': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'visible',
     tongue: 'tip-out',
     jawDrop: 1
@@ -200,24 +178,21 @@ const phonemeShapes = {
   
   // M, B, P - lips pressed together
   'M': { 
-    upperLip: 'M25 54 Q37 52 50 52 Q63 52 75 54',
-    lowerLip: 'M25 56 Q37 58 50 58 Q63 58 75 56', 
+    mouth: 'M30 52 Q25 51 35 50 Q42 49 50 49 Q58 49 65 50 Q75 51 70 52 Q65 53 58 53 Q50 53 42 53 Q35 53 30 52 Z',
     innerMouth: null,
     teeth: 'hidden',
     tongue: null,
     jawDrop: 0
   },
   'B': { 
-    upperLip: 'M25 54 Q37 52 50 52 Q63 52 75 54',
-    lowerLip: 'M25 56 Q37 58 50 58 Q63 58 75 56', 
+    mouth: 'M30 52 Q25 51 35 50 Q42 49 50 49 Q58 49 65 50 Q75 51 70 52 Q65 53 58 53 Q50 53 42 53 Q35 53 30 52 Z',
     innerMouth: null,
     teeth: 'hidden',
     tongue: null,
     jawDrop: 0
   },
   'P': { 
-    upperLip: 'M25 54 Q37 52 50 52 Q63 52 75 54',
-    lowerLip: 'M25 56 Q37 58 50 58 Q63 58 75 56', 
+    mouth: 'M30 52 Q25 51 35 50 Q42 49 50 49 Q58 49 65 50 Q75 51 70 52 Q65 53 58 53 Q50 53 42 53 Q35 53 30 52 Z',
     innerMouth: null,
     teeth: 'hidden',
     tongue: null,
@@ -226,17 +201,15 @@ const phonemeShapes = {
   
   // W and Q - rounded and protruded
   'W': { 
-    upperLip: 'M38 46 Q44 43 50 43 Q56 43 62 46',
-    lowerLip: 'M38 64 Q44 67 50 67 Q56 67 62 64', 
-    innerMouth: 'M42 51 Q50 48 58 51 Q50 63 42 51 Z',
+    mouth: 'M40 47 Q35 44 43 42 Q46 41 50 41 Q54 41 57 42 Q65 44 60 47 Q57 52 54 54 Q50 55 46 54 Q43 52 40 47 Z',
+    innerMouth: 'M44 46 Q50 44 56 46 Q54 51 50 52 Q46 51 44 46 Z',
     teeth: 'hidden',
     tongue: 'back',
     jawDrop: 6
   },
   'Q': { 
-    upperLip: 'M35 45 Q42 41 50 42 Q58 41 65 45',
-    lowerLip: 'M35 65 Q42 69 50 68 Q58 69 65 65', 
-    innerMouth: 'M40 50 Q50 45 60 50 Q50 65 40 50 Z',
+    mouth: 'M38 46 Q33 42 42 40 Q47 39 50 39 Q53 39 58 40 Q67 42 62 46 Q58 54 53 56 Q50 57 47 56 Q42 54 38 46 Z',
+    innerMouth: 'M42 45 Q50 43 58 45 Q55 52 50 53 Q45 52 42 45 Z',
     teeth: 'hidden',
     tongue: 'back',
     jawDrop: 8
@@ -244,33 +217,29 @@ const phonemeShapes = {
   
   // Rest and other positions
   'REST': { 
-    upperLip: 'M25 52 Q37 50 50 50 Q63 50 75 52',
-    lowerLip: 'M25 58 Q37 60 50 60 Q63 60 75 58', 
-    innerMouth: 'M30 54 Q50 53 70 54 Q50 57 30 54 Z',
+    mouth: 'M30 52 Q25 51 35 50 Q42 49 50 49 Q58 49 65 50 Q75 51 70 52 Q65 54 58 54 Q50 54 42 54 Q35 54 30 52 Z',
+    innerMouth: 'M37 51 Q50 50 63 51 Q58 53 50 53 Q42 53 37 51 Z',
     teeth: 'hidden',
     tongue: 'rest',
     jawDrop: 0
   },
   'ER': { 
-    upperLip: 'M25 51 Q37 49 50 49 Q63 49 75 51',
-    lowerLip: 'M25 59 Q37 61 50 61 Q63 61 75 59', 
-    innerMouth: 'M30 54 Q50 53 70 54 Q50 58 30 54 Z',
+    mouth: 'M29 51 Q24 50 34 49 Q41 48 50 48 Q59 48 66 49 Q76 50 71 51 Q66 53 59 54 Q50 54 41 54 Q34 53 29 51 Z',
+    innerMouth: 'M36 50 Q50 49 64 50 Q59 53 50 53 Q41 53 36 50 Z',
     teeth: 'hidden',
     tongue: 'curved',
     jawDrop: 1
   },
   'T': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M28 51 Q23 49 33 48 Q40 47 50 47 Q60 47 67 48 Q77 49 72 51 Q67 54 60 55 Q50 55 40 55 Q33 54 28 51 Z',
+    innerMouth: 'M35 50 Q50 49 65 50 Q60 53 50 54 Q40 53 35 50 Z',
     teeth: 'visible',
     tongue: 'tip',
     jawDrop: 1
   },
   'H': { 
-    upperLip: 'M25 50 Q37 47 50 48 Q63 47 75 50',
-    lowerLip: 'M25 60 Q37 62 50 61 Q63 62 75 60', 
-    innerMouth: 'M30 53 Q50 52 70 53 Q50 59 30 53 Z',
+    mouth: 'M26 51 Q21 49 31 48 Q38 47 50 47 Q62 47 69 48 Q79 49 74 51 Q69 55 62 56 Q50 56 38 56 Q31 55 26 51 Z',
+    innerMouth: 'M33 50 Q50 49 67 50 Q62 54 50 55 Q38 54 33 50 Z',
     teeth: 'slight',
     tongue: 'low',
     jawDrop: 2
@@ -378,46 +347,25 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
           {getTongueElement()}
         </g>
         
-        {/* Lower lip */}
+        {/* Main mouth shape */}
         <path
-          d={currentShape.lowerLip}
-          stroke="#d4a574"
-          strokeWidth="8"
-          fill="none"
-          strokeLinecap="round"
+          d={currentShape.mouth}
+          fill="#d4a574"
+          stroke="#b8956a"
+          strokeWidth="2"
           className="transition-all duration-500"
-          transform={`translate(0, ${jawOffset})`}
+          transform={`translate(0, ${jawOffset * 0.2})`}
         />
         
-        {/* Upper lip */}
+        {/* Mouth highlights */}
         <path
-          d={currentShape.upperLip}
-          stroke="#d4a574"
-          strokeWidth="8"
+          d={currentShape.mouth}
           fill="none"
-          strokeLinecap="round"
-          className="transition-all duration-500"
-        />
-        
-        {/* Lip highlights */}
-        <path
-          d={currentShape.upperLip}
           stroke="#f4c2a1"
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-          opacity="0.8"
+          strokeWidth="1"
+          opacity="0.6"
           className="transition-all duration-500"
-        />
-        <path
-          d={currentShape.lowerLip}
-          stroke="#f4c2a1"
-          strokeWidth="2"
-          fill="none"
-          strokeLinecap="round"
-          opacity="0.8"
-          className="transition-all duration-500"
-          transform={`translate(0, ${jawOffset})`}
+          transform={`translate(0, ${jawOffset * 0.2})`}
         />
       </svg>
       
