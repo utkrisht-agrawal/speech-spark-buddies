@@ -206,7 +206,7 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
             />
             <CameraWindow 
               isActive={isListening}
-              className="w-32 h-24"
+              className="w-64 h-48"
             />
           </div>
         </div>

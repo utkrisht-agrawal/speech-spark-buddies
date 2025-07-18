@@ -247,7 +247,7 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
             />
             <CameraWindow 
               isActive={isRecording}
-              className="w-32 h-24"
+              className="w-64 h-48"
             />
           </div>
         </div>
