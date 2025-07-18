@@ -19,6 +19,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
 
   const startCamera = async () => {
     try {
+      console.log('Starting camera...');
       setError('');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -29,10 +30,16 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         audio: false 
       });
       
+      console.log('Camera stream obtained:', stream);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setIsCameraOn(true);
+        console.log('Camera set to video element');
+        
+        // Ensure video plays
+        await videoRef.current.play();
       }
     } catch (err) {
       console.error('Error accessing camera:', err);
