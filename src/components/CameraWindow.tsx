@@ -69,11 +69,16 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   };
 
   useEffect(() => {
-    if (isActive && !isCameraOn) {
-      startCamera();
-    } else if (!isActive && isCameraOn) {
-      stopCamera();
-    }
+    // Small delay to ensure video element is rendered
+    const timer = setTimeout(() => {
+      if (isActive && !isCameraOn) {
+        startCamera();
+      } else if (!isActive && isCameraOn) {
+        stopCamera();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [isActive, isCameraOn]);
 
   useEffect(() => {
