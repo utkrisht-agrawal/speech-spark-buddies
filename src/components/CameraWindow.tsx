@@ -70,8 +70,8 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
     setIsCameraOn(false);
   };
 
-  // Simple lip area detection using basic facial geometry
-  const detectLipArea = () => {
+  // Real face and lip detection using browser's Face Detection API
+  const detectLips = async () => {
     if (!videoRef.current || !canvasRef.current || !isCameraOn) {
       return;
     }
@@ -87,33 +87,130 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Draw a simple lip detection overlay in the lower third of face area
-      const centerX = canvas.width / 2;
-      const faceAreaY = canvas.height * 0.6; // Approximate lip area
-      const lipWidth = canvas.width * 0.15;
-      const lipHeight = canvas.height * 0.08;
-      
-      // Draw lip outline
-      ctx.strokeStyle = '#FF0000';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]); // Dashed line to indicate detection area
-      
-      // Upper lip curve
-      ctx.beginPath();
-      ctx.ellipse(centerX, faceAreaY, lipWidth, lipHeight/2, 0, 0, Math.PI);
-      ctx.stroke();
-      
-      // Lower lip curve
-      ctx.beginPath();
-      ctx.ellipse(centerX, faceAreaY + lipHeight/4, lipWidth, lipHeight/2, 0, 0, Math.PI);
-      ctx.stroke();
-      
-      ctx.setLineDash([]); // Reset line dash
+      try {
+        // Try to use browser's native Face Detection API if available
+        if ('FaceDetector' in window) {
+          const faceDetector = new (window as any).FaceDetector({
+            maxDetectedFaces: 1,
+            fastMode: false
+          });
+          
+          const faces = await faceDetector.detect(video);
+          
+          if (faces.length > 0) {
+            const face = faces[0];
+            const boundingBox = face.boundingBox;
+            
+            // Calculate lip area based on face bounding box
+            const lipY = boundingBox.y + boundingBox.height * 0.7; // Lips are about 70% down the face
+            const lipX = boundingBox.x + boundingBox.width * 0.5;   // Center of face
+            const lipWidth = boundingBox.width * 0.3;               // Lips are about 30% of face width
+            const lipHeight = boundingBox.height * 0.08;            // Lips are about 8% of face height
+            
+            // Draw detected lip area
+            ctx.strokeStyle = '#FF0000';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            
+            // Upper lip
+            ctx.beginPath();
+            ctx.ellipse(lipX, lipY - lipHeight/4, lipWidth/2, lipHeight/3, 0, 0, Math.PI);
+            ctx.stroke();
+            
+            // Lower lip  
+            ctx.beginPath();
+            ctx.ellipse(lipX, lipY + lipHeight/4, lipWidth/2, lipHeight/2, 0, Math.PI, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Draw face bounding box for reference
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height);
+          }
+        } else {
+          // Fallback: Simple color-based lip detection
+          detectLipsByColor(ctx, canvas, video);
+        }
+      } catch (error) {
+        console.log('Face detection not available, using color-based detection');
+        detectLipsByColor(ctx, canvas, video);
+      }
     }
 
     // Continue animation loop
     if (isCameraOn) {
-      animationFrameRef.current = requestAnimationFrame(detectLipArea);
+      animationFrameRef.current = requestAnimationFrame(detectLips);
+    }
+  };
+
+  // Fallback color-based lip detection
+  const detectLipsByColor = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, video: HTMLVideoElement) => {
+    // Create a temporary canvas to analyze video frame
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    if (!tempCtx) return;
+    
+    tempCanvas.width = video.videoWidth;
+    tempCanvas.height = video.videoHeight;
+    
+    // Draw current video frame
+    tempCtx.drawImage(video, 0, 0);
+    
+    // Get image data for color analysis
+    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const data = imageData.data;
+    
+    // Simple lip detection by looking for red/pink areas in lower face area
+    const lipCandidates: {x: number, y: number}[] = [];
+    
+    // Scan lower half of frame for lip-colored pixels
+    for (let y = Math.floor(tempCanvas.height * 0.4); y < Math.floor(tempCanvas.height * 0.8); y += 4) {
+      for (let x = Math.floor(tempCanvas.width * 0.2); x < Math.floor(tempCanvas.width * 0.8); x += 4) {
+        const index = (y * tempCanvas.width + x) * 4;
+        const r = data[index];
+        const g = data[index + 1];
+        const b = data[index + 2];
+        
+        // Check if pixel has lip-like color (reddish/pink)
+        if (r > g + 20 && r > b + 10 && r > 80) {
+          lipCandidates.push({x, y});
+        }
+      }
+    }
+    
+    if (lipCandidates.length > 10) {
+      // Find center of lip candidates
+      const avgX = lipCandidates.reduce((sum, p) => sum + p.x, 0) / lipCandidates.length;
+      const avgY = lipCandidates.reduce((sum, p) => sum + p.y, 0) / lipCandidates.length;
+      
+      // Draw detected lip area
+      ctx.strokeStyle = '#FF0000';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      
+      ctx.beginPath();
+      ctx.ellipse(avgX, avgY, 40, 15, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+      
+      // Draw detection points
+      ctx.fillStyle = '#FF000050';
+      lipCandidates.forEach(point => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 1, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    } else {
+      // No lips detected, show search area
+      ctx.strokeStyle = '#FFFF00';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(canvas.width * 0.2, canvas.height * 0.4, canvas.width * 0.6, canvas.height * 0.4);
+      
+      ctx.fillStyle = '#FFFF00';
+      ctx.font = '16px Arial';
+      ctx.fillText('Looking for lips...', canvas.width * 0.3, canvas.height * 0.35);
     }
   };
 
@@ -129,7 +226,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   useEffect(() => {
     if (isCameraOn && videoRef.current) {
       const startDetection = () => {
-        detectLipArea();
+        detectLips();
       };
       
       if (videoRef.current.readyState >= 1) {
