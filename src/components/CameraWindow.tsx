@@ -10,7 +10,7 @@ interface CameraWindowProps {
 
 export const CameraWindow: React.FC<CameraWindowProps> = ({ 
   isActive = false, 
-  className = "w-64 h-48" 
+  className = "w-100 h-100" 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
