@@ -6,6 +6,7 @@ import { CameraWindow } from '@/components/CameraWindow';
 import { VisemeGuide } from '@/components/VisemeGuide';
 import ScoreCard from '@/components/ScoreCard';
 import AnimatedLips from '@/components/AnimatedLips';
+import { scoreSpeech, initializeSpeechModels, SpeechRecognitionResult } from '@/utils/speechRecognition';
 
 interface VisemePracticeProps {
   onBack?: () => void;
@@ -37,10 +38,25 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [audioData, setAudioData] = useState<number[]>([]);
   const [lipScore, setLipScore] = useState(75);
   const [soundScore, setSoundScore] = useState(80);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [recognitionResult, setRecognitionResult] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
   const currentWord = practiceWords[currentWordIndex];
+
+  // Initialize speech models on component mount
+  useEffect(() => {
+    const initModels = async () => {
+      try {
+        await initializeSpeechModels();
+        console.log("✅ Speech recognition models loaded successfully");
+      } catch (error) {
+        console.error("❌ Failed to load speech models:", error);
+      }
+    };
+    initModels();
+  }, []);
 
   const handleVisemeComplete = () => {
     const newScore = score + 10;
@@ -91,12 +107,27 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         audioChunksRef.current.push(event.data);
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        // Here you would process the audio with wav2vec/whisper
-        // For now, simulate scoring
-        const newSoundScore = Math.floor(Math.random() * 30) + 70;
-        setSoundScore(newSoundScore);
+        setIsProcessing(true);
+        
+        try {
+          // Process audio with actual speech recognition
+          const target = currentWord.phonemes[currentPhonemeIndex];
+          const result = await scoreSpeech(audioBlob, target, 'phoneme');
+          
+          setSoundScore(result.score);
+          setRecognitionResult(result.transcript);
+          
+          console.log(`🎯 Target: "${target}", Got: "${result.transcript}", Score: ${result.score}%`);
+        } catch (error) {
+          console.error('Speech recognition failed:', error);
+          setSoundScore(0);
+          setRecognitionResult('Recognition failed');
+        } finally {
+          setIsProcessing(false);
+        }
+        
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -138,26 +169,82 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
     }, 3000);
   };
 
-  const testWord = () => {
+  const testWord = async () => {
     setIsLooping(true);
     setIsAnimating(true);
-    startRecording();
     
-    let phonemeIndex = 0;
-    const interval = setInterval(() => {
-      setCurrentPhonemeIndex(phonemeIndex);
-      phonemeIndex++;
-      if (phonemeIndex >= currentWord.phonemes.length) {
-        setIsLooping(false);
-        setIsAnimating(false);
-        clearInterval(interval);
-        // Calculate overall scores
-        const avgLipScore = Math.floor(Math.random() * 30) + 70;
-        const avgSoundScore = Math.floor(Math.random() * 30) + 70;
-        setLipScore(avgLipScore);
-        setSoundScore(avgSoundScore);
-      }
-    }, animationSpeed);
+    // Start recording for the complete word
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        setIsProcessing(true);
+        
+        try {
+          // Use Whisper for word-level recognition
+          const result = await scoreSpeech(audioBlob, currentWord.word, 'word');
+          
+          setSoundScore(result.score);
+          setRecognitionResult(result.transcript);
+          
+          // Simulate lip score for the complete word
+          const avgLipScore = Math.floor(Math.random() * 30) + 70;
+          setLipScore(avgLipScore);
+          
+          console.log(`🎯 Target Word: "${currentWord.word}", Got: "${result.transcript}", Score: ${result.score}%`);
+        } catch (error) {
+          console.error('Word recognition failed:', error);
+          setSoundScore(0);
+          setRecognitionResult('Recognition failed');
+        } finally {
+          setIsProcessing(false);
+        }
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      // Animate through phonemes
+      let phonemeIndex = 0;
+      const interval = setInterval(() => {
+        setCurrentPhonemeIndex(phonemeIndex);
+        phonemeIndex++;
+        if (phonemeIndex >= currentWord.phonemes.length) {
+          setIsLooping(false);
+          setIsAnimating(false);
+          clearInterval(interval);
+          
+          // Stop recording after animation completes
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            setIsRecording(false);
+          }
+        }
+      }, animationSpeed);
+      
+      // Generate waveform data during recording
+      const waveformInterval = setInterval(() => {
+        setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
+      }, 100);
+      
+      setTimeout(() => {
+        clearInterval(waveformInterval);
+      }, currentWord.phonemes.length * animationSpeed);
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      setIsLooping(false);
+      setIsAnimating(false);
+    }
   };
 
   if (isComplete) {
@@ -449,8 +536,13 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1 text-center">
-                  {isRecording ? 'Recording...' : 'Ready to record'}
+                  {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready to record'}
                 </p>
+                {recognitionResult && (
+                  <p className="text-xs text-blue-600 mt-1 text-center">
+                    Heard: "{recognitionResult}"
+                  </p>
+                )}
               </div>
               
               {/* Compact Scoring Section */}
