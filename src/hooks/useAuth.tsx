@@ -47,17 +47,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!mounted) return;
             
             try {
+              console.log('Fetching profile for user:', session.user.id);
               const { data: profileData, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('user_id', session.user.id)
                 .maybeSingle();
               
+              console.log('Profile fetch result:', { profileData, error });
+              
               if (mounted) {
                 if (error) {
                   console.error('Profile fetch error:', error);
+                  // If profile doesn't exist, create it from user metadata
+                  const userData = session.user.user_metadata;
+                  console.log('User metadata:', userData);
+                  
+                  if (userData?.username) {
+                    try {
+                      const { data: newProfile, error: insertError } = await supabase
+                        .from('profiles')
+                        .insert({
+                          user_id: session.user.id,
+                          username: userData.username,
+                          role: userData.role || 'child',
+                          full_name: userData.full_name
+                        })
+                        .select()
+                        .single();
+                      
+                      if (!insertError && newProfile) {
+                        console.log('Created new profile:', newProfile);
+                        setProfile(newProfile);
+                      } else {
+                        console.error('Profile creation error:', insertError);
+                        setProfile(null);
+                      }
+                    } catch (createErr) {
+                      console.error('Profile creation failed:', createErr);
+                      setProfile(null);
+                    }
+                  } else {
+                    setProfile(null);
+                  }
+                } else {
+                  setProfile(profileData);
                 }
-                setProfile(profileData);
                 setLoading(false);
               }
             } catch (err) {
