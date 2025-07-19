@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Star, Play, Square, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Star, Play, Square, Mic, MicOff, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CameraWindow } from '@/components/CameraWindow';
 import { VisemeGuide } from '@/components/VisemeGuide';
 import ScoreCard from '@/components/ScoreCard';
 import AnimatedLips from '@/components/AnimatedLips';
+import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/speechRecognition';
 
 interface VisemePracticeProps {
@@ -43,6 +44,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   
   // Advanced speech recognition instance
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
+  const { speak, stop, isSpeaking } = useTextToSpeech();
 
   const currentWord = practiceWords[currentWordIndex];
 
@@ -355,16 +357,14 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                   
                   {/* Audio Controls */}
                   <Button
-                    onClick={() => {
-                      const utterance = new SpeechSynthesisUtterance(currentWord.word);
-                      utterance.rate = 0.8;
-                      speechSynthesis.speak(utterance);
-                    }}
+                    onClick={() => speak(currentWord.word)}
+                    disabled={isSpeaking}
                     variant="outline"
                     size="sm"
                     className="bg-white h-8 text-xs justify-start"
                   >
-                    🔊 Hear Word
+                    <Volume2 className="w-3 h-3 mr-1" />
+                    {isSpeaking ? 'Playing...' : 'Hear Word'}
                   </Button>
                   
                   <Button

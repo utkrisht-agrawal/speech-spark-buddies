@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          assessment_completed: boolean | null
           created_at: string
           full_name: string | null
           id: string
@@ -25,6 +26,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          assessment_completed?: boolean | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -34,6 +36,7 @@ export type Database = {
           username: string
         }
         Update: {
+          assessment_completed?: boolean | null
           created_at?: string
           full_name?: string | null
           id?: string

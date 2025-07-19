@@ -6,6 +6,8 @@ import { Mic, Play, SkipForward } from 'lucide-react';
 import { ASSESSMENT_QUESTIONS } from '@/data/curriculum';
 import AvatarGuide from '@/components/AvatarGuide';
 import RecordButton from '@/components/RecordButton';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AssessmentTestProps {
   onComplete: (assignedLevel: number) => void;
@@ -33,7 +35,7 @@ const AssessmentTest: React.FC<AssessmentTestProps> = ({ onComplete }) => {
     }, 2000);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setShowResult(false);
     if (currentQuestion < ASSESSMENT_QUESTIONS.length - 1) {
       setCurrentQuestion(prev => prev + 1);
@@ -41,7 +43,26 @@ const AssessmentTest: React.FC<AssessmentTestProps> = ({ onComplete }) => {
       // Calculate level based on responses
       const averageScore = Object.values(responses).reduce((a, b) => a + b, 0) / Object.values(responses).length;
       const assignedLevel = Math.min(8, Math.max(1, Math.ceil(averageScore / 12.5)));
-      onComplete(assignedLevel);
+      
+      try {
+        // Update the user's profile to mark assessment as completed
+        const { error } = await supabase
+          .from('profiles')
+          .update({ assessment_completed: true })
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+        if (error) {
+          console.error('Error updating assessment status:', error);
+          toast.error('Failed to save assessment progress');
+          return;
+        }
+
+        onComplete(assignedLevel);
+        toast.success(`Assessment completed! Your level is ${assignedLevel}`);
+      } catch (error) {
+        console.error('Error completing assessment:', error);
+        toast.error('Failed to complete assessment');
+      }
     }
   };
 

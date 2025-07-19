@@ -59,17 +59,17 @@ const Index = () => {
   useEffect(() => {
     if (profile?.role === 'child') {
       console.log('Child profile detected, checking assessment status');
-      // Only set needsAssessment to true if it's not already set
-      // This prevents the loop when assessment is completed
-      setNeedsAssessment(prevNeedsAssessment => {
-        if (!prevNeedsAssessment) {
-          console.log('Setting needs assessment for new child user');
-          return true;
-        }
-        return prevNeedsAssessment;
-      });
+      // Check if assessment already completed
+      if (profile.assessment_completed) {
+        console.log('Assessment already completed');
+        setNeedsAssessment(false);
+        setHasCompletedAssessment(true);
+      } else {
+        console.log('Assessment not completed, setting needs assessment');
+        setNeedsAssessment(true);
+      }
     }
-  }, [profile?.role]); // Only depend on role, not needsAssessment
+  }, [profile?.role, profile?.assessment_completed]);
 
   const handleLogout = async () => {
     await signOut();

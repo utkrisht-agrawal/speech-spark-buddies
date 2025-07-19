@@ -8,6 +8,7 @@ interface Profile {
   username: string;
   role: 'child' | 'parent' | 'therapist';
   full_name?: string;
+  assessment_completed?: boolean;
 }
 
 interface AuthContextType {

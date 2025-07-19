@@ -146,6 +146,9 @@ function calculateSequenceSimilarity(target: string, spoken: string): number {
   if (!target || !spoken) return 0;
   if (target === spoken) return 1;
   
+  // Return 0 if either is empty to prevent false positives
+  if (target.trim() === '' || spoken.trim() === '') return 0;
+  
   // Levenshtein distance based similarity (like SequenceMatcher ratio)
   const matrix = Array(spoken.length + 1).fill(null).map(() => 
     Array(target.length + 1).fill(null)
