@@ -18,14 +18,14 @@ const phonemeImages: { [key: string]: string } = {
   'EH': '/lovable-uploads/21a485f6-13a4-44af-bd9f-0e88eed4cabe.png',
   'I': '/lovable-uploads/4da68f6d-66e5-4ce9-9264-ad07085bc0ca.png',
   'O': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
-  'OH': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
-  'U': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'OH': '/lovable-uploads/7d4fdd62-32d3-4245-bdc7-e81a346cfb09.png', // Wide open O
+  'U': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png', // Rounded U
   'UH': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
   
   // Consonants with teeth visible
-  'S': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
-  'Z': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
-  'TH': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
+  'S': '/lovable-uploads/d873d199-8958-4221-9823-a475b7d81aa2.png', // Teeth showing for S
+  'Z': '/lovable-uploads/d873d199-8958-4221-9823-a475b7d81aa2.png',
+  'TH': '/lovable-uploads/45e1a1b2-a37c-4ccd-ab4b-14b107082147.png', // Tongue between teeth
   'F': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
   'V': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
   'T': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
@@ -34,20 +34,26 @@ const phonemeImages: { [key: string]: string } = {
   'L': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   
   // Closed lips for M, B, P sounds
-  'M': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
-  'B': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
-  'P': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'M': '/lovable-uploads/53910fa3-314b-4a4c-a85a-5b8a2c7782a2.png', // Closed lips
+  'B': '/lovable-uploads/53910fa3-314b-4a4c-a85a-5b8a2c7782a2.png',
+  'P': '/lovable-uploads/53910fa3-314b-4a4c-a85a-5b8a2c7782a2.png',
   
   // Wide open sounds
   'C': '/lovable-uploads/4f31a9e8-ec80-499e-ae84-30b7625a8e40.png',
-  'G': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  'K': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  'R': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'G': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
+  'K': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
+  'R': '/lovable-uploads/b9586459-e4bf-46a3-82e8-1b6a601e1db4.png', // R sound
   'H': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   'Y': '/lovable-uploads/4da68f6d-66e5-4ce9-9264-ad07085bc0ca.png',
-  'W': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'W': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png', // Rounded W
   'Q': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
   'ER': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  
+  // Additional mouth positions from second batch
+  'SMILE': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
+  'NEUTRAL': '/lovable-uploads/90e12974-881e-4b81-a674-8f747fa3f6cf.png',
+  'WIDE': '/lovable-uploads/da338f87-3623-451d-a6ce-31751ee7f34d.png',
+  'ROUND': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png',
 };
 
 const AnimatedLips: React.FC<AnimatedLipsProps> = ({ 
