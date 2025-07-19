@@ -7,6 +7,7 @@ import { VisemeGuide } from '@/components/VisemeGuide';
 import ScoreCard from '@/components/ScoreCard';
 import AnimatedLips from '@/components/AnimatedLips';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+import { AudioPlayback } from '@/components/AudioPlayback';
 import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/speechRecognition';
 
 interface VisemePracticeProps {
@@ -41,6 +42,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [soundScore, setSoundScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
+  const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
   
   // Advanced speech recognition instance
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
@@ -132,6 +134,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       try {
         const audioBlob = await speechRecognition.stopRecording();
         setIsRecording(false);
+        setLastRecordedAudio(audioBlob); // Store the recorded audio
         
         // Process the audio
         const target = currentWord.phonemes[currentPhonemeIndex];
@@ -514,6 +517,14 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                     Heard: "{recognitionResult}"
                   </p>
                 )}
+              </div>
+              
+              {/* Audio Playback */}
+              <div className="mb-4">
+                <AudioPlayback 
+                  audioBlob={lastRecordedAudio} 
+                  label="Last Recording" 
+                />
               </div>
               
               {/* Compact Scoring Section */}

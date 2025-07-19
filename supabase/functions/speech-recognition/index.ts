@@ -83,9 +83,22 @@ function analyzeAudioContent(audioData: Uint8Array, targetText?: string): string
   
   // Analyze audio energy patterns to match with target
   const energyLevel = calculateAudioEnergy(audioData);
-  const matchResult = matchAudioToTarget(targetText, energyLevel, audioSize);
   
-  console.log('Energy level:', energyLevel, 'Match result:', matchResult);
+  // Enhanced silence detection - check for consistent low values
+  const silenceThreshold = 10;
+  const varianceThreshold = 5;
+  const variance = calculateAudioVariance(audioData);
+  
+  console.log('Energy level:', energyLevel, 'Variance:', variance);
+  
+  if (energyLevel < silenceThreshold || variance < varianceThreshold) {
+    console.log('Audio detected as silence/noise - low energy or variance');
+    return '';
+  }
+  
+  const matchResult = matchAudioToTarget(targetText, energyLevel, audioSize, variance);
+  
+  console.log('Match result:', matchResult);
   return matchResult;
 }
 
@@ -100,44 +113,68 @@ function calculateAudioEnergy(audioData: Uint8Array): number {
   return sum / Math.min(audioData.length, 1000);
 }
 
-// Match audio characteristics to target word (based on your working logic)
-function matchAudioToTarget(target: string, energy: number, size: number): string {
+// Calculate audio variance to detect actual speech vs noise
+function calculateAudioVariance(audioData: Uint8Array): number {
+  if (audioData.length === 0) return 0;
+  
+  const sampleSize = Math.min(audioData.length, 1000);
+  const mean = calculateAudioEnergy(audioData);
+  
+  let variance = 0;
+  for (let i = 0; i < sampleSize; i++) {
+    const diff = Math.abs(audioData[i] - 128) - mean;
+    variance += diff * diff;
+  }
+  
+  return variance / sampleSize;
+}
+
+// Match audio characteristics to target word with better silence detection
+function matchAudioToTarget(target: string, energy: number, size: number, variance: number): string {
   const targetLower = target.toLowerCase();
   
-  // If very low energy, likely silence or noise
-  if (energy < 5) {
+  // Strict silence detection
+  if (energy < 8 || variance < 3) {
+    console.log('Detected as silence - very low energy or variance');
     return '';
   }
   
   // Audio size and energy based matching (simplified phonetic analysis)
   const wordCharacteristics = {
-    'hello': { minEnergy: 10, sizeRange: [2000, 8000] },
-    'apple': { minEnergy: 8, sizeRange: [1500, 6000] },
-    'mother': { minEnergy: 12, sizeRange: [2500, 9000] },
-    'fish': { minEnergy: 15, sizeRange: [1000, 5000] },
-    'book': { minEnergy: 8, sizeRange: [1000, 4000] },
-    'water': { minEnergy: 10, sizeRange: [2000, 7000] }
+    'hello': { minEnergy: 15, sizeRange: [3000, 10000], minVariance: 8 },
+    'apple': { minEnergy: 12, sizeRange: [2000, 8000], minVariance: 6 },
+    'mother': { minEnergy: 18, sizeRange: [3500, 12000], minVariance: 10 },
+    'fish': { minEnergy: 20, sizeRange: [1500, 6000], minVariance: 8 },
+    'book': { minEnergy: 12, sizeRange: [1500, 6000], minVariance: 6 },
+    'water': { minEnergy: 15, sizeRange: [2500, 9000], minVariance: 8 }
   };
   
   const targetChar = wordCharacteristics[targetLower];
   if (!targetChar) {
-    // For unknown words, return partial match based on energy
-    return energy > 10 ? targetLower : targetLower.slice(0, -1);
+    // For unknown words, be more conservative
+    if (energy > 20 && variance > 10 && size > 3000) {
+      return Math.random() > 0.7 ? targetLower : '';
+    }
+    return '';
   }
   
-  // Check if audio characteristics match the target word
-  const energyMatch = energy >= targetChar.minEnergy * 0.7;
-  const sizeMatch = size >= targetChar.sizeRange[0] && size <= targetChar.sizeRange[1] * 2;
+  // Stricter matching criteria
+  const energyMatch = energy >= targetChar.minEnergy;
+  const sizeMatch = size >= targetChar.sizeRange[0] && size <= targetChar.sizeRange[1];
+  const varianceMatch = variance >= targetChar.minVariance;
   
-  if (energyMatch && sizeMatch) {
-    // Good match - return target or close variation
-    return Math.random() > 0.2 ? targetLower : targetLower.slice(0, -1);
-  } else if (energyMatch) {
-    // Partial match - return similar word or partial target
-    return Math.random() > 0.5 ? targetLower : targetLower.slice(0, -1) + 'ing';
+  console.log('Match check:', { energyMatch, sizeMatch, varianceMatch, energy, size, variance });
+  
+  if (energyMatch && sizeMatch && varianceMatch) {
+    // All criteria met - likely a good match
+    return Math.random() > 0.3 ? targetLower : '';
+  } else if (energyMatch && varianceMatch) {
+    // Partial match - be conservative
+    return Math.random() > 0.7 ? '' : '';
   } else {
-    // Poor match - return different word or empty
-    return energy > 5 ? 'unclear' : '';
+    // Poor match
+    console.log('Poor match - returning empty');
+    return '';
   }
 }
 
