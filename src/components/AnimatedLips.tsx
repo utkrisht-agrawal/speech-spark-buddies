@@ -21,6 +21,7 @@ const phonemeImages: { [key: string]: string } = {
   'OH': '/lovable-uploads/7d4fdd62-32d3-4245-bdc7-e81a346cfb09.png', // Wide open O
   'U': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png', // Rounded U
   'UH': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'OO': '/lovable-uploads/86d1165c-6cce-4846-8781-1eac7d585207.png', // Very rounded OO sound
   
   // Consonants with teeth visible
   'S': '/lovable-uploads/d873d199-8958-4221-9823-a475b7d81aa2.png', // Teeth showing for S
@@ -28,8 +29,8 @@ const phonemeImages: { [key: string]: string } = {
   'TH': '/lovable-uploads/45e1a1b2-a37c-4ccd-ab4b-14b107082147.png', // Tongue between teeth
   'F': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
   'V': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
-  'T': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  'D': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'T': '/lovable-uploads/4370128a-f160-4141-8d84-50d0b9df4cfb.png', // Updated T sound
+  'D': '/lovable-uploads/39d73371-0814-45b0-bc9c-38974fe5508e.png', // Updated D sound
   'N': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   'L': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   
@@ -49,11 +50,12 @@ const phonemeImages: { [key: string]: string } = {
   'Q': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
   'ER': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   
-  // Additional mouth positions from second batch
+  // Additional mouth positions
   'SMILE': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
-  'NEUTRAL': '/lovable-uploads/90e12974-881e-4b81-a674-8f747fa3f6cf.png',
+  'NEUTRAL': '/lovable-uploads/72c68f48-d424-4640-a96a-33d9712c6c4c.png', // Final neutral position
   'WIDE': '/lovable-uploads/da338f87-3623-451d-a6ce-31751ee7f34d.png',
   'ROUND': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png',
+  'CLOSED': '/lovable-uploads/90e12974-881e-4b81-a674-8f747fa3f6cf.png',
 };
 
 const AnimatedLips: React.FC<AnimatedLipsProps> = ({ 
