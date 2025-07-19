@@ -42,13 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user && mounted) {
-          // Fetch user profile with timeout
+          // Fetch user profile
           setTimeout(async () => {
             if (!mounted) return;
             
             try {
               console.log('Fetching profile for user:', session.user.id);
-              const { data: profileData, error } = await supabase
+              let { data: profileData, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('user_id', session.user.id)
@@ -57,48 +57,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('Profile fetch result:', { profileData, error });
               
               if (mounted) {
-                if (error) {
-                  console.error('Profile fetch error:', error);
-                  // If profile doesn't exist, create it from user metadata
-                  const userData = session.user.user_metadata;
-                  console.log('User metadata:', userData);
+                // If no profile exists, create one immediately
+                if (!profileData) {
+                  console.log('No profile found, creating one...');
+                  const userData = session.user.user_metadata || {};
+                  console.log('Creating profile with metadata:', userData);
                   
-                  if (userData?.username) {
-                    try {
-                      const { data: newProfile, error: insertError } = await supabase
-                        .from('profiles')
-                        .insert({
-                          user_id: session.user.id,
-                          username: userData.username,
-                          role: userData.role || 'child',
-                          full_name: userData.full_name
-                        })
-                        .select()
-                        .single();
-                      
-                      if (!insertError && newProfile) {
-                        console.log('Created new profile:', newProfile);
-                        setProfile(newProfile);
-                      } else {
-                        console.error('Profile creation error:', insertError);
-                        setProfile(null);
-                      }
-                    } catch (createErr) {
-                      console.error('Profile creation failed:', createErr);
-                      setProfile(null);
-                    }
+                  const { data: newProfile, error: insertError } = await supabase
+                    .from('profiles')
+                    .insert({
+                      user_id: session.user.id,
+                      username: userData.username || session.user.email?.split('@')[0] || 'user',
+                      role: (userData.role as 'child' | 'parent' | 'therapist') || 'child',
+                      full_name: userData.full_name || null
+                    })
+                    .select()
+                    .single();
+                  
+                  if (!insertError && newProfile) {
+                    console.log('Successfully created profile:', newProfile);
+                    setProfile(newProfile);
                   } else {
-                    setProfile(null);
+                    console.error('Profile creation error:', insertError);
+                    // Create a minimal profile to prevent infinite loading
+                    setProfile({
+                      id: session.user.id,
+                      user_id: session.user.id,
+                      username: userData.username || session.user.email?.split('@')[0] || 'user',
+                      role: (userData.role as 'child' | 'parent' | 'therapist') || 'child',
+                      full_name: userData.full_name || null
+                    });
                   }
                 } else {
+                  console.log('Profile found:', profileData);
                   setProfile(profileData);
                 }
                 setLoading(false);
               }
             } catch (err) {
-              console.error('Profile fetch failed:', err);
+              console.error('Profile operation failed:', err);
               if (mounted) {
-                setProfile(null);
+                // Create fallback profile to prevent infinite loading
+                const userData = session.user.user_metadata || {};
+                setProfile({
+                  id: session.user.id,
+                  user_id: session.user.id,
+                  username: userData.username || session.user.email?.split('@')[0] || 'user',
+                  role: (userData.role as 'child' | 'parent' | 'therapist') || 'child',
+                  full_name: userData.full_name || null
+                });
                 setLoading(false);
               }
             }
