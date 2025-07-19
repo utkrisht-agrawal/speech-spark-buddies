@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ArrowLeft, RefreshCw, Star } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, RefreshCw, Star, Play, Square, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CameraWindow } from '@/components/CameraWindow';
@@ -33,6 +33,12 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [isLooping, setIsLooping] = useState(false);
   const [loopInterval, setLoopInterval] = useState<NodeJS.Timeout | null>(null);
   const [animationSpeed, setAnimationSpeed] = useState(800);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioData, setAudioData] = useState<number[]>([]);
+  const [lipScore, setLipScore] = useState(75);
+  const [soundScore, setSoundScore] = useState(80);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const currentWord = practiceWords[currentWordIndex];
 
@@ -72,6 +78,86 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
     if (currentWordIndex > 0) {
       setCurrentWordIndex(currentWordIndex - 1);
     }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        // Here you would process the audio with wav2vec/whisper
+        // For now, simulate scoring
+        const newSoundScore = Math.floor(Math.random() * 30) + 70;
+        setSoundScore(newSoundScore);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+      // Generate random waveform data for visualization
+      const interval = setInterval(() => {
+        setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
+      }, 100);
+
+      setTimeout(() => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+          mediaRecorderRef.current.stop();
+          setIsRecording(false);
+          clearInterval(interval);
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const testPhoneme = () => {
+    setIsAnimating(true);
+    startRecording();
+    // Simulate lip analysis with MediaPipe
+    setTimeout(() => {
+      const newLipScore = Math.floor(Math.random() * 30) + 70;
+      setLipScore(newLipScore);
+      setIsAnimating(false);
+    }, 3000);
+  };
+
+  const testWord = () => {
+    setIsLooping(true);
+    setIsAnimating(true);
+    startRecording();
+    
+    let phonemeIndex = 0;
+    const interval = setInterval(() => {
+      setCurrentPhonemeIndex(phonemeIndex);
+      phonemeIndex++;
+      if (phonemeIndex >= currentWord.phonemes.length) {
+        setIsLooping(false);
+        setIsAnimating(false);
+        clearInterval(interval);
+        // Calculate overall scores
+        const avgLipScore = Math.floor(Math.random() * 30) + 70;
+        const avgSoundScore = Math.floor(Math.random() * 30) + 70;
+        setLipScore(avgLipScore);
+        setSoundScore(avgSoundScore);
+      }
+    }, animationSpeed);
   };
 
   if (isComplete) {
@@ -199,39 +285,48 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                     </Button>
                   ))}
                 </div>
-                
-                {/* Audio Controls */}
-                <div className="flex gap-2 mb-3">
+              </div>
+
+              {/* Lip Animation Guide - Flexible height */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200 flex-1 flex">
+                {/* Left Side - Controls */}
+                <div className="flex flex-col gap-2 pr-4 border-r border-gray-200 min-w-[140px]">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                    Controls
+                  </h3>
+                  
+                  {/* Audio Controls */}
                   <Button
                     onClick={() => {
-                      // Text-to-speech for word
                       const utterance = new SpeechSynthesisUtterance(currentWord.word);
                       utterance.rate = 0.8;
                       speechSynthesis.speak(utterance);
                     }}
                     variant="outline"
                     size="sm"
-                    className="bg-white h-7 text-xs"
+                    className="bg-white h-8 text-xs justify-start"
                   >
-                    🔊 Word
+                    🔊 Hear Word
                   </Button>
+                  
                   <Button
                     onClick={() => {
-                      // Text-to-speech for phoneme
                       const utterance = new SpeechSynthesisUtterance(currentWord.phonemes[currentPhonemeIndex]);
                       utterance.rate = 0.6;
                       speechSynthesis.speak(utterance);
                     }}
                     variant="outline"
                     size="sm"
-                    className="bg-white h-7 text-xs"
+                    className="bg-white h-8 text-xs justify-start"
                   >
-                    🔊 Phoneme
+                    🔊 Hear Phoneme
                   </Button>
-                  <div className="flex items-center gap-1 ml-auto">
+                  
+                  {/* Speed Control */}
+                  <div className="flex flex-col gap-1">
                     <span className="text-xs text-gray-600">Speed:</span>
                     <select 
-                      className="text-xs border rounded px-1 py-0.5"
+                      className="text-xs border rounded px-2 py-1 bg-white"
                       onChange={(e) => setAnimationSpeed(Number(e.target.value))}
                       value={animationSpeed}
                     >
@@ -240,96 +335,75 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                       <option value={500}>Fast</option>
                     </select>
                   </div>
-                </div>
-              </div>
-
-              {/* Lip Animation Guide - Flexible height */}
-              <div className="bg-white rounded-xl p-4 border border-gray-200 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-800">
-                    Lip Animation Guide
-                  </h3>
-                  <div className="text-xs text-gray-600">
-                    Current: <span className="font-semibold text-purple-600">
-                      {currentWord.phonemes[currentPhonemeIndex]}
-                    </span>
+                  
+                  {/* Navigation Controls */}
+                  <div className="flex gap-1">
+                    <Button
+                      onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPhonemeIndex === 0}
+                      className="h-7 px-2 text-xs flex-1"
+                    >
+                      ← Prev
+                    </Button>
+                    <Button
+                      onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
+                      className="h-7 px-2 text-xs flex-1"
+                    >
+                      Next →
+                    </Button>
+                  </div>
+                  
+                  {/* Test Controls */}
+                  <div className="pt-2 border-t border-gray-200">
+                    <Button
+                      onClick={testPhoneme}
+                      variant="default"
+                      size="sm"
+                      className="w-full h-8 text-xs mb-2 bg-blue-600 hover:bg-blue-700"
+                      disabled={isRecording}
+                    >
+                      {isRecording ? <MicOff className="w-3 h-3 mr-1" /> : <Mic className="w-3 h-3 mr-1" />}
+                      Test Phoneme
+                    </Button>
+                    
+                    <Button
+                      onClick={testWord}
+                      variant="default"
+                      size="sm"
+                      className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
+                      disabled={isRecording || isLooping}
+                    >
+                      {isLooping ? <Square className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
+                      Test Word
+                    </Button>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-center flex-1 bg-gray-50 rounded-lg p-3 mb-3">
-                  <AnimatedLips
-                    phoneme={currentWord.phonemes[currentPhonemeIndex]}
-                    isAnimating={isAnimating}
-                    className="transform scale-90"
-                  />
-                </div>
-                
-                {/* Animation Controls */}
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPhonemeIndex === 0}
-                    className="h-7 px-2 text-xs"
-                  >
-                    ← Prev
-                  </Button>
+                {/* Right Side - Animation */}
+                <div className="flex-1 flex flex-col pl-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      Lip Animation Guide
+                    </h3>
+                    <div className="text-xs text-gray-600">
+                      Current: <span className="font-semibold text-purple-600">
+                        {currentWord.phonemes[currentPhonemeIndex]}
+                      </span>
+                    </div>
+                  </div>
                   
-                  <Button
-                    onClick={() => {
-                      setIsAnimating(!isAnimating);
-                      if (!isAnimating) {
-                        setTimeout(() => setIsAnimating(false), 3000);
-                      }
-                    }}
-                    variant={isAnimating ? "destructive" : "default"}
-                    size="sm"
-                    className="flex-1 h-7 text-xs"
-                  >
-                    {isAnimating ? "⏸️ Stop" : "▶️ Play"}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => {
-                      // Enhanced loop with speed control
-                      if (isLooping) {
-                        setIsLooping(false);
-                        clearInterval(loopInterval);
-                        setIsAnimating(false);
-                        return;
-                      }
-                      
-                      setIsLooping(true);
-                      setIsAnimating(true);
-                      let phonemeIndex = 0;
-                      
-                      const interval = setInterval(() => {
-                        setCurrentPhonemeIndex(phonemeIndex);
-                        phonemeIndex++;
-                        if (phonemeIndex >= currentWord.phonemes.length) {
-                          phonemeIndex = 0; // Loop back to start
-                        }
-                      }, animationSpeed);
-                      
-                      setLoopInterval(interval);
-                    }}
-                    variant={isLooping ? "destructive" : "outline"}
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                  >
-                    {isLooping ? "⏹️ Stop Loop" : "🔄 Loop"}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
-                    className="h-7 px-2 text-xs"
-                  >
-                    Next →
-                  </Button>
+                  <div className="flex items-center justify-center flex-1 bg-gray-50 rounded-lg p-3">
+                    <AnimatedLips
+                      phoneme={currentWord.phonemes[currentPhonemeIndex]}
+                      isAnimating={isAnimating}
+                      className="transform scale-75"
+                    />
+                  </div>
                 </div>
               </div>
             </Card>
@@ -353,37 +427,44 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
               {/* Sound Waveform */}
               <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <h4 className="text-xs font-semibold text-gray-700 mb-2">Sound Waveform</h4>
-                <div className="h-10 bg-gradient-to-r from-green-200 to-blue-200 rounded flex items-center justify-center">
-                  <div className="flex items-end gap-0.5 h-8">
-                    {[...Array(15)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="bg-green-500 w-1 rounded-t animate-pulse"
-                        style={{
-                          height: `${20 + Math.random() * 80}%`,
-                          animationDelay: `${i * 0.1}s`
-                        }}
-                      />
-                    ))}
+                <div className="h-12 bg-gradient-to-r from-green-200 to-blue-200 rounded flex items-center justify-center">
+                  <div className="flex items-end gap-0.5 h-10">
+                    {audioData.length > 0 ? (
+                      audioData.map((height, i) => (
+                        <div
+                          key={i}
+                          className="bg-green-500 w-1 rounded-t transition-all duration-100"
+                          style={{ height: `${Math.max(10, height)}%` }}
+                        />
+                      ))
+                    ) : (
+                      [...Array(15)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="bg-gray-400 w-1 rounded-t"
+                          style={{ height: '20%' }}
+                        />
+                      ))
+                    )}
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1 text-center">
-                  Recording...
+                  {isRecording ? 'Recording...' : 'Ready to record'}
                 </p>
               </div>
               
               {/* Compact Scoring Section */}
               <div className="space-y-2">
                 <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
-                  <h4 className="text-xs font-semibold text-blue-800 mb-1">Lip Shape</h4>
+                  <h4 className="text-xs font-semibold text-blue-800 mb-1">Lip Shape Match</h4>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-blue-200 rounded-full h-1.5">
                       <div 
-                        className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                        style={{ width: '75%' }}
+                        className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${lipScore}%` }}
                       />
                     </div>
-                    <span className="text-xs font-bold text-blue-600">75%</span>
+                    <span className="text-xs font-bold text-blue-600">{lipScore}%</span>
                   </div>
                 </div>
                 
@@ -392,11 +473,11 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-green-200 rounded-full h-1.5">
                       <div 
-                        className="bg-green-600 h-1.5 rounded-full transition-all duration-300"
-                        style={{ width: '80%' }}
+                        className="bg-green-600 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${soundScore}%` }}
                       />
                     </div>
-                    <span className="text-xs font-bold text-green-600">80%</span>
+                    <span className="text-xs font-bold text-green-600">{soundScore}%</span>
                   </div>
                 </div>
                 
