@@ -39,6 +39,7 @@ const Index = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('home');
   const [needsAssessment, setNeedsAssessment] = useState(false);
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
   const [studentLevel, setStudentLevel] = useState(1);
   const [currentView, setCurrentView] = useState<'main' | 'curriculum' | 'exercise' | 'game' | 'viseme'>('main');
   const [currentGameType, setCurrentGameType] = useState<string>('candle-blow');
@@ -56,11 +57,19 @@ const Index = () => {
 
   // Handle profile-based logic
   useEffect(() => {
-    if (profile?.role === 'child' && !needsAssessment) {
-      console.log('Setting needs assessment for child');
-      setNeedsAssessment(true);
+    if (profile?.role === 'child') {
+      console.log('Child profile detected, checking assessment status');
+      // Only set needsAssessment to true if it's not already set
+      // This prevents the loop when assessment is completed
+      setNeedsAssessment(prevNeedsAssessment => {
+        if (!prevNeedsAssessment) {
+          console.log('Setting needs assessment for new child user');
+          return true;
+        }
+        return prevNeedsAssessment;
+      });
     }
-  }, [profile, needsAssessment]);
+  }, [profile?.role]); // Only depend on role, not needsAssessment
 
   const handleLogout = async () => {
     await signOut();
@@ -157,7 +166,7 @@ const Index = () => {
   }
 
   // Show assessment test for new child users
-  if (profile.role === 'child' && needsAssessment) {
+  if (profile.role === 'child' && needsAssessment && !hasCompletedAssessment) {
     return (
       <div className="min-h-screen">
         <div className="flex justify-between items-center p-4 bg-background border-b">
@@ -167,8 +176,10 @@ const Index = () => {
           </Button>
         </div>
         <AssessmentTest onComplete={(level) => {
+          console.log('Assessment completed with level:', level);
           setStudentLevel(level);
           setNeedsAssessment(false);
+          setHasCompletedAssessment(true);
           toast({
             title: "Assessment Complete!",
             description: `Your level has been set to ${level}. Let's start learning!`,
