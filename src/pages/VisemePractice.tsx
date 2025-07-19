@@ -136,164 +136,247 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Merged Viseme Guide + Animated Lips - Left Two Columns */}
+          {/* Main Practice Card - 2/3 width */}
           <div className="lg:col-span-2">
             <Card className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 h-full">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-                
-                {/* Viseme Guide Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-gray-800">
-                    Viseme Guide
-                  </h3>
-                  <VisemeGuide
-                    word={currentWord.word}
-                    phonemes={currentWord.phonemes}
-                    onComplete={handleVisemeComplete}
-                    className="h-auto"
-                  />
-                </div>
-
-                {/* Animated Lips Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-gray-800">
-                    Lip Animation Guide
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Watch the lip movements for each sound
-                  </p>
-                  
-                  <div className="flex items-center justify-center bg-white rounded-xl p-4 border border-gray-100">
-                    <AnimatedLips
-                      phoneme={currentWord.phonemes[currentPhonemeIndex]}
-                      isAnimating={isAnimating}
-                      className="transform scale-125"
-                    />
-                  </div>
-                  
-                  <div className="bg-white rounded-xl p-4 border border-gray-100">
-                    <p className="text-xs text-gray-500 mb-2">Current Word:</p>
-                    <p className="text-2xl font-bold text-purple-600 mb-2">
-                      {currentWord.word}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Phoneme {currentPhonemeIndex + 1} of {currentWord.phonemes.length}: 
-                      <span className="font-semibold ml-1">{currentWord.phonemes[currentPhonemeIndex]}</span>
-                    </p>
-                  </div>
-                  
-                  {/* Phoneme Navigation */}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPhonemeIndex === 0}
-                    >
-                      ← Prev Sound
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setIsAnimating(!isAnimating);
-                        setTimeout(() => setIsAnimating(false), 2000);
-                      }}
-                      variant="default"
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {isAnimating ? 'Stop' : 'Animate'}
-                    </Button>
-                    <Button
-                      onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
-                    >
-                      Next Sound →
-                    </Button>
-                  </div>
-                </div>
-              </div>
               
-              {/* Word Navigation - Now inside the merged card */}
-              <div className="border-t border-gray-200 pt-4 mt-6">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-semibold text-gray-800">
-                    Word Navigation
-                  </h4>
-                  <span className="text-sm text-gray-500">
+              {/* Header with Word Navigation */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-purple-200">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-1">
+                    {currentWord.word}
+                  </h2>
+                  <p className="text-sm text-gray-600">
                     Word {currentWordIndex + 1} of {practiceWords.length}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex gap-2 mt-3">
+                
+                <div className="flex gap-2">
                   <Button
                     onClick={handlePreviousWord}
                     variant="outline"
                     size="sm"
                     disabled={currentWordIndex === 0}
                   >
-                    ← Previous Word
+                    ← Previous
                   </Button>
-                  
                   <Button
                     onClick={handleNextWord}
                     variant="outline"
                     size="sm"
+                    disabled={currentWordIndex === practiceWords.length - 1}
+                  >
+                    Next →
+                  </Button>
+                </div>
+              </div>
+
+              {/* Phoneme Division */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Phoneme Breakdown</h3>
+                <div className="flex gap-2 mb-4">
+                  {currentWord.phonemes.map((phoneme, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => setCurrentPhonemeIndex(index)}
+                      variant={index === currentPhonemeIndex ? "default" : "outline"}
+                      size="sm"
+                      className={`min-w-[60px] ${
+                        index === currentPhonemeIndex 
+                          ? "bg-purple-600 text-white" 
+                          : "bg-white text-gray-700 hover:bg-purple-50"
+                      }`}
+                    >
+                      {phoneme}
+                    </Button>
+                  ))}
+                </div>
+                
+                {/* Audio Controls */}
+                <div className="flex gap-2 mb-6">
+                  <Button
+                    onClick={() => {
+                      // Play full word audio
+                      console.log(`Playing word: ${currentWord.word}`);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white"
+                  >
+                    🔊 Hear Word
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      // Play current phoneme audio
+                      console.log(`Playing phoneme: ${currentWord.phonemes[currentPhonemeIndex]}`);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white"
+                  >
+                    🔊 Hear Phoneme
+                  </Button>
+                </div>
+              </div>
+
+              {/* Lip Animation Guide */}
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Lip Animation Guide
+                  </h3>
+                  <div className="text-sm text-gray-600">
+                    Current: <span className="font-semibold text-purple-600">
+                      {currentWord.phonemes[currentPhonemeIndex]}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-center mb-6 bg-gray-50 rounded-lg p-6">
+                  <AnimatedLips
+                    phoneme={currentWord.phonemes[currentPhonemeIndex]}
+                    isAnimating={isAnimating}
+                    className="transform scale-110"
+                  />
+                </div>
+                
+                {/* Animation Controls */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPhonemeIndex === 0}
+                  >
+                    ← Prev
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      setIsAnimating(!isAnimating);
+                      if (!isAnimating) {
+                        setTimeout(() => setIsAnimating(false), 3000);
+                      }
+                    }}
+                    variant={isAnimating ? "destructive" : "default"}
+                    size="sm"
                     className="flex-1"
                   >
-                    Next Word →
+                    {isAnimating ? "⏸️ Stop Animation" : "▶️ Play Animation"}
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      // Play lip animation for entire word
+                      setIsAnimating(true);
+                      let phonemeIndex = 0;
+                      const interval = setInterval(() => {
+                        setCurrentPhonemeIndex(phonemeIndex);
+                        phonemeIndex++;
+                        if (phonemeIndex >= currentWord.phonemes.length) {
+                          clearInterval(interval);
+                          setIsAnimating(false);
+                          setCurrentPhonemeIndex(0);
+                        }
+                      }, 800);
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    🔄 Loop Word
+                  </Button>
+                  
+                  <Button
+                    onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
+                  >
+                    Next →
                   </Button>
                 </div>
               </div>
             </Card>
           </div>
 
-          {/* Camera Window - Right Column */}
+          {/* Practice & Analysis Card - 1/3 width */}
           <div className="lg:col-span-1">
-            <div className="space-y-4">
-              <CameraWindow
-                isActive={isCameraActive}
-                className="h-64 lg:h-80"
-              />
+            <Card className="p-6 bg-white border-2 border-green-200 h-full">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Practice & Analysis
+              </h3>
               
-              <Card className="p-4 bg-white border border-gray-200">
-                <h4 className="font-semibold text-gray-800 mb-2">
-                  Your Practice
-                </h4>
-                <p className="text-sm text-gray-600 mb-3">
-                  Follow the viseme guide and practice the lip movements for each sound.
-                </p>
-                
-                <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-green-700">Current Score</span>
-                    <span className="text-lg font-bold text-green-600">{score}</span>
+              {/* Camera Widget */}
+              <div className="mb-6">
+                <CameraWindow
+                  isActive={isCameraActive}
+                  className="h-48 rounded-lg"
+                />
+              </div>
+              
+              {/* Sound Waveform */}
+              <div className="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Sound Waveform</h4>
+                <div className="h-16 bg-gradient-to-r from-green-200 to-blue-200 rounded flex items-center justify-center">
+                  <div className="flex items-end gap-1 h-12">
+                    {[...Array(20)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="bg-green-500 w-1 rounded-t"
+                        style={{
+                          height: `${Math.random() * 100}%`,
+                          animationDelay: `${i * 0.1}s`
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
-              </Card>
-            </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Recording audio input...
+                </p>
+              </div>
+              
+              {/* Scoring Section */}
+              <div className="space-y-4">
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2">Lip Shape Score</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-blue-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: '75%' }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-blue-600">75%</span>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                  <h4 className="text-sm font-semibold text-green-800 mb-2">Sound Match Score</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-green-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: '80%' }}
+                      />
+                    </div>
+                    <span className="text-sm font-bold text-green-600">80%</span>
+                  </div>
+                </div>
+                
+                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                  <h4 className="text-sm font-semibold text-purple-800 mb-2">Overall Score</h4>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">{score}</div>
+                    <div className="text-xs text-purple-700">Total Points</div>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-8">
-          <Card className="p-4 bg-white border border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Progress</span>
-              <span className="text-sm text-gray-500">
-                {Math.round((currentWordIndex / practiceWords.length) * 100)}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentWordIndex / practiceWords.length) * 100}%` }}
-              />
-            </div>
-          </Card>
         </div>
 
         {/* Instructions */}
