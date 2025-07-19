@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Mic, Users, UserCheck, ArrowRight, Sparkles, Heart } from 'lucide-react';
 
 export default function AuthPage() {
+  const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,8 +18,15 @@ export default function AuthPage() {
   const [role, setRole] = useState<'child' | 'parent' | 'therapist'>('child');
   const [loading, setLoading] = useState(false);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+
+  // Redirect to home if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +47,8 @@ export default function AuthPage() {
       } else {
         const { error } = await signIn(username, password);
         if (error) throw error;
-        toast({
-          title: "🌟 Welcome back!",
-          description: "You have successfully signed in to VoiceBuddy!",
-        });
+        // Don't show toast for successful sign in - redirect will happen automatically
+        // The redirect is handled by the useEffect above
       }
     } catch (error: any) {
       toast({
@@ -77,6 +84,18 @@ export default function AuthPage() {
       gradient: 'from-green-400 to-emerald-500'
     }
   ];
+
+  // Show loading spinner if checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
