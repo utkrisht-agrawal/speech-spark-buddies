@@ -8,52 +8,46 @@ interface AnimatedLipsProps {
 
 // Map phonemes to realistic mouth images
 const phonemeImages: { [key: string]: string } = {
-  // Wide open mouth for A sounds
-  'A': '/lovable-uploads/a8513aa0-7538-4cf1-9afa-afb8a878e3fc.png',
-  'AH': '/lovable-uploads/e85ce56a-ad60-4c4f-adc8-d97de58f5c68.png',
+  // Rest/closed position
+  'REST': '/lovable-uploads/fe78d736-c1df-4cef-baa4-49d4b4ce1497.png',
   
-  // Slightly open mouth for E and I sounds  
-  'E': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'EH': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'I': '/lovable-uploads/6b6ce031-a78c-46ef-b924-5adb1a9aff4b.png',
-  
-  // Very open mouth for O sounds
-  'O': '/lovable-uploads/f0e177a6-d8de-402b-a1dd-589f1acea845.png',
-  'OH': '/lovable-uploads/db4e9e5a-cb12-40eb-bf59-1aa51a7f795b.png',
-  
-  // Small rounded opening for U sounds
-  'U': '/lovable-uploads/edbc7e89-ab7a-4aa4-8712-d447379bdbcc.png',
-  'UH': '/lovable-uploads/edbc7e89-ab7a-4aa4-8712-d447379bdbcc.png',
+  // Vowel sounds
+  'A': '/lovable-uploads/cf41e91c-0d20-4de8-b614-0f2989a78eef.png',
+  'AH': '/lovable-uploads/7ad40a17-a62a-4a62-9ffa-1eddcb2c88c9.png',
+  'E': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'EH': '/lovable-uploads/21a485f6-13a4-44af-bd9f-0e88eed4cabe.png',
+  'I': '/lovable-uploads/4da68f6d-66e5-4ce9-9264-ad07085bc0ca.png',
+  'O': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
+  'OH': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
+  'U': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'UH': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
   
   // Consonants with teeth visible
-  'S': '/lovable-uploads/1f5fb02b-6f34-4736-8f3f-3441aa176cdc.png',
-  'Z': '/lovable-uploads/1f5fb02b-6f34-4736-8f3f-3441aa176cdc.png',
-  'TH': '/lovable-uploads/1f5fb02b-6f34-4736-8f3f-3441aa176cdc.png',
-  'F': '/lovable-uploads/1f5fb02b-6f34-4736-8f3f-3441aa176cdc.png',
-  'V': '/lovable-uploads/1f5fb02b-6f34-4736-8f3f-3441aa176cdc.png',
-  'T': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'D': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'N': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'L': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
+  'S': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
+  'Z': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
+  'TH': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
+  'F': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
+  'V': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
+  'T': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'D': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'N': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'L': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   
   // Closed lips for M, B, P sounds
-  'M': '/lovable-uploads/61e3a1ba-db36-475e-8d49-12371d0dbe3b.png',
-  'B': '/lovable-uploads/61e3a1ba-db36-475e-8d49-12371d0dbe3b.png',
-  'P': '/lovable-uploads/61e3a1ba-db36-475e-8d49-12371d0dbe3b.png',
+  'M': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'B': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'P': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
   
-  // Other consonants - neutral position
-  'C': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'G': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'K': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'R': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'H': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'Y': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  'W': '/lovable-uploads/edbc7e89-ab7a-4aa4-8712-d447379bdbcc.png',
-  'Q': '/lovable-uploads/f0e177a6-d8de-402b-a1dd-589f1acea845.png',
-  'ER': '/lovable-uploads/74f8c0b0-b693-4818-b02b-e8f25cd7557c.png',
-  
-  // Default rest position
-  'REST': '/lovable-uploads/61e3a1ba-db36-475e-8d49-12371d0dbe3b.png',
+  // Wide open sounds
+  'C': '/lovable-uploads/4f31a9e8-ec80-499e-ae84-30b7625a8e40.png',
+  'G': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'K': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'R': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'H': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
+  'Y': '/lovable-uploads/4da68f6d-66e5-4ce9-9264-ad07085bc0ca.png',
+  'W': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
+  'Q': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
+  'ER': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
 };
 
 const AnimatedLips: React.FC<AnimatedLipsProps> = ({ 
