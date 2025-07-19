@@ -139,73 +139,112 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Viseme Guide - Left Column */}
-          <div className="lg:col-span-1">
-            <VisemeGuide
-              word={currentWord.word}
-              phonemes={currentWord.phonemes}
-              onComplete={handleVisemeComplete}
-              className="h-full"
-            />
-          </div>
-
-          {/* Animated Lips - Middle Column */}
-          <div className="lg:col-span-1">
-            <Card className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 h-full">
-              <div className="text-center h-full flex flex-col justify-center">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">
-                  Lip Animation Guide
-                </h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Watch the lip movements for each sound
-                </p>
+          {/* Merged Viseme Guide + Animated Lips - Left Two Columns */}
+          <div className="lg:col-span-2">
+            <Card className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 h-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
                 
-                <div className="flex-1 flex items-center justify-center mb-4">
-                  <AnimatedLips
-                    phoneme={currentWord.phonemes[currentPhonemeIndex]}
-                    isAnimating={isAnimating}
-                    className="transform scale-150"
+                {/* Viseme Guide Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold text-gray-800">
+                    Viseme Guide
+                  </h3>
+                  <VisemeGuide
+                    word={currentWord.word}
+                    phonemes={currentWord.phonemes}
+                    onComplete={handleVisemeComplete}
+                    className="h-auto"
                   />
                 </div>
-                
-                <div className="bg-white rounded-xl p-4 border border-gray-100">
-                  <p className="text-xs text-gray-500 mb-2">Current Word:</p>
-                  <p className="text-2xl font-bold text-orange-600 mb-2">
-                    {currentWord.word}
-                  </p>
+
+                {/* Animated Lips Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold text-gray-800">
+                    Lip Animation Guide
+                  </h3>
                   <p className="text-sm text-gray-600">
-                    Phoneme {currentPhonemeIndex + 1} of {currentWord.phonemes.length}: 
-                    <span className="font-semibold ml-1">{currentWord.phonemes[currentPhonemeIndex]}</span>
+                    Watch the lip movements for each sound
                   </p>
+                  
+                  <div className="flex items-center justify-center bg-white rounded-xl p-4 border border-gray-100">
+                    <AnimatedLips
+                      phoneme={currentWord.phonemes[currentPhonemeIndex]}
+                      isAnimating={isAnimating}
+                      className="transform scale-125"
+                    />
+                  </div>
+                  
+                  <div className="bg-white rounded-xl p-4 border border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">Current Word:</p>
+                    <p className="text-2xl font-bold text-purple-600 mb-2">
+                      {currentWord.word}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Phoneme {currentPhonemeIndex + 1} of {currentWord.phonemes.length}: 
+                      <span className="font-semibold ml-1">{currentWord.phonemes[currentPhonemeIndex]}</span>
+                    </p>
+                  </div>
+                  
+                  {/* Phoneme Navigation */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPhonemeIndex === 0}
+                    >
+                      ← Prev Sound
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsAnimating(!isAnimating);
+                        setTimeout(() => setIsAnimating(false), 2000);
+                      }}
+                      variant="default"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      {isAnimating ? 'Stop' : 'Animate'}
+                    </Button>
+                    <Button
+                      onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
+                    >
+                      Next Sound →
+                    </Button>
+                  </div>
                 </div>
-                
-                <div className="flex gap-2 mt-4">
+              </div>
+              
+              {/* Word Navigation - Now inside the merged card */}
+              <div className="border-t border-gray-200 pt-4 mt-6">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-gray-800">
+                    Word Navigation
+                  </h4>
+                  <span className="text-sm text-gray-500">
+                    Word {currentWordIndex + 1} of {practiceWords.length}
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-3">
                   <Button
-                    onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
+                    onClick={handlePreviousWord}
                     variant="outline"
                     size="sm"
-                    disabled={currentPhonemeIndex === 0}
+                    disabled={currentWordIndex === 0}
                   >
-                    ← Prev Sound
+                    ← Previous Word
                   </Button>
+                  
                   <Button
-                    onClick={() => {
-                      setIsAnimating(!isAnimating);
-                      setTimeout(() => setIsAnimating(false), 2000);
-                    }}
-                    variant="default"
+                    onClick={handleNextWord}
+                    variant="outline"
                     size="sm"
                     className="flex-1"
                   >
-                    {isAnimating ? 'Stop' : 'Animate'}
-                  </Button>
-                  <Button
-                    onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
-                  >
-                    Next Sound →
+                    Next Word →
                   </Button>
                 </div>
               </div>
@@ -228,24 +267,11 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                   Follow the viseme guide and practice the lip movements for each sound.
                 </p>
                 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handlePreviousWord}
-                    variant="outline"
-                    size="sm"
-                    disabled={currentWordIndex === 0}
-                  >
-                    Previous
-                  </Button>
-                  
-                  <Button
-                    onClick={handleNextWord}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    Next Word
-                  </Button>
+                <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-green-700">Current Score</span>
+                    <span className="text-lg font-bold text-green-600">{score}</span>
+                  </div>
                 </div>
               </Card>
             </div>
