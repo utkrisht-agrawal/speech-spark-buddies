@@ -1,1 +1,7 @@
 project_id = "dcfculdkghduqwtkjebu"
+
+[functions.speech-recognition]
+verify_jwt = false
+
+[functions.phoneme-analysis]
+verify_jwt = false

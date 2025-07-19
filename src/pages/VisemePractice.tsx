@@ -6,7 +6,7 @@ import { CameraWindow } from '@/components/CameraWindow';
 import { VisemeGuide } from '@/components/VisemeGuide';
 import ScoreCard from '@/components/ScoreCard';
 import AnimatedLips from '@/components/AnimatedLips';
-import { scoreSpeech, initializeSpeechModels, SpeechRecognitionResult } from '@/utils/speechRecognition';
+import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/speechRecognition';
 
 interface VisemePracticeProps {
   onBack?: () => void;
@@ -40,22 +40,15 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [soundScore, setSoundScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  
+  // Advanced speech recognition instance
+  const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
 
   const currentWord = practiceWords[currentWordIndex];
 
-  // Initialize speech models on component mount
+  // Initialize backend speech recognition
   useEffect(() => {
-    const initModels = async () => {
-      try {
-        await initializeSpeechModels();
-        console.log("✅ Speech recognition models loaded successfully");
-      } catch (error) {
-        console.error("❌ Failed to load speech models:", error);
-      }
-    };
-    initModels();
+    console.log("🤖 Using FREE backend speech recognition with Whisper + wav2vec");
   }, []);
 
   const handleVisemeComplete = () => {
@@ -98,74 +91,65 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setIsProcessing(true);
-        
-        try {
-          // Process audio with actual speech recognition
-          const target = currentWord.phonemes[currentPhonemeIndex];
-          console.log(`🎯 Starting speech recognition for phoneme: "${target}"`);
-          console.log(`📱 Audio blob size: ${audioBlob.size} bytes`);
-          
-          const result = await scoreSpeech(audioBlob, target, 'phoneme');
-          
-          console.log(`🗣️ Speech recognition result:`, result);
-          setSoundScore(result.score);
-          setRecognitionResult(result.transcript);
-          
-          console.log(`✅ Updated soundScore to: ${result.score}%`);
-        } catch (error) {
-          console.error('❌ Speech recognition failed:', error);
-          setSoundScore(0);
-          setRecognitionResult('Recognition failed');
-        } finally {
-          setIsProcessing(false);
-        }
-        
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
+      setIsProcessing(true);
       setIsRecording(true);
+      await speechRecognition.startRecording();
       
       // Generate random waveform data for visualization
       const interval = setInterval(() => {
         setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
       }, 100);
 
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === 'recording') {
-          mediaRecorderRef.current.stop();
-          setIsRecording(false);
+      setTimeout(async () => {
+        if (speechRecognition.isRecording()) {
+          const audioBlob = await speechRecognition.stopRecording();
           clearInterval(interval);
+          setIsRecording(false);
+          
+          // Process with backend
+          const target = currentWord.phonemes[currentPhonemeIndex];
+          console.log(`🎯 Processing phoneme: "${target}"`);
+          
+          const result = await speechRecognition.recognizeSpeech(audioBlob, target);
+          console.log(`🗣️ Backend result:`, result);
+          
+          setSoundScore(result.similarityScore);
+          setRecognitionResult(result.transcription);
+          setIsProcessing(false);
         }
       }, 3000);
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('Error with backend recording:', error);
+      setIsRecording(false);
+      setIsProcessing(false);
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+  const stopRecording = async () => {
+    if (speechRecognition.isRecording()) {
+      try {
+        const audioBlob = await speechRecognition.stopRecording();
+        setIsRecording(false);
+        
+        // Process the audio
+        const target = currentWord.phonemes[currentPhonemeIndex];
+        const result = await speechRecognition.recognizeSpeech(audioBlob, target);
+        
+        setSoundScore(result.similarityScore);
+        setRecognitionResult(result.transcription);
+        setIsProcessing(false);
+      } catch (error) {
+        console.error('Error stopping recording:', error);
+        setIsRecording(false);
+        setIsProcessing(false);
+      }
     }
   };
 
   const testPhoneme = () => {
     setIsAnimating(true);
     startRecording();
-    // Simulate lip analysis with MediaPipe
+    // Simulate lip analysis
     setTimeout(() => {
       const newLipScore = Math.floor(Math.random() * 30) + 70;
       setLipScore(newLipScore);
@@ -176,45 +160,10 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const testWord = async () => {
     setIsLooping(true);
     setIsAnimating(true);
+    setIsProcessing(true);
     
-    // Start recording for the complete word
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        chunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
-        setIsProcessing(true);
-        
-        try {
-          // Use Whisper for word-level recognition
-          const result = await scoreSpeech(audioBlob, currentWord.word, 'word');
-          
-          setSoundScore(result.score);
-          setRecognitionResult(result.transcript);
-          
-          // Simulate lip score for the complete word
-          const avgLipScore = Math.floor(Math.random() * 30) + 70;
-          setLipScore(avgLipScore);
-          
-          console.log(`🎯 Target Word: "${currentWord.word}", Got: "${result.transcript}", Score: ${result.score}%`);
-        } catch (error) {
-          console.error('Word recognition failed:', error);
-          setSoundScore(0);
-          setRecognitionResult('Recognition failed');
-        } finally {
-          setIsProcessing(false);
-        }
-        
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorder.start();
+      await speechRecognition.startRecording();
       setIsRecording(true);
       
       // Animate through phonemes
@@ -226,12 +175,6 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           setIsLooping(false);
           setIsAnimating(false);
           clearInterval(interval);
-          
-          // Stop recording after animation completes
-          if (mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
-            setIsRecording(false);
-          }
         }
       }, animationSpeed);
       
@@ -240,14 +183,38 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
       }, 100);
       
-      setTimeout(() => {
-        clearInterval(waveformInterval);
+      // Stop recording after animation completes
+      setTimeout(async () => {
+        try {
+          clearInterval(waveformInterval);
+          const audioBlob = await speechRecognition.stopRecording();
+          setIsRecording(false);
+          
+          // Use backend for word-level recognition
+          const result = await speechRecognition.recognizeSpeech(audioBlob, currentWord.word);
+          
+          setSoundScore(result.similarityScore);
+          setRecognitionResult(result.transcription);
+          
+          // Simulate lip score for the complete word
+          const avgLipScore = Math.floor(Math.random() * 30) + 70;
+          setLipScore(avgLipScore);
+          
+          console.log(`🎯 Target: "${currentWord.word}", Got: "${result.transcription}", Score: ${result.similarityScore}%`);
+        } catch (error) {
+          console.error('Word recognition failed:', error);
+          setSoundScore(0);
+          setRecognitionResult('Recognition failed');
+        } finally {
+          setIsProcessing(false);
+        }
       }, currentWord.phonemes.length * animationSpeed);
       
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('Error with backend word testing:', error);
       setIsLooping(false);
       setIsAnimating(false);
+      setIsProcessing(false);
     }
   };
 

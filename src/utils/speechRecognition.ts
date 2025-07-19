@@ -1,256 +1,193 @@
-import { pipeline, AutoTokenizer } from "@huggingface/transformers";
+import { supabase } from '@/integrations/supabase/client';
 
-// Types for our speech recognition results
 export interface SpeechRecognitionResult {
-  score: number;
-  transcript: string;
-  spokenPhonemes?: string;
-  targetPhonemes?: string;
+  transcription: string;
+  similarityScore: number;
+  visemeScore: number;
+  phonemeAnalysis?: any;
 }
 
-export interface SpeechProcessor {
-  whisperModel: any;
-  wav2vecModel: any;
-  initialized: boolean;
-}
+export class AdvancedSpeechRecognition {
+  private mediaRecorder: MediaRecorder | null = null;
+  private audioChunks: Blob[] = [];
+  private stream: MediaStream | null = null;
 
-// Global processor instance
-let processor: SpeechProcessor = {
-  whisperModel: null,
-  wav2vecModel: null,
-  initialized: false
-};
-
-// Initialize speech recognition models
-export async function initializeSpeechModels(): Promise<void> {
-  if (processor.initialized) {
-    console.log("🤖 Speech models already initialized");
-    return;
+  constructor() {
+    console.log('Advanced Speech Recognition initialized with free Whisper backend');
   }
 
-  try {
-    console.log("🤖 Loading speech recognition models...");
-    
-    // Load Whisper for sentence recognition
-    console.log("📥 Loading Whisper model...");
-    processor.whisperModel = await pipeline(
-      "automatic-speech-recognition",
-      "onnx-community/whisper-tiny.en",
-      { device: "webgpu" }
-    );
-    console.log("✅ Whisper model loaded");
-
-    // Load Wav2Vec2 for phoneme recognition
-    console.log("📥 Loading Wav2Vec2 model...");
-    processor.wav2vecModel = await pipeline(
-      "automatic-speech-recognition", 
-      "facebook/wav2vec2-large-960h-lv60-self",
-      { device: "webgpu" }
-    );
-    console.log("✅ Wav2Vec2 model loaded");
-
-    processor.initialized = true;
-    console.log("✅ All speech models loaded successfully");
-  } catch (error) {
-    console.error("❌ Failed to load speech models on WebGPU:", error);
-    // Fallback to CPU if WebGPU fails
+  async startRecording(): Promise<void> {
     try {
-      console.log("🔄 Falling back to CPU...");
-      processor.whisperModel = await pipeline(
-        "automatic-speech-recognition",
-        "onnx-community/whisper-tiny.en"
-      );
-      processor.wav2vecModel = await pipeline(
-        "automatic-speech-recognition",
-        "facebook/wav2vec2-large-960h-lv60-self"
-      );
-      processor.initialized = true;
-      console.log("✅ Speech models loaded on CPU");
-    } catch (fallbackError) {
-      console.error("❌ Failed to load speech models on CPU:", fallbackError);
-      throw fallbackError;
+      console.log('Starting advanced recording...');
+      
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      this.mediaRecorder = new MediaRecorder(this.stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      this.audioChunks = [];
+      
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+          console.log('Audio chunk recorded:', event.data.size, 'bytes');
+        }
+      };
+
+      this.mediaRecorder.start(1000); // Collect data every second
+      console.log('MediaRecorder started for backend processing');
+      
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      throw new Error('Failed to start recording: ' + error.message);
     }
   }
-}
 
-// Simple grapheme-to-phoneme conversion (basic approximation)
-function textToPhonemes(text: string): string {
-  // Basic phoneme mapping - in a real implementation you'd use a proper G2P library
-  const phonemeMap: { [key: string]: string } = {
-    'a': 'æ', 'e': 'ɛ', 'i': 'ɪ', 'o': 'ɔ', 'u': 'ʊ',
-    'th': 'θ', 'sh': 'ʃ', 'ch': 'tʃ', 'ng': 'ŋ',
-    'b': 'b', 'c': 'k', 'd': 'd', 'f': 'f', 'g': 'g',
-    'h': 'h', 'j': 'dʒ', 'k': 'k', 'l': 'l', 'm': 'm',
-    'n': 'n', 'p': 'p', 'q': 'k', 'r': 'r', 's': 's',
-    't': 't', 'v': 'v', 'w': 'w', 'x': 'ks', 'y': 'j', 'z': 'z'
-  };
+  async stopRecording(): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      if (!this.mediaRecorder) {
+        reject(new Error('No recording in progress'));
+        return;
+      }
 
-  return text.toLowerCase()
-    .split('')
-    .map(char => phonemeMap[char] || char)
-    .join(' ');
-}
+      this.mediaRecorder.onstop = () => {
+        console.log('Recording stopped, processing audio with backend AI...');
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        console.log('Audio blob created for backend:', audioBlob.size, 'bytes');
+        
+        // Clean up
+        if (this.stream) {
+          this.stream.getTracks().forEach(track => track.stop());
+          this.stream = null;
+        }
+        
+        resolve(audioBlob);
+      };
 
-// Calculate similarity between two strings (like Python's SequenceMatcher)
-function calculateSimilarity(target: string, spoken: string): number {
-  const targetWords = target.toLowerCase().trim().split(/\s+/);
-  const spokenWords = spoken.toLowerCase().trim().split(/\s+/);
-  
-  // Levenshtein distance approximation
-  const maxLength = Math.max(targetWords.length, spokenWords.length);
-  if (maxLength === 0) return 100;
-  
-  let matches = 0;
-  const minLength = Math.min(targetWords.length, spokenWords.length);
-  
-  for (let i = 0; i < minLength; i++) {
-    if (targetWords[i] === spokenWords[i]) {
-      matches++;
+      this.mediaRecorder.stop();
+    });
+  }
+
+  async recognizeSpeech(audioBlob: Blob, targetText?: string): Promise<SpeechRecognitionResult> {
+    try {
+      console.log('Converting audio for FREE Whisper backend processing...');
+      
+      // Convert blob to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      
+      console.log('Sending audio to FREE speech recognition service (Hugging Face Whisper)...');
+      
+      const { data, error } = await supabase.functions.invoke('speech-recognition', {
+        body: {
+          audio: base64Audio,
+          targetText: targetText
+        }
+      });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error('Speech recognition failed: ' + error.message);
+      }
+
+      console.log('FREE Whisper speech recognition result:', data);
+      
+      return {
+        transcription: data.transcription || '',
+        similarityScore: data.similarityScore || 0,
+        visemeScore: data.visemeScore || 0,
+        phonemeAnalysis: data.phonemeAnalysis
+      };
+      
+    } catch (error) {
+      console.error('Error in FREE speech recognition:', error);
+      return {
+        transcription: '',
+        similarityScore: 0,
+        visemeScore: 0
+      };
     }
   }
-  
-  return Math.round((matches / maxLength) * 100);
-}
 
-// Convert audio blob to array buffer for processing
-async function audioToArrayBuffer(audioBlob: Blob): Promise<ArrayBuffer> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(audioBlob);
-  });
-}
+  async analyzePhonemes(audioBlob: Blob, targetPhonemes?: string[]): Promise<any> {
+    try {
+      console.log('Analyzing phonemes with FREE wav2vec backend...');
+      
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      
+      const { data, error } = await supabase.functions.invoke('phoneme-analysis', {
+        body: {
+          audio: base64Audio,
+          targetPhonemes: targetPhonemes
+        }
+      });
 
-// Transcribe with Whisper (for sentences)
-async function transcribeWithWhisper(audioBlob: Blob, target: string): Promise<SpeechRecognitionResult> {
-  if (!processor.whisperModel) {
-    throw new Error("Whisper model not initialized");
+      if (error) {
+        console.error('Phoneme analysis error:', error);
+        throw new Error('Phoneme analysis failed: ' + error.message);
+      }
+
+      console.log('FREE wav2vec phoneme analysis result:', data);
+      return data;
+      
+    } catch (error) {
+      console.error('Error in FREE phoneme analysis:', error);
+      return {
+        phonemes: [],
+        visemes: [],
+        accuracy: 0
+      };
+    }
   }
 
-  try {
-    console.log("🗣️ Processing with Whisper...");
-    
-    // Convert blob to URL for processing
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const result = await processor.whisperModel(audioUrl);
-    
-    const transcript = result.text.toLowerCase().trim();
-    console.log(`🗣️ Whisper Transcript: "${transcript}"`);
-    
-    const score = calculateSimilarity(target, transcript);
-    
-    URL.revokeObjectURL(audioUrl);
-    
-    return {
-      score,
-      transcript,
-      spokenPhonemes: transcript,
-      targetPhonemes: target
-    };
-  } catch (error) {
-    console.error("❌ Whisper transcription failed:", error);
-    return {
-      score: 0,
-      transcript: "Recognition failed",
-      spokenPhonemes: "",
-      targetPhonemes: target
-    };
-  }
-}
-
-// Transcribe with Wav2Vec2 (for phonemes)
-async function transcribeWithWav2Vec(audioBlob: Blob, target: string): Promise<SpeechRecognitionResult> {
-  if (!processor.wav2vecModel) {
-    throw new Error("Wav2Vec2 model not initialized");
+  isRecording(): boolean {
+    return this.mediaRecorder?.state === 'recording';
   }
 
-  try {
-    console.log("🗣️ Processing with Wav2Vec2...");
+  cleanup(): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
     
-    // Convert blob to URL for processing
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const result = await processor.wav2vecModel(audioUrl);
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+      this.stream = null;
+    }
     
-    const transcript = result.text.toLowerCase().trim();
-    console.log(`🗣️ Wav2Vec2 Transcript: "${transcript}"`);
-    
-    // Convert to phonemes
-    const spokenPhonemes = textToPhonemes(transcript);
-    const targetPhonemes = textToPhonemes(target);
-    
-    console.log(`✅ Target Phonemes: "${targetPhonemes}"`);
-    console.log(`🗣️ Spoken Phonemes: "${spokenPhonemes}"`);
-    
-    const score = calculateSimilarity(targetPhonemes, spokenPhonemes);
-    
-    URL.revokeObjectURL(audioUrl);
-    
-    return {
-      score,
-      transcript,
-      spokenPhonemes,
-      targetPhonemes
-    };
-  } catch (error) {
-    console.error("❌ Wav2Vec2 transcription failed:", error);
-    return {
-      score: 0,
-      transcript: "Recognition failed",
-      spokenPhonemes: "",
-      targetPhonemes: textToPhonemes(target)
-    };
+    this.audioChunks = [];
+    console.log('Advanced speech recognition cleaned up');
   }
 }
 
-// Main function to score speech against target
+// Legacy compatibility functions
+export async function initializeSpeechModels(): Promise<void> {
+  console.log('Using backend speech models - no initialization needed');
+}
+
 export async function scoreSpeech(
   audioBlob: Blob, 
   target: string, 
   mode: 'phoneme' | 'word' | 'sentence' = 'phoneme'
 ): Promise<SpeechRecognitionResult> {
+  console.log(`🎯 scoreSpeech called with mode: ${mode}, target: "${target}"`);
   
-  console.log(`🎯 scoreSpeech called with mode: ${mode}, target: "${target}", blob size: ${audioBlob.size}`);
+  const recognition = new AdvancedSpeechRecognition();
+  const result = await recognition.recognizeSpeech(audioBlob, target);
   
-  if (!processor.initialized) {
-    console.log("🤖 Models not initialized, loading...");
-    try {
-      await initializeSpeechModels();
-    } catch (error) {
-      console.error("❌ Failed to initialize models:", error);
-      return {
-        score: 0,
-        transcript: "Model initialization failed",
-        spokenPhonemes: "",
-        targetPhonemes: mode === 'sentence' ? target : textToPhonemes(target)
-      };
-    }
-  }
-
-  console.log(`\n🎯 Processing audio with mode: ${mode}, target: "${target}"`);
-
-  try {
-    let result: SpeechRecognitionResult;
-    
-    if (mode === 'sentence') {
-      console.log("🎤 Using Whisper for sentence recognition");
-      result = await transcribeWithWhisper(audioBlob, target);
-    } else {
-      console.log("🎤 Using Wav2Vec2 for phoneme/word recognition");
-      // Use Wav2Vec2 for phoneme and word level recognition
-      result = await transcribeWithWav2Vec(audioBlob, target);
-    }
-    
-    console.log(`✅ Final result:`, result);
-    return result;
-    
-  } catch (error) {
-    console.error("❌ Speech recognition failed:", error);
-    return {
-      score: 0,
-      transcript: "Processing failed",
-      spokenPhonemes: "",
-      targetPhonemes: mode === 'sentence' ? target : textToPhonemes(target)
-    };
-  }
+  return {
+    transcription: result.transcription,
+    similarityScore: result.similarityScore,
+    visemeScore: result.visemeScore,
+    phonemeAnalysis: result.phonemeAnalysis
+  };
 }
