@@ -1,9 +1,12 @@
 
-import React, { useState } from 'react';
-import LoginPage from './LoginPage';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from "@/hooks/use-toast";
 import Dashboard from './Dashboard';
 import ParentDashboard from './ParentDashboard';
 import TherapistDashboard from './TherapistDashboard';
+import { Button } from '@/components/ui/button';
 import WordLibrary from './WordLibrary';
 import PracticeView from './PracticeView';
 import AssessmentTest from './AssessmentTest';
@@ -30,13 +33,10 @@ import VisemePractice from './VisemePractice';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Exercise } from '@/types/curriculum';
 
-interface UserData {
-  userType: 'child' | 'parent' | 'therapist';
-  data: any;
-}
-
 const Index = () => {
-  const [user, setUser] = useState<UserData | null>(null);
+  const { user, profile, signOut, loading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('home');
   const [needsAssessment, setNeedsAssessment] = useState(false);
   const [studentLevel, setStudentLevel] = useState(1);
@@ -44,17 +44,23 @@ const Index = () => {
   const [currentGameType, setCurrentGameType] = useState<string>('candle-blow');
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
-  const handleLogin = (userType: 'child' | 'parent' | 'therapist', userData: any) => {
-    setUser({ userType, data: userData });
-    if (userType === 'child') {
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
+
+  // Handle profile-based logic
+  useEffect(() => {
+    if (profile?.role === 'child') {
       setNeedsAssessment(true);
     }
-  };
+  }, [profile]);
 
-  const handleLogout = () => {
-    setUser(null);
-    setActiveTab('home');
-    setCurrentView('main');
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   // Listen for game and practice events
@@ -75,27 +81,73 @@ const Index = () => {
     };
   }, []);
 
-  // Show login page if no user is logged in
-  if (!user) {
-    return <LoginPage onLogin={handleLogin} />;
+  // Show loading or redirect if not authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return null; // Will redirect in useEffect
   }
 
   // Parent dashboard
-  if (user.userType === 'parent') {
-    return <ParentDashboard parentData={user.data} onLogout={handleLogout} />;
+  if (profile.role === 'parent') {
+    return (
+      <div className="min-h-screen p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Parent Dashboard - Welcome, {profile.username}!</h1>
+            <Button onClick={handleLogout} variant="outline">
+              Sign Out
+            </Button>
+          </div>
+          <ParentDashboard parentData={{ name: profile.username }} onLogout={handleLogout} />
+        </div>
+      </div>
+    );
   }
 
   // Therapist dashboard
-  if (user.userType === 'therapist') {
-    return <TherapistDashboard therapistData={user.data} onLogout={handleLogout} />;
+  if (profile.role === 'therapist') {
+    return (
+      <div className="min-h-screen p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Therapist Dashboard - Welcome, {profile.username}!</h1>
+            <Button onClick={handleLogout} variant="outline">
+              Sign Out
+            </Button>
+          </div>
+          <TherapistDashboard therapistData={{ name: profile.username }} onLogout={handleLogout} />
+        </div>
+      </div>
+    );
   }
 
   // Show assessment test for new child users
-  if (user.userType === 'child' && needsAssessment) {
-    return <AssessmentTest onComplete={(level) => {
-      setStudentLevel(level);
-      setNeedsAssessment(false);
-    }} />;
+  if (profile.role === 'child' && needsAssessment) {
+    return (
+      <div className="min-h-screen">
+        <div className="flex justify-between items-center p-4 bg-background border-b">
+          <h1 className="text-xl font-bold">Welcome, {profile.username}!</h1>
+          <Button onClick={handleLogout} variant="outline" size="sm">
+            Sign Out
+          </Button>
+        </div>
+        <AssessmentTest onComplete={(level) => {
+          setStudentLevel(level);
+          setNeedsAssessment(false);
+          toast({
+            title: "Assessment Complete!",
+            description: `Your level has been set to ${level}. Let's start learning!`,
+          });
+        }} />
+      </div>
+    );
   }
 
   // Handle different views for child interface
@@ -276,6 +328,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <div className="flex justify-between items-center p-4 bg-background border-b">
+        <h1 className="text-xl font-bold">Hi, {profile.username}!</h1>
+        <Button onClick={handleLogout} variant="outline" size="sm">
+          Sign Out
+        </Button>
+      </div>
       {renderContent()}
       <BottomNavigation 
         activeTab={activeTab} 
