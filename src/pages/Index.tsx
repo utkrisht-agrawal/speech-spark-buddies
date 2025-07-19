@@ -44,19 +44,23 @@ const Index = () => {
   const [currentGameType, setCurrentGameType] = useState<string>('candle-blow');
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
-  // Redirect to auth if not logged in
+  // Redirect to auth if not logged in (with safety check)
   useEffect(() => {
+    console.log('Auth check:', { loading, user: !!user, profile: !!profile });
+    
     if (!loading && !user) {
+      console.log('Redirecting to auth - no user');
       navigate('/auth');
     }
   }, [user, loading, navigate]);
 
   // Handle profile-based logic
   useEffect(() => {
-    if (profile?.role === 'child') {
+    if (profile?.role === 'child' && !needsAssessment) {
+      console.log('Setting needs assessment for child');
       setNeedsAssessment(true);
     }
-  }, [profile]);
+  }, [profile, needsAssessment]);
 
   const handleLogout = async () => {
     await signOut();
@@ -83,15 +87,26 @@ const Index = () => {
 
   // Show loading or redirect if not authenticated
   if (loading) {
+    console.log('Showing loading state');
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-lg text-gray-700">Loading VoiceBuddy...</div>
+        </div>
       </div>
     );
   }
 
   if (!user || !profile) {
-    return null; // Will redirect in useEffect
+    console.log('No user or profile, should redirect');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100">
+        <div className="text-center">
+          <div className="text-lg text-gray-700">Redirecting...</div>
+        </div>
+      </div>
+    );
   }
 
   // Parent dashboard
