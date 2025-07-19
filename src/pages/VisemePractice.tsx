@@ -37,7 +37,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [isRecording, setIsRecording] = useState(false);
   const [audioData, setAudioData] = useState<number[]>([]);
   const [lipScore, setLipScore] = useState(75);
-  const [soundScore, setSoundScore] = useState(80);
+  const [soundScore, setSoundScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -114,14 +114,18 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         try {
           // Process audio with actual speech recognition
           const target = currentWord.phonemes[currentPhonemeIndex];
+          console.log(`🎯 Starting speech recognition for phoneme: "${target}"`);
+          console.log(`📱 Audio blob size: ${audioBlob.size} bytes`);
+          
           const result = await scoreSpeech(audioBlob, target, 'phoneme');
           
+          console.log(`🗣️ Speech recognition result:`, result);
           setSoundScore(result.score);
           setRecognitionResult(result.transcript);
           
-          console.log(`🎯 Target: "${target}", Got: "${result.transcript}", Score: ${result.score}%`);
+          console.log(`✅ Updated soundScore to: ${result.score}%`);
         } catch (error) {
-          console.error('Speech recognition failed:', error);
+          console.error('❌ Speech recognition failed:', error);
           setSoundScore(0);
           setRecognitionResult('Recognition failed');
         } finally {

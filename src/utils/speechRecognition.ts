@@ -23,31 +23,39 @@ let processor: SpeechProcessor = {
 
 // Initialize speech recognition models
 export async function initializeSpeechModels(): Promise<void> {
-  if (processor.initialized) return;
+  if (processor.initialized) {
+    console.log("🤖 Speech models already initialized");
+    return;
+  }
 
   try {
     console.log("🤖 Loading speech recognition models...");
     
     // Load Whisper for sentence recognition
+    console.log("📥 Loading Whisper model...");
     processor.whisperModel = await pipeline(
       "automatic-speech-recognition",
       "onnx-community/whisper-tiny.en",
       { device: "webgpu" }
     );
+    console.log("✅ Whisper model loaded");
 
     // Load Wav2Vec2 for phoneme recognition
+    console.log("📥 Loading Wav2Vec2 model...");
     processor.wav2vecModel = await pipeline(
       "automatic-speech-recognition", 
       "facebook/wav2vec2-large-960h-lv60-self",
       { device: "webgpu" }
     );
+    console.log("✅ Wav2Vec2 model loaded");
 
     processor.initialized = true;
-    console.log("✅ Speech models loaded successfully");
+    console.log("✅ All speech models loaded successfully");
   } catch (error) {
-    console.error("❌ Failed to load speech models:", error);
+    console.error("❌ Failed to load speech models on WebGPU:", error);
     // Fallback to CPU if WebGPU fails
     try {
+      console.log("🔄 Falling back to CPU...");
       processor.whisperModel = await pipeline(
         "automatic-speech-recognition",
         "onnx-community/whisper-tiny.en"
@@ -202,24 +210,38 @@ export async function scoreSpeech(
   mode: 'phoneme' | 'word' | 'sentence' = 'phoneme'
 ): Promise<SpeechRecognitionResult> {
   
+  console.log(`🎯 scoreSpeech called with mode: ${mode}, target: "${target}", blob size: ${audioBlob.size}`);
+  
   if (!processor.initialized) {
     console.log("🤖 Models not initialized, loading...");
-    await initializeSpeechModels();
+    try {
+      await initializeSpeechModels();
+    } catch (error) {
+      console.error("❌ Failed to initialize models:", error);
+      return {
+        score: 0,
+        transcript: "Model initialization failed",
+        spokenPhonemes: "",
+        targetPhonemes: mode === 'sentence' ? target : textToPhonemes(target)
+      };
+    }
   }
 
-  console.log(`\n🎯 Mode: ${mode}, Target: "${target}"`);
+  console.log(`\n🎯 Processing audio with mode: ${mode}, target: "${target}"`);
 
   try {
     let result: SpeechRecognitionResult;
     
     if (mode === 'sentence') {
+      console.log("🎤 Using Whisper for sentence recognition");
       result = await transcribeWithWhisper(audioBlob, target);
     } else {
+      console.log("🎤 Using Wav2Vec2 for phoneme/word recognition");
       // Use Wav2Vec2 for phoneme and word level recognition
       result = await transcribeWithWav2Vec(audioBlob, target);
     }
     
-    console.log(`✅ Score: ${result.score}%`);
+    console.log(`✅ Final result:`, result);
     return result;
     
   } catch (error) {
