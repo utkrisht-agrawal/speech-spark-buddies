@@ -71,7 +71,7 @@ export class AdvancedSpeechRecognition {
         console.error('MediaRecorder error:', event);
       };
 
-      this.mediaRecorder.start(1000); // Collect data every second
+      this.mediaRecorder.start(100); // Collect data every 100ms for better capture
       console.log('MediaRecorder start() called');
       
     } catch (error) {
@@ -87,14 +87,30 @@ export class AdvancedSpeechRecognition {
         return;
       }
 
+      console.log('Stopping recording, current state:', this.mediaRecorder.state);
+      console.log('Audio chunks collected so far:', this.audioChunks.length);
+
       this.mediaRecorder.onstop = () => {
-        console.log('Recording stopped, processing audio with backend AI...');
+        console.log('Recording stopped, processing audio...');
+        console.log('Final audio chunks count:', this.audioChunks.length);
+        
+        if (this.audioChunks.length === 0) {
+          console.warn('No audio chunks recorded!');
+          // Create a minimal audio blob to prevent errors
+          const silence = new Blob([new ArrayBuffer(1024)], { type: 'audio/webm' });
+          resolve(silence);
+          return;
+        }
+
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-        console.log('Audio blob created for backend:', audioBlob.size, 'bytes');
+        console.log('Audio blob created:', audioBlob.size, 'bytes', 'type:', audioBlob.type);
         
         // Clean up
         if (this.stream) {
-          this.stream.getTracks().forEach(track => track.stop());
+          this.stream.getTracks().forEach(track => {
+            console.log('Stopping track:', track.kind, track.readyState);
+            track.stop();
+          });
           this.stream = null;
         }
         
