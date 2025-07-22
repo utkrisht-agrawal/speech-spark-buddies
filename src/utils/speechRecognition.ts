@@ -20,6 +20,11 @@ export class AdvancedSpeechRecognition {
     try {
       console.log('Starting advanced recording...');
       
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices not supported');
+      }
+
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -30,21 +35,44 @@ export class AdvancedSpeechRecognition {
         }
       });
 
-      this.mediaRecorder = new MediaRecorder(this.stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      console.log('Audio stream obtained:', this.stream.getAudioTracks().length, 'tracks');
+
+      // Check MediaRecorder support and find compatible mime type
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/mp4';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = '';
+            console.warn('No supported mime type found, using default');
+          }
+        }
+      }
+      console.log('Using mime type:', mimeType || 'default');
+
+      this.mediaRecorder = new MediaRecorder(this.stream, mimeType ? { mimeType } : {});
       
       this.audioChunks = [];
       
       this.mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available event:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           this.audioChunks.push(event.data);
-          console.log('Audio chunk recorded:', event.data.size, 'bytes');
+          console.log('Audio chunk added. Total chunks:', this.audioChunks.length);
         }
       };
 
+      this.mediaRecorder.onstart = () => {
+        console.log('MediaRecorder started successfully');
+      };
+
+      this.mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+      };
+
       this.mediaRecorder.start(1000); // Collect data every second
-      console.log('MediaRecorder started for backend processing');
+      console.log('MediaRecorder start() called');
       
     } catch (error) {
       console.error('Error starting recording:', error);
