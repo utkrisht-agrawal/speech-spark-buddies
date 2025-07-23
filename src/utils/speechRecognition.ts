@@ -105,6 +105,9 @@ export class AdvancedSpeechRecognition {
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         console.log('Audio blob created:', audioBlob.size, 'bytes', 'type:', audioBlob.type);
         
+        // Auto-download the audio blob for debugging
+        this.downloadAudioBlob(audioBlob);
+        
         // Clean up
         if (this.stream) {
           this.stream.getTracks().forEach(track => {
@@ -191,6 +194,22 @@ export class AdvancedSpeechRecognition {
         visemes: [],
         accuracy: 0
       };
+    }
+  }
+
+  private downloadAudioBlob(audioBlob: Blob): void {
+    try {
+      const url = URL.createObjectURL(audioBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recording-${Date.now()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log('Audio blob downloaded for debugging');
+    } catch (error) {
+      console.error('Failed to download audio blob:', error);
     }
   }
 
