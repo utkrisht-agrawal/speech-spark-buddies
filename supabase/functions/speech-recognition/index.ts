@@ -138,27 +138,24 @@ async function matchAudioToTarget(audioData: Uint8Array, target: string): Promis
     // Convert audio data to base64 for Hugging Face API
     const base64Audio = btoa(String.fromCharCode(...audioData));
     
-    // Use Hugging Face Whisper API for transcription
+    // Use DeepInfra Whisper API for transcription
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/openai/whisper-tiny.en",
+      "https://api.deepinfra.com/v1/inference/openai/whisper-tiny.en",
       {
         headers: {
-          "Authorization": `Bearer ${Deno.env.get('HUGGINGFACE_API_KEY')}`,
+          "Authorization": `Bearer ${Deno.env.get('DEEPINFRA_API_KEY')}`,
           "Content-Type": "application/json",
         },
         method: "POST",
         body: JSON.stringify({
-          inputs: base64Audio,
-          parameters: {
-            return_timestamps: false,
-            language: "en"
-          }
+          audio: base64Audio,
+          language: "en"
         }),
       }
     );
 
     if (!response.ok) {
-      console.error('Hugging Face API error:', response.status, response.statusText);
+      console.error('DeepInfra API error:', response.status, response.statusText);
       return "";
     }
 
