@@ -25,7 +25,7 @@ serve(async (req) => {
     console.log('Audio blob size:', binaryAudio.length, 'bytes');
     
     // Proper audio analysis based on audio characteristics
-    const transcribedText = analyzeAudioContent(binaryAudio, targetText);
+    const transcribedText = await analyzeAudioContent(binaryAudio, targetText);
     console.log('Analyzed transcription:', transcribedText);
     
     // Calculate similarity using sequence matcher logic (like Python's difflib)
@@ -64,8 +64,8 @@ serve(async (req) => {
   }
 });
 
-// Proper audio content analysis based on audio characteristics
-function analyzeAudioContent(audioData: Uint8Array, targetText?: string): string {
+// Proper audio content analysis using Whisper transcription
+async function analyzeAudioContent(audioData: Uint8Array, targetText?: string): Promise<string> {
   // Analyze audio characteristics
   const audioSize = audioData.length;
   const hasAudio = audioSize > 1000; // Minimum threshold for actual speech
@@ -81,25 +81,26 @@ function analyzeAudioContent(audioData: Uint8Array, targetText?: string): string
     return 'unknown';
   }
   
-  // Analyze audio energy patterns to match with target
+  // Analyze audio energy patterns for basic validation
   const energyLevel = calculateAudioEnergy(audioData);
-  
-  // Enhanced silence detection - check for consistent low values
-  const silenceThreshold = 10;
-  const varianceThreshold = 5;
   const variance = calculateAudioVariance(audioData);
   
   console.log('Energy level:', energyLevel, 'Variance:', variance);
+  
+  // Basic silence detection
+  const silenceThreshold = 10;
+  const varianceThreshold = 5;
   
   if (energyLevel < silenceThreshold || variance < varianceThreshold) {
     console.log('Audio detected as silence/noise - low energy or variance');
     return '';
   }
   
-  const matchResult = matchAudioToTarget(targetText, energyLevel, audioSize, variance);
+  // Use Whisper for actual transcription
+  const transcription = await matchAudioToTarget(audioData, targetText);
   
-  console.log('Match result:', matchResult);
-  return matchResult;
+  console.log('Whisper transcription result:', transcription);
+  return transcription;
 }
 
 // Calculate audio energy to determine speech characteristics
@@ -129,52 +130,55 @@ function calculateAudioVariance(audioData: Uint8Array): number {
   return variance / sampleSize;
 }
 
-// Match audio characteristics to target word with better silence detection
-function matchAudioToTarget(target: string, energy: number, size: number, variance: number): string {
-  const targetLower = target.toLowerCase();
-  
-  // Strict silence detection
-  if (energy < 8 || variance < 3) {
-    console.log('Detected as silence - very low energy or variance');
-    return '';
-  }
-  
-  // Audio size and energy based matching (simplified phonetic analysis)
-  const wordCharacteristics = {
-    'hello': { minEnergy: 15, sizeRange: [3000, 10000], minVariance: 8 },
-    'apple': { minEnergy: 12, sizeRange: [2000, 8000], minVariance: 6 },
-    'mother': { minEnergy: 18, sizeRange: [3500, 12000], minVariance: 10 },
-    'fish': { minEnergy: 20, sizeRange: [1500, 6000], minVariance: 8 },
-    'book': { minEnergy: 12, sizeRange: [1500, 6000], minVariance: 6 },
-    'water': { minEnergy: 15, sizeRange: [2500, 9000], minVariance: 8 }
-  };
-  
-  const targetChar = wordCharacteristics[targetLower];
-  if (!targetChar) {
-    // For unknown words, be more conservative
-    if (energy > 20 && variance > 10 && size > 3000) {
-      return Math.random() > 0.7 ? targetLower : '';
+// Use Whisper for actual speech transcription
+async function matchAudioToTarget(audioData: Uint8Array, target: string): Promise<string> {
+  try {
+    console.log(`Transcribing audio for target: "${target}"`);
+    
+    // Convert audio data to base64 for Hugging Face API
+    const base64Audio = btoa(String.fromCharCode(...audioData));
+    
+    // Use Hugging Face Whisper API for transcription
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/openai/whisper-tiny.en",
+      {
+        headers: {
+          "Authorization": `Bearer ${Deno.env.get('HUGGINGFACE_API_KEY')}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          inputs: base64Audio,
+          parameters: {
+            return_timestamps: false,
+            language: "en"
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Hugging Face API error:', response.status, response.statusText);
+      return "";
     }
-    return '';
-  }
-  
-  // Stricter matching criteria
-  const energyMatch = energy >= targetChar.minEnergy;
-  const sizeMatch = size >= targetChar.sizeRange[0] && size <= targetChar.sizeRange[1];
-  const varianceMatch = variance >= targetChar.minVariance;
-  
-  console.log('Match check:', { energyMatch, sizeMatch, varianceMatch, energy, size, variance });
-  
-  if (energyMatch && sizeMatch && varianceMatch) {
-    // All criteria met - likely a good match
-    return Math.random() > 0.3 ? targetLower : '';
-  } else if (energyMatch && varianceMatch) {
-    // Partial match - be conservative
-    return Math.random() > 0.7 ? '' : '';
-  } else {
-    // Poor match
-    console.log('Poor match - returning empty');
-    return '';
+
+    const result = await response.json();
+    const transcript = (result.text || "").trim().toLowerCase();
+    
+    console.log(`Whisper Transcript: "${transcript}"`);
+    
+    // Calculate similarity using sequence matching algorithm (like Python's SequenceMatcher)
+    const targetLower = target.toLowerCase();
+    const similarity = calculateSequenceSimilarity(targetLower, transcript);
+    
+    console.log(`Similarity ratio: ${similarity}`);
+    
+    // Return transcript if similarity is reasonable (>= 0.6)
+    return similarity >= 0.6 ? transcript : "";
+    
+  } catch (error) {
+    console.error('Error in matchAudioToTarget:', error);
+    return "";
   }
 }
 
