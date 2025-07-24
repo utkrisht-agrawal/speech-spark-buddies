@@ -126,33 +126,36 @@ export class AdvancedSpeechRecognition {
 
   async recognizeSpeech(audioBlob: Blob, targetText?: string): Promise<SpeechRecognitionResult> {
     try {
-      console.log('Converting audio for FREE Whisper backend processing...');
+      console.log('Converting audio for FastAPI backend processing...');
       
-      // Convert blob to base64
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      // Create FormData for FastAPI endpoint
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('target_phoneme', targetText || '');
+      formData.append('mode', 'phoneme');
       
-      console.log('Sending audio to FREE speech recognition service (Hugging Face Whisper)...');
+      console.log('Sending audio to FastAPI speech recognition service...');
       
-      const { data, error } = await supabase.functions.invoke('speech-recognition', {
-        body: {
-          audio: base64Audio,
-          targetText: targetText
-        }
+      const response = await fetch('http://localhost:8001/score', {
+        method: 'POST',
+        body: formData
       });
 
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error('Speech recognition failed: ' + error.message);
+      if (!response.ok) {
+        throw new Error(`FastAPI error: ${response.status} ${response.statusText}`);
       }
 
-      console.log('FREE Whisper speech recognition result:', data);
+      const data = await response.json();
+      console.log('FastAPI speech recognition result:', data);
       
       return {
-        transcription: data.transcription || '',
-        similarityScore: data.similarityScore || 0,
-        visemeScore: data.visemeScore || 0,
-        phonemeAnalysis: data.phonemeAnalysis
+        transcription: data.transcript || '',
+        similarityScore: data.score || 0,
+        visemeScore: data.score || 0,
+        phonemeAnalysis: {
+          spokenPhoneme: data.spoken_phoneme,
+          targetPhoneme: data.target_phoneme
+        }
       };
       
     } catch (error) {
