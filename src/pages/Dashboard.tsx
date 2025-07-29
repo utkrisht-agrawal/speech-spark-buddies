@@ -3,11 +3,14 @@ import React from 'react';
 import { Calendar, Award, Flame, Target, BookOpen, Mic } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
 import ProgressBar from '@/components/ProgressBar';
+import DailyExerciseSection from '@/components/DailyExerciseSection';
 import { useUserProgress } from '@/hooks/useUserProgress';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
   const { userStats, todaysPractice, badges, loading } = useUserProgress();
+  const { user } = useAuth();
 
   if (loading) {
     return (
@@ -111,6 +114,13 @@ const Dashboard = () => {
             <p className="text-xs text-gray-600">Completed</p>
           </div>
         </div>
+
+        {/* Daily Exercises - New Section */}
+        {user && (
+          <div className="mb-6">
+            <DailyExerciseSection userId={user.id} />
+          </div>
+        )}
 
         {/* Today's Practice */}
         <div className="bg-white rounded-3xl p-6 mb-6 shadow-lg border border-gray-100">

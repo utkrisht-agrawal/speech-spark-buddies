@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Users, BookOpen, Target, BarChart3, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ExerciseCreationForm from '@/components/ExerciseCreationForm';
 
 interface TherapistDashboardProps {
   therapistData: any;
@@ -39,18 +40,8 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showExerciseForm, setShowExerciseForm] = useState(false);
   const { toast } = useToast();
-
-  // Exercise creation form state
-  const [newExercise, setNewExercise] = useState<Exercise>({
-    type: 'phoneme',
-    title: '',
-    instruction: '',
-    content: '',
-    difficulty: 1,
-    points: 10,
-    required_accuracy: 70,
-  });
 
   const [assignmentData, setAssignmentData] = useState({
     exerciseId: '',
@@ -157,30 +148,22 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
     }
   };
 
-  const createExercise = async () => {
-    if (!newExercise.title || !newExercise.instruction || !newExercise.content) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const createExercise = async (exerciseData: any) => {
     setLoading(true);
     try {
-      const contentArray = typeof newExercise.content === 'string' 
-        ? newExercise.content.split('\n').filter(line => line.trim())
-        : newExercise.content;
-
       const { data: userData } = await supabase.auth.getUser();
       
       const { data, error } = await supabase
         .from('exercises')
         .insert({
-          ...newExercise,
+          title: exerciseData.title,
+          type: exerciseData.type,
+          instruction: exerciseData.instruction,
+          content: exerciseData.content,
+          difficulty: exerciseData.difficulty,
+          points: exerciseData.points,
+          required_accuracy: exerciseData.requiredAccuracy,
           created_by: userData.user?.id,
-          content: contentArray.length === 1 ? contentArray[0] : contentArray,
         })
         .select()
         .single();
@@ -192,16 +175,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
         description: "Exercise created successfully!",
       });
 
-      setNewExercise({
-        type: 'phoneme',
-        title: '',
-        instruction: '',
-        content: '',
-        difficulty: 1,
-        points: 10,
-        required_accuracy: 70,
-      });
-
+      setShowExerciseForm(false);
       fetchExercises();
     } catch (error) {
       console.error('Error creating exercise:', error);
@@ -323,97 +297,39 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
     </div>
   );
 
-  const renderCreateExercise = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Exercise</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Exercise Type</label>
-            <Select value={newExercise.type} onValueChange={(value: any) => setNewExercise({...newExercise, type: value})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="phoneme">Phoneme</SelectItem>
-                <SelectItem value="word">Word</SelectItem>
-                <SelectItem value="sentence">Sentence</SelectItem>
-                <SelectItem value="breathing">Breathing</SelectItem>
-                <SelectItem value="game">Game</SelectItem>
-              </SelectContent>
-            </Select>
+  const renderCreateExercise = () => {
+    if (showExerciseForm) {
+      return (
+        <ExerciseCreationForm
+          onSubmit={createExercise}
+          onCancel={() => setShowExerciseForm(false)}
+        />
+      );
+    }
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Create New Exercise</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <div className="mb-4">
+            <BookOpen className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              Create Interactive Exercises
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Design custom phoneme, word, and sentence exercises with visual guides
+            </p>
           </div>
-          
-          <div>
-            <label className="text-sm font-medium">Difficulty</label>
-            <Select value={newExercise.difficulty.toString()} onValueChange={(value) => setNewExercise({...newExercise, difficulty: parseInt(value) as 1 | 2 | 3})}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Easy</SelectItem>
-                <SelectItem value="2">Medium</SelectItem>
-                <SelectItem value="3">Hard</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Title</label>
-          <Input
-            value={newExercise.title}
-            onChange={(e) => setNewExercise({...newExercise, title: e.target.value})}
-            placeholder="Exercise title"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Instructions</label>
-          <Textarea
-            value={newExercise.instruction}
-            onChange={(e) => setNewExercise({...newExercise, instruction: e.target.value})}
-            placeholder="Instructions for the student"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium">Content</label>
-          <Textarea
-            value={typeof newExercise.content === 'string' ? newExercise.content : newExercise.content.join('\n')}
-            onChange={(e) => setNewExercise({...newExercise, content: e.target.value})}
-            placeholder="Exercise content (one item per line for multiple items)"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Points</label>
-            <Input
-              type="number"
-              value={newExercise.points}
-              onChange={(e) => setNewExercise({...newExercise, points: parseInt(e.target.value)})}
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm font-medium">Required Accuracy (%)</label>
-            <Input
-              type="number"
-              value={newExercise.required_accuracy}
-              onChange={(e) => setNewExercise({...newExercise, required_accuracy: parseInt(e.target.value)})}
-            />
-          </div>
-        </div>
-
-        <Button onClick={createExercise} disabled={loading}>
-          {loading ? 'Creating...' : 'Create Exercise'}
-        </Button>
-      </CardContent>
-    </Card>
-  );
+          <Button onClick={() => setShowExerciseForm(true)} size="lg">
+            <Plus className="w-5 h-5 mr-2" />
+            Create New Exercise
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const renderAssignExercise = () => (
     <Card>
