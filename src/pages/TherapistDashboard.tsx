@@ -1,256 +1,500 @@
-
-import React, { useState } from 'react';
-import { Users, Calendar, FileText, TrendingUp, Bell, Settings, LogOut, Plus } from 'lucide-react';
-import ProgressBar from '@/components/ProgressBar';
-import { cn } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Users, BookOpen, Target, BarChart3, Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface TherapistDashboardProps {
   therapistData: any;
   onLogout: () => void;
 }
 
-const TherapistDashboard = ({ therapistData, onLogout }: TherapistDashboardProps) => {
-  const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
+interface Exercise {
+  id?: string;
+  type: string;
+  title: string;
+  instruction: string;
+  content: any;
+  target_phonemes?: string[];
+  difficulty: number;
+  points: number;
+  required_accuracy: number;
+}
 
-  // Mock data - in real app this would come from API
-  const patients = [
-    {
-      id: 1,
-      name: 'Emma Johnson',
-      age: 7,
-      parentEmail: 'mom.johnson@email.com',
-      totalSessions: 45,
-      weeklyProgress: 78,
-      lastSession: '2024-01-15',
-      currentGoals: ['Improve consonant clarity', 'Practice multi-syllable words'],
-      nextAppointment: '2024-01-20',
-      avatar: '👧',
-      recentScores: [65, 70, 75, 78, 82]
-    },
-    {
-      id: 2,
-      name: 'Alex Chen',
-      age: 9,
-      parentEmail: 'parent.chen@email.com',
-      totalSessions: 62,
-      weeklyProgress: 85,
-      lastSession: '2024-01-14',
-      currentGoals: ['Vowel pronunciation', 'Sentence fluency'],
-      nextAppointment: '2024-01-19',
-      avatar: '👦',
-      recentScores: [70, 75, 80, 85, 88]
-    },
-    {
-      id: 3,
-      name: 'Sofia Rodriguez',
-      age: 6,
-      parentEmail: 'sofia.parent@email.com',
-      totalSessions: 28,
-      weeklyProgress: 92,
-      lastSession: '2024-01-16',
-      currentGoals: ['Initial sound practice', 'Word ending clarity'],
-      nextAppointment: '2024-01-21',
-      avatar: '👧🏽',
-      recentScores: [60, 68, 75, 85, 92]
+interface Student {
+  id: string;
+  user_id: string;
+  username: string;
+  full_name: string;
+  current_level: number;
+}
+
+const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, onLogout }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'assign' | 'students' | 'analytics'>('overview');
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Exercise creation form state
+  const [newExercise, setNewExercise] = useState<Exercise>({
+    type: 'phoneme',
+    title: '',
+    instruction: '',
+    content: '',
+    difficulty: 1,
+    points: 10,
+    required_accuracy: 70,
+  });
+
+  const [assignmentData, setAssignmentData] = useState({
+    exerciseId: '',
+    assignmentType: 'individual' as 'daily' | 'level' | 'individual',
+    selectedStudents: [] as string[],
+    ageGroup: '',
+    targetLevel: 1,
+  });
+
+  useEffect(() => {
+    fetchExercises();
+    fetchStudents();
+  }, []);
+
+  const fetchExercises = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setExercises(data || []);
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
     }
-  ];
+  };
 
-  const todayAppointments = [
-    { time: '10:00 AM', patient: 'Emma Johnson', type: 'Regular Session' },
-    { time: '2:00 PM', patient: 'Alex Chen', type: 'Progress Review' },
-    { time: '4:00 PM', patient: 'Sofia Rodriguez', type: 'Assessment' }
-  ];
+  const fetchStudents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, user_id, username, full_name, current_level')
+        .eq('role', 'child');
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-cyan-50 to-blue-50 pb-6">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b px-6 py-4">
-        <div className="flex justify-between items-center">
+      if (error) throw error;
+      setStudents(data || []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    }
+  };
+
+  const createExercise = async () => {
+    if (!newExercise.title || !newExercise.instruction || !newExercise.content) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const contentArray = typeof newExercise.content === 'string' 
+        ? newExercise.content.split('\n').filter(line => line.trim())
+        : newExercise.content;
+
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('exercises')
+        .insert({
+          ...newExercise,
+          created_by: userData.user?.id,
+          content: contentArray.length === 1 ? contentArray[0] : contentArray,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Exercise created successfully!",
+      });
+
+      setNewExercise({
+        type: 'phoneme',
+        title: '',
+        instruction: '',
+        content: '',
+        difficulty: 1,
+        points: 10,
+        required_accuracy: 70,
+      });
+
+      fetchExercises();
+    } catch (error) {
+      console.error('Error creating exercise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create exercise",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const assignExercise = async () => {
+    if (!assignmentData.exerciseId) {
+      toast({
+        title: "Error",
+        description: "Please select an exercise",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const assignments = [];
+
+      if (assignmentData.assignmentType === 'individual' && assignmentData.selectedStudents.length > 0) {
+        // Assign to specific students
+        for (const studentId of assignmentData.selectedStudents) {
+          assignments.push({
+            exercise_id: assignmentData.exerciseId,
+            assigned_to: studentId,
+            assignment_type: assignmentData.assignmentType,
+          });
+        }
+      } else {
+        // Assign to all students or by age group
+        assignments.push({
+          exercise_id: assignmentData.exerciseId,
+          assigned_to: null,
+          assignment_type: assignmentData.assignmentType,
+          age_group: assignmentData.ageGroup || 'all',
+          target_level: assignmentData.targetLevel,
+        });
+      }
+
+      const { error } = await supabase
+        .from('exercise_assignments')
+        .insert(assignments);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Exercise assigned successfully!",
+      });
+
+      setAssignmentData({
+        exerciseId: '',
+        assignmentType: 'individual',
+        selectedStudents: [],
+        ageGroup: '',
+        targetLevel: 1,
+      });
+    } catch (error) {
+      console.error('Error assigning exercise:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign exercise",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderOverview = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{students.length}</div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Created Exercises</CardTitle>
+          <BookOpen className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{exercises.length}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Active Assignments</CardTitle>
+          <Target className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">0</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Avg. Progress</CardTitle>
+          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">75%</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderCreateExercise = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Create New Exercise</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Speech Therapist Dashboard</h1>
-            <p className="text-gray-600">Welcome, Dr. {therapistData.name}</p>
+            <label className="text-sm font-medium">Exercise Type</label>
+            <Select value={newExercise.type} onValueChange={(value: any) => setNewExercise({...newExercise, type: value})}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="phoneme">Phoneme</SelectItem>
+                <SelectItem value="word">Word</SelectItem>
+                <SelectItem value="sentence">Sentence</SelectItem>
+                <SelectItem value="breathing">Breathing</SelectItem>
+                <SelectItem value="game">Game</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex items-center space-x-4">
-            <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 relative">
-              <Bell className="w-6 h-6" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-            </button>
-            <button className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">
-              <Settings className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={onLogout}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-            >
-              <LogOut className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-6 py-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-3">
-              <Users className="w-8 h-8 text-blue-500" />
-              <div>
-                <p className="text-2xl font-bold text-gray-800">{patients.length}</p>
-                <p className="text-sm text-gray-600">Active Patients</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-8 h-8 text-green-500" />
-              <div>
-                <p className="text-2xl font-bold text-gray-800">{todayAppointments.length}</p>
-                <p className="text-sm text-gray-600">Today's Sessions</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-3">
-              <TrendingUp className="w-8 h-8 text-purple-500" />
-              <div>
-                <p className="text-2xl font-bold text-gray-800">85%</p>
-                <p className="text-sm text-gray-600">Avg Progress</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-3">
-              <FileText className="w-8 h-8 text-orange-500" />
-              <div>
-                <p className="text-2xl font-bold text-gray-800">12</p>
-                <p className="text-sm text-gray-600">Reports Due</p>
-              </div>
-            </div>
+          
+          <div>
+            <label className="text-sm font-medium">Difficulty</label>
+            <Select value={newExercise.difficulty.toString()} onValueChange={(value) => setNewExercise({...newExercise, difficulty: parseInt(value) as 1 | 2 | 3})}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Easy</SelectItem>
+                <SelectItem value="2">Medium</SelectItem>
+                <SelectItem value="3">Hard</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Patient List */}
-          <div className="lg:col-span-2">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Patient Overview</h2>
-              <button className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center space-x-2 transition-colors">
-                <Plus className="w-4 h-4" />
-                <span>Add Patient</span>
-              </button>
-            </div>
-            <div className="space-y-4">
-              {patients.map((patient) => (
-                <div 
-                  key={patient.id} 
-                  className={cn(
-                    "bg-white rounded-3xl p-6 shadow-lg border cursor-pointer transition-all duration-200",
-                    selectedPatient === patient.id 
-                      ? "border-indigo-300 shadow-xl" 
-                      : "border-gray-100 hover:shadow-xl"
-                  )}
-                  onClick={() => setSelectedPatient(selectedPatient === patient.id ? null : patient.id)}
-                >
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="text-4xl">{patient.avatar}</div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-800">{patient.name}</h3>
-                      <p className="text-gray-600">Age {patient.age} • {patient.totalSessions} sessions</p>
-                      <p className="text-sm text-gray-500">{patient.parentEmail}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="bg-green-100 text-green-600 px-3 py-1 rounded-lg text-sm font-medium mb-1">
-                        {patient.weeklyProgress}%
-                      </div>
-                      <p className="text-xs text-gray-500">This Week</p>
-                    </div>
-                  </div>
+        <div>
+          <label className="text-sm font-medium">Title</label>
+          <Input
+            value={newExercise.title}
+            onChange={(e) => setNewExercise({...newExercise, title: e.target.value})}
+            placeholder="Exercise title"
+          />
+        </div>
 
-                  {selectedPatient === patient.id && (
-                    <div className="border-t pt-4 space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="font-medium text-gray-700 mb-2">Current Goals:</h4>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            {patient.currentGoals.map((goal, index) => (
-                              <li key={index} className="flex items-start space-x-2">
-                                <span className="text-indigo-400">•</span>
-                                <span>{goal}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-700 mb-2">Progress Trend:</h4>
-                          <div className="flex items-end space-x-1 h-16">
-                            {patient.recentScores.map((score, index) => (
-                              <div
-                                key={index}
-                                className="bg-indigo-400 rounded-t flex-1"
-                                style={{ height: `${(score / 100) * 100}%` }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2 pt-2">
-                        <button className="bg-indigo-100 text-indigo-600 px-4 py-2 rounded-xl text-sm hover:bg-indigo-200 transition-colors">
-                          View Details
-                        </button>
-                        <button className="bg-green-100 text-green-600 px-4 py-2 rounded-xl text-sm hover:bg-green-200 transition-colors">
-                          Schedule Session
-                        </button>
-                        <button className="bg-purple-100 text-purple-600 px-4 py-2 rounded-xl text-sm hover:bg-purple-200 transition-colors">
-                          Send Report
-                        </button>
-                      </div>
-                    </div>
-                  )}
+        <div>
+          <label className="text-sm font-medium">Instructions</label>
+          <Textarea
+            value={newExercise.instruction}
+            onChange={(e) => setNewExercise({...newExercise, instruction: e.target.value})}
+            placeholder="Instructions for the student"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Content</label>
+          <Textarea
+            value={typeof newExercise.content === 'string' ? newExercise.content : newExercise.content.join('\n')}
+            onChange={(e) => setNewExercise({...newExercise, content: e.target.value})}
+            placeholder="Exercise content (one item per line for multiple items)"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Points</label>
+            <Input
+              type="number"
+              value={newExercise.points}
+              onChange={(e) => setNewExercise({...newExercise, points: parseInt(e.target.value)})}
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium">Required Accuracy (%)</label>
+            <Input
+              type="number"
+              value={newExercise.required_accuracy}
+              onChange={(e) => setNewExercise({...newExercise, required_accuracy: parseInt(e.target.value)})}
+            />
+          </div>
+        </div>
+
+        <Button onClick={createExercise} disabled={loading}>
+          {loading ? 'Creating...' : 'Create Exercise'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const renderAssignExercise = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Assign Exercise</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Select Exercise</label>
+          <Select value={assignmentData.exerciseId} onValueChange={(value) => setAssignmentData({...assignmentData, exerciseId: value})}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose an exercise" />
+            </SelectTrigger>
+            <SelectContent>
+              {exercises.map(exercise => (
+                <SelectItem key={exercise.id} value={exercise.id!}>
+                  {exercise.title} ({exercise.type})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Assignment Type</label>
+          <Select value={assignmentData.assignmentType} onValueChange={(value: any) => setAssignmentData({...assignmentData, assignmentType: value})}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="individual">Individual Students</SelectItem>
+              <SelectItem value="daily">Daily Practice (All)</SelectItem>
+              <SelectItem value="level">Level-based</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {assignmentData.assignmentType === 'individual' && (
+          <div>
+            <label className="text-sm font-medium">Select Students</label>
+            <div className="border rounded-md p-2 max-h-32 overflow-y-auto">
+              {students.map(student => (
+                <div key={student.id} className="flex items-center space-x-2 p-1">
+                  <input
+                    type="checkbox"
+                    checked={assignmentData.selectedStudents.includes(student.user_id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setAssignmentData({
+                          ...assignmentData,
+                          selectedStudents: [...assignmentData.selectedStudents, student.user_id]
+                        });
+                      } else {
+                        setAssignmentData({
+                          ...assignmentData,
+                          selectedStudents: assignmentData.selectedStudents.filter(id => id !== student.user_id)
+                        });
+                      }
+                    }}
+                  />
+                  <span className="text-sm">{student.full_name || student.username}</span>
                 </div>
               ))}
             </div>
           </div>
+        )}
 
-          {/* Today's Schedule */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Today's Schedule</h2>
-            <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
-              <div className="space-y-4">
-                {todayAppointments.map((appointment, index) => (
-                  <div key={index} className="flex items-center space-x-4 p-3 rounded-2xl bg-gray-50">
-                    <div className="text-indigo-600 font-bold text-sm min-w-[80px]">
-                      {appointment.time}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{appointment.patient}</p>
-                      <p className="text-sm text-gray-600">{appointment.type}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full mt-4 bg-indigo-50 text-indigo-600 py-3 rounded-2xl hover:bg-indigo-100 transition-colors">
-                View Full Calendar
-              </button>
-            </div>
+        <Button onClick={assignExercise} disabled={loading}>
+          {loading ? 'Assigning...' : 'Assign Exercise'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 
-            {/* Quick Actions */}
-            <div className="mt-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button className="w-full bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow text-left">
-                  <FileText className="w-6 h-6 text-blue-500 mb-2" />
-                  <p className="font-medium text-gray-800">Create Report</p>
-                  <p className="text-sm text-gray-600">Generate progress report</p>
-                </button>
-                <button className="w-full bg-white rounded-2xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow text-left">
-                  <Users className="w-6 h-6 text-green-500 mb-2" />
-                  <p className="font-medium text-gray-800">Parent Communication</p>
-                  <p className="text-sm text-gray-600">Send updates to parents</p>
-                </button>
+  const renderStudents = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Student Management</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {students.map(student => (
+            <div key={student.id} className="flex justify-between items-center p-4 border rounded-lg">
+              <div>
+                <h3 className="font-medium">{student.full_name || student.username}</h3>
+                <p className="text-sm text-gray-600">Level {student.current_level}</p>
               </div>
+              <Badge variant="secondary">Active</Badge>
             </div>
-          </div>
+          ))}
         </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview': return renderOverview();
+      case 'create': return renderCreateExercise();
+      case 'assign': return renderAssignExercise();
+      case 'students': return renderStudents();
+      case 'analytics': return <div>Analytics coming soon...</div>;
+      default: return renderOverview();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            Therapist Dashboard
+          </h1>
+          <p className="text-lg text-gray-600">
+            Welcome, {therapistData.name}!
+          </p>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex space-x-1 mb-6 bg-white rounded-lg p-1">
+          {[
+            { id: 'overview', label: 'Overview', icon: BarChart3 },
+            { id: 'create', label: 'Create Exercise', icon: Plus },
+            { id: 'assign', label: 'Assign', icon: Target },
+            { id: 'students', label: 'Students', icon: Users },
+            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-blue-500 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        {renderContent()}
       </div>
     </div>
   );

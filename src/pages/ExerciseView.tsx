@@ -11,6 +11,7 @@ import ScoreCard from '@/components/ScoreCard';
 import { CameraWindow } from '@/components/CameraWindow';
 import AnimatedLips from '@/components/AnimatedLips';
 import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
+import { useUserProgress } from '@/hooks/useUserProgress';
 
 interface ExerciseViewProps {
   exercise: Exercise;
@@ -19,6 +20,7 @@ interface ExerciseViewProps {
 }
 
 const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBack }) => {
+  const { recordExerciseCompletion } = useUserProgress();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
@@ -259,14 +261,24 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
     setShowScore(false);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < totalItems - 1) {
       setCurrentIndex(prev => prev + 1);
       setHasRecorded(false);
       setShowScore(false);
     } else {
       // Exercise complete
-      const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length || 0;
+      const averageAccuracy = scores.reduce((sum, score) => sum + score, 0) / scores.length || 0;
+      
+      // Record completion in database
+      await recordExerciseCompletion(
+        exercise.type,
+        Math.round(averageScore),
+        Math.round(averageAccuracy),
+        exercise.id
+      );
+      
       onComplete(averageScore);
     }
   };

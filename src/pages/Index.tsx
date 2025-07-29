@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserProgress } from '@/hooks/useUserProgress';
 import { useToast } from "@/hooks/use-toast";
 import Dashboard from './Dashboard';
 import ParentDashboard from './ParentDashboard';
@@ -35,6 +36,7 @@ import { Exercise } from '@/types/curriculum';
 
 const Index = () => {
   const { user, profile, signOut, loading } = useAuth();
+  const { userStats } = useUserProgress();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('home');
@@ -64,12 +66,14 @@ const Index = () => {
         console.log('Assessment already completed');
         setNeedsAssessment(false);
         setHasCompletedAssessment(true);
+        // Set student level from database
+        setStudentLevel(userStats.currentLevel || 1);
       } else {
         console.log('Assessment not completed, setting needs assessment');
         setNeedsAssessment(true);
       }
     }
-  }, [profile?.role, profile?.assessment_completed]);
+  }, [profile?.role, profile?.assessment_completed, userStats.currentLevel]);
 
   const handleLogout = async () => {
     await signOut();
@@ -79,6 +83,7 @@ const Index = () => {
   // Listen for game and practice events
   React.useEffect(() => {
     const handleCandleGame = () => {
+      setCurrentGameType('candle-blow');
       setCurrentView('game');
     };
     

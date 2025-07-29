@@ -1,31 +1,24 @@
 
 import React from 'react';
-import { Calendar, Award, Flame, Target } from 'lucide-react';
+import { Calendar, Award, Flame, Target, BookOpen, Mic } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
 import ProgressBar from '@/components/ProgressBar';
+import { useUserProgress } from '@/hooks/useUserProgress';
 import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
-  // Mock data - in real app this would come from state/API
-  const userStats = {
-    xp: 1250,
-    maxXp: 2000,
-    streak: 7,
-    wordsLearned: 45,
-    accuracy: 82,
-  };
+  const { userStats, todaysPractice, badges, loading } = useUserProgress();
 
-  const recentBadges = [
-    { id: 1, name: 'Word Warrior', icon: '🏆', earned: true },
-    { id: 2, name: '7-Day Streak', icon: '🔥', earned: true },
-    { id: 3, name: 'Perfect Score', icon: '⭐', earned: false },
-    { id: 4, name: 'Animal Expert', icon: '🐾', earned: true },
-  ];
-
-  const todayPractice = {
-    completed: 8,
-    target: 10,
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-lg text-gray-700">Loading your progress...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 pb-20">
@@ -75,14 +68,47 @@ const Dashboard = () => {
             <p className="text-sm text-gray-600">Days in a row</p>
           </div>
 
-          {/* Words Learned */}
+          {/* Accuracy */}
           <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
             <div className="flex items-center space-x-2 mb-2">
-              <Award className="w-5 h-5 text-green-500" />
-              <span className="font-semibold text-gray-700">Words</span>
+              <Target className="w-5 h-5 text-blue-500" />
+              <span className="font-semibold text-gray-700">Accuracy</span>
             </div>
-            <p className="text-3xl font-bold text-green-500">{userStats.wordsLearned}</p>
-            <p className="text-sm text-gray-600">Learned</p>
+            <p className="text-3xl font-bold text-blue-500">{userStats.accuracy}%</p>
+            <p className="text-sm text-gray-600">Average score</p>
+          </div>
+        </div>
+
+        {/* Learning Progress Grid */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {/* Phonemes */}
+          <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+            <div className="flex items-center space-x-2 mb-2">
+              <Mic className="w-4 h-4 text-purple-500" />
+              <span className="font-semibold text-gray-700 text-sm">Phonemes</span>
+            </div>
+            <p className="text-2xl font-bold text-purple-500">{userStats.phonemesLearned}</p>
+            <p className="text-xs text-gray-600">Mastered</p>
+          </div>
+
+          {/* Words */}
+          <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+            <div className="flex items-center space-x-2 mb-2">
+              <BookOpen className="w-4 h-4 text-green-500" />
+              <span className="font-semibold text-gray-700 text-sm">Words</span>
+            </div>
+            <p className="text-2xl font-bold text-green-500">{userStats.wordsLearned}</p>
+            <p className="text-xs text-gray-600">Learned</p>
+          </div>
+
+          {/* Sentences */}
+          <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+            <div className="flex items-center space-x-2 mb-2">
+              <Award className="w-4 h-4 text-indigo-500" />
+              <span className="font-semibold text-gray-700 text-sm">Sentences</span>
+            </div>
+            <p className="text-2xl font-bold text-indigo-500">{userStats.sentencesLearned}</p>
+            <p className="text-xs text-gray-600">Completed</p>
           </div>
         </div>
 
@@ -93,9 +119,9 @@ const Dashboard = () => {
             <h2 className="text-xl font-bold text-gray-800">Today's Practice</h2>
           </div>
           <ProgressBar
-            current={todayPractice.completed}
-            max={todayPractice.target}
-            label="Words practiced today"
+            current={todaysPractice.completed}
+            max={todaysPractice.target}
+            label="Exercises completed today"
             color="purple"
             size="md"
           />
@@ -105,7 +131,7 @@ const Dashboard = () => {
         <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Your Badges</h2>
           <div className="grid grid-cols-4 gap-3">
-            {recentBadges.map((badge) => (
+            {badges.map((badge) => (
               <div
                 key={badge.id}
                 className={cn(
