@@ -97,28 +97,36 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
       // Load parent assignments
       const { data: parentData, error: parentError } = await supabase
         .from('student_parent_assignments')
-        .select(`
-          id,
-          student_id,
-          parent_id,
-          assigned_at,
-          is_active,
-          student:student_id(username, full_name),
-          parent:parent_id(username, full_name)
-        `)
+        .select('*')
         .eq('is_active', true);
 
       if (parentError) throw parentError;
       
-      const formattedParentAssignments = (parentData || []).map(assignment => ({
-        id: assignment.id,
-        student_id: assignment.student_id,
-        parent_id: assignment.parent_id,
-        student_name: (assignment.student as any)?.full_name || (assignment.student as any)?.username || 'Unknown',
-        assigned_name: (assignment.parent as any)?.full_name || (assignment.parent as any)?.username || 'Unknown',
-        assigned_at: assignment.assigned_at,
-        is_active: assignment.is_active
-      }));
+      // Get student and parent details separately
+      const formattedParentAssignments = [];
+      for (const assignment of parentData || []) {
+        const { data: studentData } = await supabase
+          .from('profiles')
+          .select('username, full_name')
+          .eq('user_id', assignment.student_id)
+          .single();
+
+        const { data: parentData } = await supabase
+          .from('profiles')
+          .select('username, full_name')
+          .eq('user_id', assignment.parent_id)
+          .single();
+
+        formattedParentAssignments.push({
+          id: assignment.id,
+          student_id: assignment.student_id,
+          parent_id: assignment.parent_id,
+          student_name: studentData?.full_name || studentData?.username || 'Unknown',
+          assigned_name: parentData?.full_name || parentData?.username || 'Unknown',
+          assigned_at: assignment.assigned_at,
+          is_active: assignment.is_active
+        });
+      }
       setParentAssignments(formattedParentAssignments);
 
     } catch (error) {
