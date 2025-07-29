@@ -201,6 +201,22 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
 
     setLoading(true);
     try {
+      console.log('Starting exercise assignment...');
+      
+      // Get current user
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      console.log('Current user:', userData);
+      
+      if (userError || !userData.user) {
+        console.error('User error:', userError);
+        toast({
+          title: "Error",
+          description: "You must be logged in to assign exercises",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const assignments = [];
 
       if (assignmentData.assignmentType === 'individual' && assignmentData.selectedStudents.length > 0) {
@@ -209,6 +225,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
           assignments.push({
             exercise_id: assignmentData.exerciseId,
             assigned_to: studentId,
+            assigned_by: userData.user.id, // Add this required field
             assignment_type: assignmentData.assignmentType,
           });
         }
@@ -217,11 +234,14 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
         assignments.push({
           exercise_id: assignmentData.exerciseId,
           assigned_to: null,
+          assigned_by: userData.user.id, // Add this required field
           assignment_type: assignmentData.assignmentType,
           age_group: assignmentData.ageGroup || 'all',
           target_level: assignmentData.targetLevel,
         });
       }
+
+      console.log('Assignment data to insert:', assignments);
 
       const { error } = await supabase
         .from('exercise_assignments')
