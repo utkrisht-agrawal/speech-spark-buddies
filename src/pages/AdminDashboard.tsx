@@ -132,6 +132,24 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
     }
 
     try {
+      // Check if assignment already exists
+      const { data: existingAssignment } = await supabase
+        .from('student_therapist_assignments')
+        .select('id')
+        .eq('student_id', selectedStudent)
+        .eq('therapist_id', selectedTherapist)
+        .eq('is_active', true)
+        .single();
+
+      if (existingAssignment) {
+        toast({
+          title: "Assignment Already Exists",
+          description: "This student is already assigned to this therapist",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('student_therapist_assignments')
         .insert({
@@ -140,7 +158,17 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
           assigned_by: profile?.user_id
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Assignment Already Exists",
+            description: "This student is already assigned to this therapist",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Success",
@@ -171,6 +199,24 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
     }
 
     try {
+      // Check if assignment already exists
+      const { data: existingAssignment } = await supabase
+        .from('student_parent_assignments')
+        .select('id')
+        .eq('student_id', selectedStudent)
+        .eq('parent_id', selectedParent)
+        .eq('is_active', true)
+        .single();
+
+      if (existingAssignment) {
+        toast({
+          title: "Assignment Already Exists",
+          description: "This student is already assigned to this parent",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('student_parent_assignments')
         .insert({
@@ -179,7 +225,17 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
           assigned_by: profile?.user_id
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Assignment Already Exists",
+            description: "This student is already assigned to this parent",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Success",
