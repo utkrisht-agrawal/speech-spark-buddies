@@ -15,7 +15,7 @@ export default function AuthPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'child' | 'parent' | 'therapist'>('child');
+  const [role, setRole] = useState<'child' | 'parent' | 'therapist' | 'admin'>('child');
   const [loading, setLoading] = useState(false);
   
   const { signIn, signUp, user, loading: authLoading } = useAuth();
@@ -82,6 +82,13 @@ export default function AuthPage() {
       title: 'Speech Therapist',
       description: 'Professional tools & insights',
       gradient: 'from-green-400 to-emerald-500'
+    },
+    {
+      value: 'admin',
+      icon: UserCheck,
+      title: 'Administrator',
+      description: 'Manage users & assignments',
+      gradient: 'from-red-400 to-orange-500'
     }
   ];
 
@@ -165,9 +172,9 @@ export default function AuthPage() {
 
                 <div className="space-y-4">
                   <Label className="text-sm font-medium text-gray-700">Choose Your Role</Label>
-                  <RadioGroup 
+                   <RadioGroup 
                     value={role} 
-                    onValueChange={(value) => setRole(value as 'child' | 'parent' | 'therapist')}
+                    onValueChange={(value) => setRole(value as 'child' | 'parent' | 'therapist' | 'admin')}
                     className="space-y-3"
                   >
                     {roleOptions.map((option) => (
