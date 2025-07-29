@@ -105,9 +105,6 @@ export class AdvancedSpeechRecognition {
         const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
         console.log('Audio blob created:', audioBlob.size, 'bytes', 'type:', audioBlob.type);
         
-        // Auto-download the audio blob for debugging
-        this.downloadAudioBlob(audioBlob);
-        
         // Clean up
         if (this.stream) {
           this.stream.getTracks().forEach(track => {
