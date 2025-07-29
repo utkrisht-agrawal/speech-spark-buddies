@@ -65,6 +65,7 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
   isAnimating = false, 
   className = "" 
 }) => {
+  console.log(phoneme);
   const [currentImage, setCurrentImage] = useState(phonemeImages['REST']);
   const [animationPhase, setAnimationPhase] = useState(0);
 
