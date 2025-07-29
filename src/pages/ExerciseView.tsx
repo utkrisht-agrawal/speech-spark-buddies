@@ -9,6 +9,8 @@ import AvatarGuide from '@/components/AvatarGuide';
 import RecordButton from '@/components/RecordButton';
 import ScoreCard from '@/components/ScoreCard';
 import { CameraWindow } from '@/components/CameraWindow';
+import { VisemeGuide } from '@/components/VisemeGuide';
+import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 
 interface ExerciseViewProps {
   exercise: Exercise;
@@ -23,40 +25,63 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
   const [showScore, setShowScore] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
   const [spokenWords, setSpokenWords] = useState<string[]>([]);
+  const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const isArrayContent = Array.isArray(exercise.content);
   const currentContent = isArrayContent ? exercise.content[currentIndex] : exercise.content;
   const totalItems = isArrayContent ? exercise.content.length : 1;
   const progress = ((currentIndex + 1) / totalItems) * 100;
 
-  const handleToggleRecording = () => {
-    setIsRecording(!isRecording);
-    
+  const handleToggleRecording = async () => {
     if (!isRecording) {
-      // Start recording
-      setTimeout(() => {
-        // Simulate speech recognition
+      try {
+        setIsRecording(true);
+        setIsProcessing(false);
+        
+        await speechRecognition.startRecording();
+        
+      } catch (error) {
+        console.error('Recording failed:', error);
         setIsRecording(false);
+        setIsProcessing(false);
+      }
+    } else {
+      try {
+        setIsRecording(false);
+        setIsProcessing(true);
+        
+        const audioBlob = await speechRecognition.stopRecording();
+        
+        // Process with speech recognition
+        const targetPhonemes = exercise.targetPhonemes || [];
+        const recognitionResult = await speechRecognition.recognizeSpeech(
+          audioBlob, 
+          targetPhonemes.join(' ')
+        );
+        
+        setIsProcessing(false);
         setHasRecorded(true);
         
-        // Mock speech-to-text result
-        const mockSpoken = generateMockSpokenText(currentContent.toString());
-        const mockScore = calculateMockScore(currentContent.toString(), mockSpoken);
-        
+        // Store results
         setSpokenWords(prev => {
           const newSpoken = [...prev];
-          newSpoken[currentIndex] = mockSpoken;
+          newSpoken[currentIndex] = recognitionResult.transcription;
           return newSpoken;
         });
         
         setScores(prev => {
           const newScores = [...prev];
-          newScores[currentIndex] = mockScore;
+          newScores[currentIndex] = recognitionResult.similarityScore;
           return newScores;
         });
         
         setShowScore(true);
-      }, 2000);
+      } catch (error) {
+        console.error('Processing failed:', error);
+        setIsRecording(false);
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -108,22 +133,36 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
   };
 
   const renderExerciseContent = () => {
+    const targetPhonemes = exercise.targetPhonemes || [];
+    const currentPhonemes = exercise.type === 'phoneme' 
+      ? [currentContent.toString()]
+      : targetPhonemes;
+
     switch (exercise.type) {
       case 'phoneme':
         return (
-          <div className="text-center">
+          <div className="text-center space-y-6">
             <div className="text-6xl font-bold text-blue-600 mb-4">
               /{currentContent}/
             </div>
             <p className="text-lg text-gray-600">
               Say this phoneme sound clearly
             </p>
+            
+            {/* Viseme Guide for phoneme */}
+            <div className="flex justify-center">
+              <VisemeGuide
+                word={currentContent.toString()}
+                phonemes={currentPhonemes}
+                className="max-w-md"
+              />
+            </div>
           </div>
         );
 
       case 'word':
         return (
-          <div className="text-center">
+          <div className="text-center space-y-6">
             <div className="text-4xl font-bold text-green-600 mb-4 uppercase">
               {currentContent}
             </div>
@@ -133,24 +172,44 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
             <p className="text-lg text-gray-600">
               Say this word clearly
             </p>
+            
+            {/* Viseme Guide for word */}
+            <div className="flex justify-center">
+              <VisemeGuide
+                word={currentContent.toString()}
+                phonemes={currentPhonemes}
+                className="max-w-md"
+              />
+            </div>
           </div>
         );
 
       case 'sentence':
         return (
-          <div className="text-center">
+          <div className="text-center space-y-6">
             <div className="text-2xl font-semibold text-purple-600 mb-4 leading-relaxed">
               "{currentContent}"
             </div>
             <p className="text-lg text-gray-600">
               Say this sentence with proper rhythm and pauses
             </p>
+            
+            {/* Viseme Guide for sentence */}
+            {currentPhonemes.length > 0 && (
+              <div className="flex justify-center">
+                <VisemeGuide
+                  word={currentContent.toString()}
+                  phonemes={currentPhonemes}
+                  className="max-w-md"
+                />
+              </div>
+            )}
           </div>
         );
 
       case 'conversation':
         return (
-          <div className="text-center">
+          <div className="text-center space-y-6">
             <div className="bg-blue-50 p-4 rounded-xl mb-4">
               <div className="text-lg font-medium text-blue-800 mb-2">
                 Conversation Practice
@@ -162,15 +221,37 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
             <p className="text-lg text-gray-600">
               Say this as if you're having a real conversation
             </p>
+            
+            {/* Viseme Guide for conversation */}
+            {currentPhonemes.length > 0 && (
+              <div className="flex justify-center">
+                <VisemeGuide
+                  word={currentContent.toString()}
+                  phonemes={currentPhonemes}
+                  className="max-w-md"
+                />
+              </div>
+            )}
           </div>
         );
 
       default:
         return (
-          <div className="text-center">
+          <div className="text-center space-y-6">
             <div className="text-xl text-gray-700 mb-4">
               {currentContent}
             </div>
+            
+            {/* Viseme Guide for other types */}
+            {currentPhonemes.length > 0 && (
+              <div className="flex justify-center">
+                <VisemeGuide
+                  word={currentContent.toString()}
+                  phonemes={currentPhonemes}
+                  className="max-w-md"
+                />
+              </div>
+            )}
           </div>
         );
     }
@@ -259,6 +340,15 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
               isRecording={isRecording}
               onToggleRecording={handleToggleRecording}
             />
+            
+            {isProcessing && (
+              <div className="mt-4">
+                <p className="text-blue-600 mb-2">Processing your speech...</p>
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              </div>
+            )}
             
             {isRecording && (
               <div className="mt-4 flex justify-center">
