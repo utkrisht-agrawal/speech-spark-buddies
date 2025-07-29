@@ -73,20 +73,20 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
           .from('profiles')
           .select('username, full_name')
           .eq('user_id', assignment.student_id)
-          .single();
+          .maybeSingle();
 
-        const { data: therapistData } = await supabase
+        const { data: therapistDataProfile } = await supabase
           .from('profiles')
           .select('username, full_name')
           .eq('user_id', assignment.therapist_id)
-          .single();
+          .maybeSingle();
 
         formattedTherapistAssignments.push({
           id: assignment.id,
           student_id: assignment.student_id,
           therapist_id: assignment.therapist_id,
           student_name: studentData?.full_name || studentData?.username || 'Unknown',
-          assigned_name: therapistData?.full_name || therapistData?.username || 'Unknown',
+          assigned_name: therapistDataProfile?.full_name || therapistDataProfile?.username || 'Unknown',
           assigned_at: assignment.assigned_at,
           is_active: assignment.is_active
         });
@@ -109,20 +109,20 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
           .from('profiles')
           .select('username, full_name')
           .eq('user_id', assignment.student_id)
-          .single();
+          .maybeSingle();
 
-        const { data: parentData } = await supabase
+        const { data: parentDataProfile } = await supabase
           .from('profiles')
           .select('username, full_name')
           .eq('user_id', assignment.parent_id)
-          .single();
+          .maybeSingle();
 
         formattedParentAssignments.push({
           id: assignment.id,
           student_id: assignment.student_id,
           parent_id: assignment.parent_id,
           student_name: studentData?.full_name || studentData?.username || 'Unknown',
-          assigned_name: parentData?.full_name || parentData?.username || 'Unknown',
+          assigned_name: parentDataProfile?.full_name || parentDataProfile?.username || 'Unknown',
           assigned_at: assignment.assigned_at,
           is_active: assignment.is_active
         });

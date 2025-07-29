@@ -88,16 +88,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
       
       const { data: assignmentData, error } = await supabase
         .from('student_therapist_assignments')
-        .select(`
-          student_id,
-          student:student_id(
-            id,
-            user_id,
-            username,
-            full_name,
-            current_level
-          )
-        `)
+        .select('*')
         .eq('therapist_id', userData.user.id)
         .eq('is_active', true);
 
@@ -106,13 +97,25 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
         return;
       }
 
-      const studentsData = assignmentData?.map(assignment => ({
-        id: (assignment.student as any).id,
-        user_id: (assignment.student as any).user_id,
-        username: (assignment.student as any).username,
-        full_name: (assignment.student as any).full_name || (assignment.student as any).username,
-        current_level: (assignment.student as any).current_level || 1
-      })) || [];
+      // Get student details separately
+      const studentsData = [];
+      for (const assignment of assignmentData || []) {
+        const { data: studentProfile } = await supabase
+          .from('profiles')
+          .select('id, user_id, username, full_name, current_level')
+          .eq('user_id', assignment.student_id)
+          .maybeSingle();
+
+        if (studentProfile) {
+          studentsData.push({
+            id: studentProfile.id,
+            user_id: studentProfile.user_id,
+            username: studentProfile.username,
+            full_name: studentProfile.full_name || studentProfile.username,
+            current_level: studentProfile.current_level || 1
+          });
+        }
+      }
 
       setStudents(studentsData);
     } catch (error) {
