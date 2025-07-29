@@ -46,7 +46,6 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
 
   const startRecording = async () => {
     try {
-      setIsProcessing(true);
       setIsRecording(true);
       await speechRecognition.startRecording();
       
@@ -55,11 +54,21 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
         setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
       }, 100);
 
+      // Calculate recording duration based on exercise type
+      let recordingDuration = 2000; // Default 2 seconds for phoneme
+      if (exercise.type === 'word') {
+        recordingDuration = 3000; // 3 seconds for words
+      } else if (exercise.type === 'sentence') {
+        const wordCount = currentContent.toString().split(' ').length;
+        recordingDuration = wordCount * 2000; // 2 seconds per word for sentences
+      }
+
       setTimeout(async () => {
         if (speechRecognition.isRecording()) {
           const audioBlob = await speechRecognition.stopRecording();
           clearInterval(interval);
           setIsRecording(false);
+          setLastRecordedAudio(audioBlob);
           
           // Process with backend
           const target = getCurrentTarget();
@@ -70,7 +79,6 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
           
           setSoundMatch(result.similarityScore);
           setRecognitionResult(result.transcription);
-          setIsProcessing(false);
           setHasRecorded(true);
           setShowScore(true);
           
@@ -87,11 +95,10 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
             return newScores;
           });
         }
-      }, 3000);
+      }, recordingDuration);
     } catch (error) {
       console.error('Error with backend recording:', error);
       setIsRecording(false);
-      setIsProcessing(false);
     }
   };
 
@@ -130,7 +137,6 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
   const testWord = async () => {
     setIsLooping(true);
     setIsAnimating(true);
-    setIsProcessing(true);
     
     try {
       await speechRecognition.startRecording();
@@ -155,13 +161,21 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
         setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
       }, 100);
       
-      // Stop recording after animation completes
-      const recordingDuration = targetPhonemes.length > 0 ? targetPhonemes.length * animationSpeed : 3000;
+      // Calculate recording duration based on exercise type
+      let recordingDuration = 3000; // Default 3 seconds for words
+      if (exercise.type === 'sentence') {
+        const wordCount = currentContent.toString().split(' ').length;
+        recordingDuration = wordCount * 2000; // 2 seconds per word for sentences
+      } else if (exercise.type === 'phoneme') {
+        recordingDuration = 2000; // 2 seconds for phonemes
+      }
+      
       setTimeout(async () => {
         try {
           clearInterval(waveformInterval);
           const audioBlob = await speechRecognition.stopRecording();
           setIsRecording(false);
+          setLastRecordedAudio(audioBlob);
           
           const target = currentContent.toString();
           const result = await speechRecognition.recognizeSpeech(audioBlob, target);
@@ -194,8 +208,6 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
           console.error('Word recognition failed:', error);
           setSoundMatch(0);
           setRecognitionResult('Recognition failed');
-        } finally {
-          setIsProcessing(false);
         }
       }, recordingDuration);
       
@@ -203,7 +215,6 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
       console.error('Error with backend word testing:', error);
       setIsLooping(false);
       setIsAnimating(false);
-      setIsProcessing(false);
     }
   };
 
@@ -502,6 +513,23 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                     <span className="text-xs text-green-600">Ready to record</span>
                   )}
                 </div>
+                
+                {/* Listen to Recorded Audio Button */}
+                {lastRecordedAudio && (
+                  <Button
+                    onClick={() => {
+                      const audioUrl = URL.createObjectURL(lastRecordedAudio);
+                      const audio = new Audio(audioUrl);
+                      audio.play().catch(console.error);
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-8 text-xs"
+                  >
+                    <Volume2 className="w-3 h-3 mr-1" />
+                    Listen to Recording
+                  </Button>
+                )}
               </div>
 
               {/* Scoring */}
@@ -538,17 +566,6 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
         </div>
       </div>
 
-      {/* Processing Indicator */}
-      {isProcessing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-blue-600">Processing your speech...</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Score Display */}
       {showScore && (
