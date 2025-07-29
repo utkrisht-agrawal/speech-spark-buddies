@@ -41,7 +41,27 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [showExerciseForm, setShowExerciseForm] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session:', session);
+      setIsAuthenticated(!!session?.user);
+      
+      if (!session?.user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to access the therapist dashboard",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    checkAuth();
+  }, []);
 
   const [assignmentData, setAssignmentData] = useState({
     exerciseId: '',
@@ -203,15 +223,31 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
     try {
       console.log('Starting exercise assignment...');
       
-      // Get current user
+      // Get current user and verify authentication
       const { data: userData, error: userError } = await supabase.auth.getUser();
       console.log('Current user:', userData);
       
       if (userError || !userData.user) {
         console.error('User error:', userError);
         toast({
-          title: "Error",
-          description: "You must be logged in to assign exercises",
+          title: "Authentication Error",
+          description: "You must be logged in as a therapist to assign exercises. Please log in first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verify user role
+      const { data: roleData, error: roleError } = await supabase
+        .rpc('get_current_user_role');
+      
+      console.log('User role:', roleData, 'Role error:', roleError);
+      
+      if (roleError || roleData !== 'therapist') {
+        console.error('Role verification failed. Role:', roleData, 'Error:', roleError);
+        toast({
+          title: "Authorization Error", 
+          description: "Only users with therapist role can assign exercises. Please contact an administrator.",
           variant: "destructive",
         });
         return;
