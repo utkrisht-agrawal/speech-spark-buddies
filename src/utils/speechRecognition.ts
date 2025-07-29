@@ -197,22 +197,6 @@ export class AdvancedSpeechRecognition {
     }
   }
 
-  private downloadAudioBlob(audioBlob: Blob): void {
-    try {
-      const url = URL.createObjectURL(audioBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `recording-${Date.now()}.webm`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      console.log('Audio blob downloaded for debugging');
-    } catch (error) {
-      console.error('Failed to download audio blob:', error);
-    }
-  }
-
   isRecording(): boolean {
     return this.mediaRecorder?.state === 'recording';
   }
