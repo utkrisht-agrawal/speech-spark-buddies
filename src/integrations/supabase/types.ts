@@ -14,13 +14,184 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          created_at: string
+          criteria: Json
+          description: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          points_reward: number | null
+        }
+        Insert: {
+          created_at?: string
+          criteria: Json
+          description: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          points_reward?: number | null
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json
+          description?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          points_reward?: number | null
+        }
+        Relationships: []
+      }
+      daily_activities: {
+        Row: {
+          activity_date: string
+          created_at: string
+          exercises_completed: number | null
+          id: string
+          phonemes_practiced: number | null
+          sentences_practiced: number | null
+          session_duration: number | null
+          total_xp_earned: number | null
+          updated_at: string
+          user_id: string
+          words_practiced: number | null
+        }
+        Insert: {
+          activity_date?: string
+          created_at?: string
+          exercises_completed?: number | null
+          id?: string
+          phonemes_practiced?: number | null
+          sentences_practiced?: number | null
+          session_duration?: number | null
+          total_xp_earned?: number | null
+          updated_at?: string
+          user_id: string
+          words_practiced?: number | null
+        }
+        Update: {
+          activity_date?: string
+          created_at?: string
+          exercises_completed?: number | null
+          id?: string
+          phonemes_practiced?: number | null
+          sentences_practiced?: number | null
+          session_duration?: number | null
+          total_xp_earned?: number | null
+          updated_at?: string
+          user_id?: string
+          words_practiced?: number | null
+        }
+        Relationships: []
+      }
+      exercise_assignments: {
+        Row: {
+          age_group: string | null
+          assigned_by: string
+          assigned_to: string | null
+          assignment_type: string
+          created_at: string
+          exercise_id: string
+          id: string
+          is_active: boolean
+          target_level: number | null
+        }
+        Insert: {
+          age_group?: string | null
+          assigned_by: string
+          assigned_to?: string | null
+          assignment_type: string
+          created_at?: string
+          exercise_id: string
+          id?: string
+          is_active?: boolean
+          target_level?: number | null
+        }
+        Update: {
+          age_group?: string | null
+          assigned_by?: string
+          assigned_to?: string | null
+          assignment_type?: string
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          is_active?: boolean
+          target_level?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_assignments_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string
+          difficulty: number
+          id: string
+          instruction: string
+          is_active: boolean
+          points: number
+          required_accuracy: number
+          target_phonemes: string[] | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          created_by: string
+          difficulty: number
+          id?: string
+          instruction: string
+          is_active?: boolean
+          points?: number
+          required_accuracy?: number
+          target_phonemes?: string[] | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string
+          difficulty?: number
+          id?: string
+          instruction?: string
+          is_active?: boolean
+          points?: number
+          required_accuracy?: number
+          target_phonemes?: string[] | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           assessment_completed: boolean | null
           created_at: string
+          current_level: number | null
           full_name: string | null
           id: string
+          last_active_date: string | null
           role: Database["public"]["Enums"]["user_role"]
+          streak_days: number | null
+          total_xp: number | null
           updated_at: string
           user_id: string
           username: string
@@ -28,9 +199,13 @@ export type Database = {
         Insert: {
           assessment_completed?: boolean | null
           created_at?: string
+          current_level?: number | null
           full_name?: string | null
           id?: string
+          last_active_date?: string | null
           role: Database["public"]["Enums"]["user_role"]
+          streak_days?: number | null
+          total_xp?: number | null
           updated_at?: string
           user_id: string
           username: string
@@ -38,21 +213,108 @@ export type Database = {
         Update: {
           assessment_completed?: boolean | null
           created_at?: string
+          current_level?: number | null
           full_name?: string | null
           id?: string
+          last_active_date?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          streak_days?: number | null
+          total_xp?: number | null
           updated_at?: string
           user_id?: string
           username?: string
         }
         Relationships: []
       }
+      user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_progress: {
+        Row: {
+          accuracy: number
+          assignment_id: string | null
+          completed_at: string
+          exercise_id: string | null
+          exercise_type: string
+          id: string
+          score: number
+          user_id: string
+          xp_earned: number
+        }
+        Insert: {
+          accuracy: number
+          assignment_id?: string | null
+          completed_at?: string
+          exercise_id?: string | null
+          exercise_type: string
+          id?: string
+          score: number
+          user_id: string
+          xp_earned?: number
+        }
+        Update: {
+          accuracy?: number
+          assignment_id?: string | null
+          completed_at?: string
+          exercise_id?: string | null
+          exercise_type?: string
+          id?: string
+          score?: number
+          user_id?: string
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "exercise_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_progress_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       user_role: "child" | "parent" | "therapist"
