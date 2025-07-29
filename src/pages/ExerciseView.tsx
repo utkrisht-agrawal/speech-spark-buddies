@@ -34,62 +34,188 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
   const [currentPhonemeIndex, setCurrentPhonemeIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(800);
+  const [isCameraActive, setIsCameraActive] = useState(true);
+  const [isLooping, setIsLooping] = useState(false);
+  const [recognitionResult, setRecognitionResult] = useState<string>("");
+  const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
 
   const isArrayContent = Array.isArray(exercise.content);
   const currentContent = isArrayContent ? exercise.content[currentIndex] : exercise.content;
   const totalItems = isArrayContent ? exercise.content.length : 1;
   const progress = ((currentIndex + 1) / totalItems) * 100;
 
-  const handleToggleRecording = async () => {
-    if (!isRecording) {
+  const startRecording = async () => {
+    try {
+      setIsProcessing(true);
+      setIsRecording(true);
+      await speechRecognition.startRecording();
+      
+      // Generate random waveform data for visualization
+      const interval = setInterval(() => {
+        setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
+      }, 100);
+
+      setTimeout(async () => {
+        if (speechRecognition.isRecording()) {
+          const audioBlob = await speechRecognition.stopRecording();
+          clearInterval(interval);
+          setIsRecording(false);
+          
+          // Process with backend
+          const target = getCurrentTarget();
+          console.log(`🎯 Processing target: "${target}"`);
+          
+          const result = await speechRecognition.recognizeSpeech(audioBlob, target);
+          console.log(`🗣️ Backend result:`, result);
+          
+          setSoundMatch(result.similarityScore);
+          setRecognitionResult(result.transcription);
+          setIsProcessing(false);
+          setHasRecorded(true);
+          setShowScore(true);
+          
+          // Store results
+          setSpokenWords(prev => {
+            const newSpoken = [...prev];
+            newSpoken[currentIndex] = result.transcription;
+            return newSpoken;
+          });
+          
+          setScores(prev => {
+            const newScores = [...prev];
+            newScores[currentIndex] = result.similarityScore;
+            return newScores;
+          });
+        }
+      }, 3000);
+    } catch (error) {
+      console.error('Error with backend recording:', error);
+      setIsRecording(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (speechRecognition.isRecording()) {
       try {
-        setIsRecording(true);
-        setIsProcessing(false);
-        
-        await speechRecognition.startRecording();
-        
-      } catch (error) {
-        console.error('Recording failed:', error);
-        setIsRecording(false);
-        setIsProcessing(false);
-      }
-    } else {
-      try {
-        setIsRecording(false);
-        setIsProcessing(true);
-        
         const audioBlob = await speechRecognition.stopRecording();
+        setIsRecording(false);
+        setLastRecordedAudio(audioBlob);
         
-        // Process with speech recognition
-        const targetPhonemes = exercise.targetPhonemes || [];
-        const recognitionResult = await speechRecognition.recognizeSpeech(
-          audioBlob, 
-          targetPhonemes.join(' ')
-        );
+        const target = getCurrentTarget();
+        const result = await speechRecognition.recognizeSpeech(audioBlob, target);
         
+        setSoundMatch(result.similarityScore);
+        setRecognitionResult(result.transcription);
         setIsProcessing(false);
-        setHasRecorded(true);
-        
-        // Store results
-        setSpokenWords(prev => {
-          const newSpoken = [...prev];
-          newSpoken[currentIndex] = recognitionResult.transcription;
-          return newSpoken;
-        });
-        
-        setScores(prev => {
-          const newScores = [...prev];
-          newScores[currentIndex] = recognitionResult.similarityScore;
-          return newScores;
-        });
-        
-        setShowScore(true);
       } catch (error) {
-        console.error('Processing failed:', error);
+        console.error('Error stopping recording:', error);
         setIsRecording(false);
         setIsProcessing(false);
       }
     }
+  };
+
+  const testPhoneme = () => {
+    setIsAnimating(true);
+    startRecording();
+    // Simulate lip analysis
+    setTimeout(() => {
+      const newLipScore = Math.floor(Math.random() * 30) + 70;
+      setLipShapeMatch(newLipScore);
+      setIsAnimating(false);
+    }, 3000);
+  };
+
+  const testWord = async () => {
+    setIsLooping(true);
+    setIsAnimating(true);
+    setIsProcessing(true);
+    
+    try {
+      await speechRecognition.startRecording();
+      setIsRecording(true);
+      
+      // Animate through phonemes if available
+      if (targetPhonemes.length > 0) {
+        let phonemeIndex = 0;
+        const interval = setInterval(() => {
+          setCurrentPhonemeIndex(phonemeIndex);
+          phonemeIndex++;
+          if (phonemeIndex >= targetPhonemes.length) {
+            setIsLooping(false);
+            setIsAnimating(false);
+            clearInterval(interval);
+          }
+        }, animationSpeed);
+      }
+      
+      // Generate waveform data during recording
+      const waveformInterval = setInterval(() => {
+        setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
+      }, 100);
+      
+      // Stop recording after animation completes
+      const recordingDuration = targetPhonemes.length > 0 ? targetPhonemes.length * animationSpeed : 3000;
+      setTimeout(async () => {
+        try {
+          clearInterval(waveformInterval);
+          const audioBlob = await speechRecognition.stopRecording();
+          setIsRecording(false);
+          
+          const target = currentContent.toString();
+          const result = await speechRecognition.recognizeSpeech(audioBlob, target);
+          
+          setSoundMatch(result.similarityScore);
+          setRecognitionResult(result.transcription);
+          
+          // Simulate lip score for the complete word
+          const avgLipScore = Math.floor(Math.random() * 30) + 70;
+          setLipShapeMatch(avgLipScore);
+          
+          console.log(`🎯 Target: "${target}", Got: "${result.transcription}", Score: ${result.similarityScore}%`);
+          
+          setHasRecorded(true);
+          setShowScore(true);
+          
+          // Store results
+          setSpokenWords(prev => {
+            const newSpoken = [...prev];
+            newSpoken[currentIndex] = result.transcription;
+            return newSpoken;
+          });
+          
+          setScores(prev => {
+            const newScores = [...prev];
+            newScores[currentIndex] = result.similarityScore;
+            return newScores;
+          });
+        } catch (error) {
+          console.error('Word recognition failed:', error);
+          setSoundMatch(0);
+          setRecognitionResult('Recognition failed');
+        } finally {
+          setIsProcessing(false);
+        }
+      }, recordingDuration);
+      
+    } catch (error) {
+      console.error('Error with backend word testing:', error);
+      setIsLooping(false);
+      setIsAnimating(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const getCurrentTarget = () => {
+    if (exercise.type === 'phoneme') {
+      return currentContent.toString();
+    } else if (exercise.type === 'word') {
+      return currentContent.toString();
+    } else if (exercise.type === 'sentence') {
+      return currentContent.toString();
+    }
+    return currentContent.toString();
   };
 
   const generateMockSpokenText = (target: string): string => {
@@ -287,7 +413,7 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                   {/* Test Controls */}
                   <div className="pt-2 border-t border-gray-200">
                     <Button
-                      onClick={handleToggleRecording}
+                      onClick={testPhoneme}
                       variant="default"
                       size="sm"
                       className="w-full h-8 text-xs mb-2 bg-blue-600 hover:bg-blue-700"
@@ -298,11 +424,11 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                     </Button>
                     
                     <Button
-                      onClick={handleToggleRecording}
+                      onClick={testWord}
                       variant="default"
                       size="sm"
                       className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
-                      disabled={isRecording || isProcessing}
+                      disabled={isRecording || isProcessing || isLooping}
                     >
                       <Play className="w-3 h-3 mr-1" />
                       Test Word
@@ -346,7 +472,7 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
               {/* Camera Feed */}
               <div className="mb-4">
                 <CameraWindow 
-                  isActive={isRecording}
+                  isActive={isCameraActive}
                   className="w-full h-32 mb-2"
                 />
                 <div className="flex items-center justify-center">
@@ -394,6 +520,11 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                     <span className="text-xs text-green-600">{soundMatch}%</span>
                   </div>
                   <Progress value={soundMatch} className="h-2" />
+                  {recognitionResult && (
+                    <div className="text-xs text-green-700 mt-1">
+                      "{recognitionResult}"
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
