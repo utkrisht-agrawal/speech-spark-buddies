@@ -283,46 +283,46 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
     : currentPhonemes;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 flex flex-col">
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-2 flex flex-col overflow-hidden">
       {/* Compact Header */}
-      <div className="flex items-center justify-between mb-6 px-4">
+      <div className="flex items-center justify-between mb-3 px-2">
         <Button
           onClick={onBack}
           variant="outline"
           size="sm"
-          className="flex items-center gap-2"
+          className="flex items-center gap-1 h-8"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-3 h-3" />
           Back
         </Button>
         
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800">{exercise.title}</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-lg font-bold text-gray-800">{exercise.title}</h1>
+          <p className="text-xs text-gray-600">
             {currentIndex + 1} of {totalItems}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-lg">
-          <div className="text-4xl font-bold text-purple-600">{overallScore}</div>
+        <div className="flex items-center gap-1 text-sm">
+          <div className="text-3xl font-bold text-purple-600">{overallScore}</div>
         </div>
       </div>
 
-      {/* Main Content - Full width responsive */}
-      <div className="flex-1 w-full">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 h-full max-w-7xl mx-auto">
+      {/* Main Content - No scroll */}
+      <div className="flex-1 max-w-full mx-auto overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full">
           
           {/* Main Practice Card - 2/3 width */}
-          <div className="xl:col-span-2 h-full">
-            <Card className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 h-full flex flex-col">
+          <div className="lg:col-span-2 h-full">
+            <Card className="p-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 h-full flex flex-col">
               
-              {/* Header with Content Navigation */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-purple-200">
+              {/* Compact Header with Content Navigation */}
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-purple-200">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-800">
+                  <h2 className="text-xl font-bold text-gray-800">
                     {currentContent}
                   </h2>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs text-gray-600">
                     {currentIndex + 1} / {totalItems}
                   </p>
                 </div>
@@ -331,18 +331,18 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                   <Button
                     onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
                     variant="outline"
-                    size="default"
+                    size="sm"
                     disabled={currentIndex === 0}
-                    className="px-4"
+                    className="h-8 px-2 text-xs"
                   >
                     ← Prev
                   </Button>
                   <Button
                     onClick={() => setCurrentIndex(Math.min(totalItems - 1, currentIndex + 1))}
                     variant="outline"
-                    size="default"
+                    size="sm"
                     disabled={currentIndex === totalItems - 1}
-                    className="px-4"
+                    className="h-8 px-2 text-xs"
                   >
                     Next →
                   </Button>
@@ -350,20 +350,20 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
               </div>
 
               {/* Phoneme/Content Division */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">
                   {exercise.type === 'phoneme' ? 'Phonemes' : 
                    exercise.type === 'word' ? 'Words' : 
                    exercise.type === 'sentence' ? 'Sentences' : 'Content'}
                 </h3>
-                <div className="flex gap-2 mb-4 flex-wrap">
+                <div className="flex gap-1 mb-3 flex-wrap">
                   {isArrayContent ? (exercise.content as string[]).map((item, idx) => (
                     <Button
                       key={idx}
                       onClick={() => setCurrentIndex(idx)}
                       variant={idx === currentIndex ? "default" : "outline"}
-                      size="default"
-                      className={`min-w-[60px] ${
+                      size="sm"
+                      className={`min-w-[50px] h-7 text-xs ${
                         idx === currentIndex 
                           ? "bg-purple-600 text-white" 
                           : "bg-white text-gray-700 hover:bg-purple-50"
@@ -372,7 +372,7 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                       {exercise.type === 'phoneme' ? `/${item}/` : item.toString().toUpperCase()}
                     </Button>
                   )) : (
-                    <Button variant="default" size="default">
+                    <Button variant="default" className="h-7 text-xs">
                       {exercise.type === 'phoneme' ? `/${currentContent}/` : currentContent.toString().toUpperCase()}
                     </Button>
                   )}
@@ -380,10 +380,10 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
               </div>
 
               {/* Lip Animation Guide - Flexible height */}
-              <div className="bg-white rounded-xl p-6 border border-gray-200 flex-1 flex">
+              <div className="bg-white rounded-xl p-4 border border-gray-200 flex-1 flex">
                 {/* Left Side - Controls */}
-                <div className="flex flex-col gap-3 pr-6 border-r border-gray-200 min-w-[180px]">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                <div className="flex flex-col gap-2 pr-4 border-r border-gray-200 min-w-[140px]">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
                     Controls
                   </h3>
                   
@@ -391,27 +391,27 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                   <Button
                     onClick={playPronunciation}
                     variant="outline"
-                    size="default"
-                    className="bg-white justify-start"
+                    size="sm"
+                    className="bg-white h-8 text-xs justify-start"
                   >
-                    <Volume2 className="w-4 h-4 mr-2" />
+                    <Volume2 className="w-3 h-3 mr-1" />
                     Hear Word
                   </Button>
                   
                   <Button
                     onClick={playPronunciation}
                     variant="outline"
-                    size="default"
-                    className="bg-white justify-start"
+                    size="sm"
+                    className="bg-white h-8 text-xs justify-start"
                   >
                     🔊 Hear Phoneme
                   </Button>
                   
                   {/* Speed Control */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-sm text-gray-600">Speed:</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-gray-600">Speed:</span>
                     <select 
-                      className="text-sm border rounded px-3 py-2 bg-white"
+                      className="text-xs border rounded px-2 py-1 bg-white"
                       onChange={(e) => setAnimationSpeed(Number(e.target.value))}
                       value={animationSpeed}
                     >
@@ -422,49 +422,52 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
                   </div>
                   
                   {/* Test Controls */}
-                  <div className="pt-4 border-t border-gray-200">
+                  <div className="pt-2 border-t border-gray-200">
                     <Button
                       onClick={testPhoneme}
                       variant="default"
-                      size="default"
-                      className="w-full mb-3 bg-blue-600 hover:bg-blue-700"
+                      size="sm"
+                      className="w-full h-8 text-xs mb-2 bg-blue-600 hover:bg-blue-700"
                       disabled={isRecording || isProcessing}
                     >
-                      <Mic className="w-4 h-4 mr-2" />
+                      <Mic className="w-3 h-3 mr-1" />
                       Test Phoneme
                     </Button>
                     
                     <Button
                       onClick={testWord}
                       variant="default"
-                      size="default"
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      size="sm"
+                      className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
                       disabled={isRecording || isProcessing || isLooping}
                     >
-                      <Play className="w-4 h-4 mr-2" />
+                      <Play className="w-3 h-3 mr-1" />
                       Test Word
                     </Button>
                   </div>
                 </div>
                 
                 {/* Right Side - Animation */}
-                <div className="flex-1 flex flex-col pl-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Lip Guide
+                <div className="flex-1 flex flex-col pl-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      Lip Animation Guide
                     </h3>
-                    {(isLooping || isAnimating) && (
-                      <Badge variant="secondary">
-                        {isLooping ? "🔄 Looping" : "⏯️ Animating"}
-                      </Badge>
-                    )}
+                    <div className="text-xs text-gray-600">
+                      Current: <span className="font-semibold text-purple-600">
+                        {exercise.type === 'phoneme' ? currentContent : 
+                         targetPhonemes[currentPhonemeIndex] || currentContent.toString().charAt(0)}
+                      </span>
+                    </div>
                   </div>
                   
+                  {/* Animated Lips */}
                   <div className="flex-1 flex items-center justify-center">
-                    <AnimatedLips 
-                      phoneme={targetPhonemes[currentPhonemeIndex] || currentContent.toString()}
-                      isAnimating={false}
-                      className="scale-100"
+                    <AnimatedLips
+                      phoneme={exercise.type === 'phoneme' ? currentContent.toString() : 
+                               targetPhonemes[currentPhonemeIndex] || currentContent.toString().charAt(0)}
+                      isAnimating={isAnimating}
+                      className="max-w-full max-h-full"
                     />
                   </div>
                 </div>
@@ -472,119 +475,119 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
             </Card>
           </div>
 
-          {/* Right Column - Status Cards */}
-          <div className="xl:col-span-1 h-full">
-            <div className="grid grid-rows-2 gap-6 h-full">
+          {/* Side Panel - Camera & Analysis */}
+          <div className="lg:col-span-1 h-full">
+            <Card className="p-4 h-full flex flex-col">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Practice & Analysis</h3>
               
-            {/* Camera Card */}
-            <Card className="bg-white border-2 border-gray-200 h-full flex flex-col">
-              <CardHeader className="p-4 pb-3">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  📹 Live Camera
-                  <Badge variant={isCameraActive ? "default" : "secondary"}>
-                    {isCameraActive ? "ON" : "OFF"}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent className="p-4 pt-0 flex-1 flex flex-col">
-                <div className="flex-1 bg-gray-100 rounded-lg overflow-hidden mb-3">
-                  <CameraWindow className="w-full h-full object-cover" />
+              {/* Camera Feed */}
+              <div className="mb-4">
+                <CameraWindow 
+                  isActive={isCameraActive}
+                  className="w-full h-32 mb-2"
+                />
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                  <span className="text-xs text-red-600">Live Video Feed</span>
                 </div>
-                
-                <div className="text-sm text-gray-600 text-center">
-                  Lip shape analysis: <span className="font-semibold text-purple-600">{lipShapeMatch}%</span>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Recording Card */}
-            <Card className="bg-white border-2 border-gray-200 h-full flex flex-col">
-              <CardHeader className="p-4 pb-3">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  🎤 Recording
-                  <Badge variant={isRecording ? "destructive" : "secondary"}>
-                    {isRecording ? "REC" : "READY"}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent className="p-4 pt-0 flex-1 flex flex-col">
-                {/* Audio waveform */}
-                <div className="h-16 bg-gray-100 rounded-lg mb-3 flex items-end justify-center gap-1 px-2">
-                  {audioData.map((height, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-blue-500 rounded-sm transition-all duration-100"
-                      style={{
-                        height: `${height * 0.6}%`,
-                        width: '8px',
-                        opacity: isRecording ? 1 : 0.3
-                      }}
-                    />
-                  ))}
+              {/* Sound Waveform */}
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">Sound Waveform</h4>
+                <div className="bg-green-100 h-12 rounded flex items-center justify-center mb-2">
+                  {isRecording ? (
+                    <div className="flex space-x-1">
+                      {[...Array(15)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="w-1 bg-green-500 rounded animate-pulse"
+                          style={{ 
+                            height: `${Math.random() * 30 + 5}px`,
+                            animationDelay: `${i * 0.1}s` 
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-green-600">Ready to record</span>
+                  )}
                 </div>
                 
-                {/* Play button for recorded audio */}
+                {/* Listen to Recorded Audio Button */}
                 {lastRecordedAudio && (
                   <Button
                     onClick={() => {
-                      const audio = new Audio(URL.createObjectURL(lastRecordedAudio));
-                      audio.play();
+                      const audioUrl = URL.createObjectURL(lastRecordedAudio);
+                      const audio = new Audio(audioUrl);
+                      audio.play().catch(console.error);
                     }}
                     variant="outline"
-                    size="default"
-                    className="mb-3"
+                    size="sm"
+                    className="w-full h-8 text-xs"
                   >
-                    <Volume2 className="w-4 h-4 mr-2" />
-                    Play Recording
+                    <Volume2 className="w-3 h-3 mr-1" />
+                    Listen to Recording
                   </Button>
                 )}
-                
-                {/* Score display */}
-                {showScore && (
-                  <div className="space-y-2 flex-1">
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-gray-600">Sound Match:</span>
-                        <span className="font-semibold text-green-600">{soundMatch}%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Recognition:</span>
-                        <span className="font-semibold text-blue-600 truncate max-w-32" title={recognitionResult}>
-                          {recognitionResult}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        onClick={handleRetry}
-                        variant="outline"
-                        size="default"
-                        className="flex-1"
-                      >
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        Retry
-                      </Button>
-                      <Button
-                        onClick={handleNext}
-                        variant="default"
-                        size="default"
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                      >
-                        <ChevronRight className="w-4 h-4 mr-2" />
-                        Next
-                      </Button>
-                    </div>
+              </div>
+
+              {/* Scoring */}
+              <div className="space-y-3 flex-1">
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-blue-600">Lip Shape Match</span>
+                    <span className="text-xs text-blue-600">{lipShapeMatch}%</span>
                   </div>
-                )}
-              </CardContent>
+                  <Progress value={lipShapeMatch} className="h-2" />
+                </div>
+
+                <div className="bg-green-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-green-600">Sound Match</span>
+                    <span className="text-xs text-green-600">{soundMatch}%</span>
+                  </div>
+                  <Progress value={soundMatch} className="h-2" />
+                  {recognitionResult && (
+                    <div className="text-xs text-green-700 mt-1">
+                      "{recognitionResult}"
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <div className="text-sm font-semibold text-purple-600 mb-1">Overall Score</div>
+                  <div className="text-2xl font-bold text-purple-600">{overallScore}</div>
+                  <div className="text-xs text-gray-600">Points</div>
+                </div>
+              </div>
             </Card>
-            </div>
           </div>
         </div>
       </div>
+
+
+      {/* Score Display */}
+      {showScore && (
+        <div className="mt-6">
+          <ScoreCard
+            score={scores[currentIndex] || 0}
+            targetWord={currentContent.toString()}
+            spokenWord={spokenWords[currentIndex] || ''}
+            onRetry={handleRetry}
+            onNext={currentIndex < totalItems - 1 ? handleNext : undefined}
+          />
+          
+          {currentIndex === totalItems - 1 && (
+            <div className="text-center mt-4">
+              <Button onClick={handleNext} size="lg" className="bg-green-500 hover:bg-green-600">
+                Complete Exercise
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
