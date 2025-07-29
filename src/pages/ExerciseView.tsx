@@ -9,7 +9,7 @@ import AvatarGuide from '@/components/AvatarGuide';
 import RecordButton from '@/components/RecordButton';
 import ScoreCard from '@/components/ScoreCard';
 import { CameraWindow } from '@/components/CameraWindow';
-import { VisemeGuide } from '@/components/VisemeGuide';
+import AnimatedLips from '@/components/AnimatedLips';
 import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 
 interface ExerciseViewProps {
@@ -30,6 +30,10 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
   const [lipShapeMatch, setLipShapeMatch] = useState(75);
   const [soundMatch, setSoundMatch] = useState(0);
   const [overallScore, setOverallScore] = useState(0);
+  const [audioData, setAudioData] = useState<number[]>([]);
+  const [currentPhonemeIndex, setCurrentPhonemeIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationSpeed, setAnimationSpeed] = useState(800);
 
   const isArrayContent = Array.isArray(exercise.content);
   const currentContent = isArrayContent ? exercise.content[currentIndex] : exercise.content;
@@ -135,377 +139,307 @@ const ExerciseView: React.FC<ExerciseViewProps> = ({ exercise, onComplete, onBac
     // Mock pronunciation playback
   };
 
-  const renderExerciseContent = () => {
-    const targetPhonemes = exercise.targetPhonemes || [];
-    const currentPhonemes = exercise.type === 'phoneme' 
-      ? [currentContent.toString()]
-      : targetPhonemes;
 
-    switch (exercise.type) {
-      case 'phoneme':
-        return (
-          <div className="text-center space-y-6">
-            <div className="text-6xl font-bold text-blue-600 mb-4">
-              /{currentContent}/
-            </div>
-            <p className="text-lg text-gray-600">
-              Say this phoneme sound clearly
-            </p>
-            
-            {/* Viseme Guide for phoneme */}
-            <div className="flex justify-center">
-              <VisemeGuide
-                word={currentContent.toString()}
-                phonemes={currentPhonemes}
-                className="max-w-md"
-              />
-            </div>
-          </div>
-        );
-
-      case 'word':
-        return (
-          <div className="text-center space-y-6">
-            <div className="text-4xl font-bold text-green-600 mb-4 uppercase">
-              {currentContent}
-            </div>
-            <div className="w-32 h-32 bg-gray-200 rounded-xl mx-auto mb-4 flex items-center justify-center">
-              <span className="text-4xl">📷</span>
-            </div>
-            <p className="text-lg text-gray-600">
-              Say this word clearly
-            </p>
-            
-            {/* Viseme Guide for word */}
-            <div className="flex justify-center">
-              <VisemeGuide
-                word={currentContent.toString()}
-                phonemes={currentPhonemes}
-                className="max-w-md"
-              />
-            </div>
-          </div>
-        );
-
-      case 'sentence':
-        return (
-          <div className="text-center space-y-6">
-            <div className="text-2xl font-semibold text-purple-600 mb-4 leading-relaxed">
-              "{currentContent}"
-            </div>
-            <p className="text-lg text-gray-600">
-              Say this sentence with proper rhythm and pauses
-            </p>
-            
-            {/* Viseme Guide for sentence */}
-            {currentPhonemes.length > 0 && (
-              <div className="flex justify-center">
-                <VisemeGuide
-                  word={currentContent.toString()}
-                  phonemes={currentPhonemes}
-                  className="max-w-md"
-                />
-              </div>
-            )}
-          </div>
-        );
-
-      case 'conversation':
-        return (
-          <div className="text-center space-y-6">
-            <div className="bg-blue-50 p-4 rounded-xl mb-4">
-              <div className="text-lg font-medium text-blue-800 mb-2">
-                Conversation Practice
-              </div>
-              <div className="text-xl text-blue-700">
-                "{currentContent}"
-              </div>
-            </div>
-            <p className="text-lg text-gray-600">
-              Say this as if you're having a real conversation
-            </p>
-            
-            {/* Viseme Guide for conversation */}
-            {currentPhonemes.length > 0 && (
-              <div className="flex justify-center">
-                <VisemeGuide
-                  word={currentContent.toString()}
-                  phonemes={currentPhonemes}
-                  className="max-w-md"
-                />
-              </div>
-            )}
-          </div>
-        );
-
-      default:
-        return (
-          <div className="text-center space-y-6">
-            <div className="text-xl text-gray-700 mb-4">
-              {currentContent}
-            </div>
-            
-            {/* Viseme Guide for other types */}
-            {currentPhonemes.length > 0 && (
-              <div className="flex justify-center">
-                <VisemeGuide
-                  word={currentContent.toString()}
-                  phonemes={currentPhonemes}
-                  className="max-w-md"
-                />
-              </div>
-            )}
-          </div>
-        );
-    }
-  };
+  const currentPhonemes = exercise.targetPhonemes || [];
+  const targetPhonemes = exercise.type === 'phoneme' 
+    ? [currentContent.toString()]
+    : currentPhonemes;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-purple-800">{exercise.title}</h1>
-            <div className="text-sm text-gray-600">
-              {currentIndex + 1} / {totalItems}
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))} disabled={currentIndex === 0}>
-              ← Prev
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setCurrentIndex(Math.min(totalItems - 1, currentIndex + 1))} disabled={currentIndex === totalItems - 1}>
-              Next →
-            </Button>
-          </div>
+    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-2 flex flex-col overflow-hidden">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between mb-3 px-2">
+        <Button
+          onClick={onBack}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-1 h-8"
+        >
+          <ArrowLeft className="w-3 h-3" />
+          Back
+        </Button>
+        
+        <div className="text-center">
+          <h1 className="text-lg font-bold text-gray-800">{exercise.title}</h1>
+          <p className="text-xs text-gray-600">
+            {currentIndex + 1} of {totalItems}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel - Exercise Controls */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Phonemes/Content Display */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
+        <div className="flex items-center gap-1 text-sm">
+          <div className="text-3xl font-bold text-purple-600">{overallScore}</div>
+        </div>
+      </div>
+
+      {/* Main Content - No scroll */}
+      <div className="flex-1 max-w-full mx-auto overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full">
+          
+          {/* Main Practice Card - 2/3 width */}
+          <div className="lg:col-span-2 h-full">
+            <Card className="p-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 h-full flex flex-col">
+              
+              {/* Compact Header with Content Navigation */}
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-purple-200">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {currentContent}
+                  </h2>
+                  <p className="text-xs text-gray-600">
+                    {currentIndex + 1} / {totalItems}
+                  </p>
+                </div>
+                
+                <div className="flex gap-1">
+                  <Button
+                    onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                    variant="outline"
+                    size="sm"
+                    disabled={currentIndex === 0}
+                    className="h-8 px-2 text-xs"
+                  >
+                    ← Prev
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentIndex(Math.min(totalItems - 1, currentIndex + 1))}
+                    variant="outline"
+                    size="sm"
+                    disabled={currentIndex === totalItems - 1}
+                    className="h-8 px-2 text-xs"
+                  >
+                    Next →
+                  </Button>
+                </div>
+              </div>
+
+              {/* Phoneme/Content Division */}
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-gray-800 mb-2">
                   {exercise.type === 'phoneme' ? 'Phonemes' : 
                    exercise.type === 'word' ? 'Words' : 
                    exercise.type === 'sentence' ? 'Sentences' : 'Content'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-2">
+                </h3>
+                <div className="flex gap-1 mb-3 flex-wrap">
                   {isArrayContent ? (exercise.content as string[]).map((item, idx) => (
                     <Button
                       key={idx}
+                      onClick={() => setCurrentIndex(idx)}
                       variant={idx === currentIndex ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setCurrentIndex(idx)}
-                      className="h-10"
+                      className={`min-w-[50px] h-7 text-xs ${
+                        idx === currentIndex 
+                          ? "bg-purple-600 text-white" 
+                          : "bg-white text-gray-700 hover:bg-purple-50"
+                      }`}
                     >
                       {exercise.type === 'phoneme' ? `/${item}/` : item.toString().toUpperCase()}
                     </Button>
                   )) : (
-                    <Button variant="default" className="h-10">
+                    <Button variant="default" className="h-7 text-xs">
                       {exercise.type === 'phoneme' ? `/${currentContent}/` : currentContent.toString().toUpperCase()}
                     </Button>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Controls */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Controls</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full" onClick={playPronunciation}>
-                  <Volume2 className="w-4 h-4 mr-2" />
-                  Hear Word
-                </Button>
-                <Button variant="outline" className="w-full" onClick={playPronunciation}>
-                  <Volume2 className="w-4 h-4 mr-2" />
-                  Hear Phoneme
-                </Button>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Speed:</label>
-                  <select className="w-full p-2 border rounded">
-                    <option>Normal</option>
-                    <option>Slow</option>
-                    <option>Fast</option>
-                  </select>
+              {/* Lip Animation Guide - Flexible height */}
+              <div className="bg-white rounded-xl p-4 border border-gray-200 flex-1 flex">
+                {/* Left Side - Controls */}
+                <div className="flex flex-col gap-2 pr-4 border-r border-gray-200 min-w-[140px]">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                    Controls
+                  </h3>
+                  
+                  {/* Audio Controls */}
+                  <Button
+                    onClick={playPronunciation}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white h-8 text-xs justify-start"
+                  >
+                    <Volume2 className="w-3 h-3 mr-1" />
+                    Hear Word
+                  </Button>
+                  
+                  <Button
+                    onClick={playPronunciation}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white h-8 text-xs justify-start"
+                  >
+                    🔊 Hear Phoneme
+                  </Button>
+                  
+                  {/* Speed Control */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-gray-600">Speed:</span>
+                    <select 
+                      className="text-xs border rounded px-2 py-1 bg-white"
+                      onChange={(e) => setAnimationSpeed(Number(e.target.value))}
+                      value={animationSpeed}
+                    >
+                      <option value={1200}>Slow</option>
+                      <option value={800}>Normal</option>
+                      <option value={500}>Fast</option>
+                    </select>
+                  </div>
+                  
+                  {/* Test Controls */}
+                  <div className="pt-2 border-t border-gray-200">
+                    <Button
+                      onClick={handleToggleRecording}
+                      variant="default"
+                      size="sm"
+                      className="w-full h-8 text-xs mb-2 bg-blue-600 hover:bg-blue-700"
+                      disabled={isRecording || isProcessing}
+                    >
+                      <Mic className="w-3 h-3 mr-1" />
+                      Test Phoneme
+                    </Button>
+                    
+                    <Button
+                      onClick={handleToggleRecording}
+                      variant="default"
+                      size="sm"
+                      className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
+                      disabled={isRecording || isProcessing}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      Test Word
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Test Buttons */}
-            <div className="space-y-2">
-              <Button 
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                onClick={handleToggleRecording}
-                disabled={isProcessing}
-              >
-                <Mic className="w-4 h-4 mr-2" />
-                {isRecording ? 'Stop Recording' : 'Test Phoneme'}
-              </Button>
-              <Button 
-                className="w-full bg-green-500 hover:bg-green-600 text-white"
-                onClick={handleToggleRecording}
-                disabled={isProcessing}
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Test Word
-              </Button>
-            </div>
-          </div>
-
-          {/* Center Panel - Lip Animation Guide */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex justify-between items-center">
-                  Lip Animation Guide
-                  <span className="text-sm font-normal text-blue-600">
-                    Current: {exercise.type === 'phoneme' ? currentContent : 
-                             exercise.targetPhonemes?.[0] || currentContent.toString().charAt(0)}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <VisemeGuide
-                  word={currentContent.toString()}
-                  phonemes={exercise.type === 'phoneme' 
-                    ? [currentContent.toString()]
-                    : exercise.targetPhonemes || []}
-                  className="w-full"
-                />
-              </CardContent>
+                
+                {/* Right Side - Animation */}
+                <div className="flex-1 flex flex-col pl-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      Lip Animation Guide
+                    </h3>
+                    <div className="text-xs text-gray-600">
+                      Current: <span className="font-semibold text-purple-600">
+                        {exercise.type === 'phoneme' ? currentContent : 
+                         targetPhonemes[currentPhonemeIndex] || currentContent.toString().charAt(0)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Animated Lips */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <AnimatedLips
+                      phoneme={exercise.type === 'phoneme' ? currentContent.toString() : 
+                               targetPhonemes[currentPhonemeIndex] || currentContent.toString().charAt(0)}
+                      isAnimating={isAnimating}
+                      className="max-w-full max-h-full"
+                    />
+                  </div>
+                </div>
+              </div>
             </Card>
           </div>
 
-          {/* Right Panel - Practice & Analysis */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Practice & Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
+          {/* Side Panel - Camera & Analysis */}
+          <div className="lg:col-span-1 h-full">
+            <Card className="p-4 h-full flex flex-col">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Practice & Analysis</h3>
+              
+              {/* Camera Feed */}
+              <div className="mb-4">
                 <CameraWindow 
                   isActive={isRecording}
-                  className="w-full h-48 mb-4"
+                  className="w-full h-32 mb-2"
                 />
-                <div className="flex items-center justify-center mb-2">
+                <div className="flex items-center justify-center">
                   <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-                  <span className="text-sm text-red-600">Live</span>
+                  <span className="text-xs text-red-600">Live Video Feed</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Sound Waveform */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Sound Waveform</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-green-100 h-16 rounded flex items-center justify-center mb-2">
+              {/* Sound Waveform */}
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">Sound Waveform</h4>
+                <div className="bg-green-100 h-12 rounded flex items-center justify-center mb-2">
                   {isRecording ? (
                     <div className="flex space-x-1">
-                      {[...Array(20)].map((_, i) => (
+                      {[...Array(15)].map((_, i) => (
                         <div
                           key={i}
                           className="w-1 bg-green-500 rounded animate-pulse"
                           style={{ 
-                            height: `${Math.random() * 40 + 10}px`,
+                            height: `${Math.random() * 30 + 5}px`,
                             animationDelay: `${i * 0.1}s` 
                           }}
                         />
                       ))}
                     </div>
                   ) : (
-                    <span className="text-green-600">Ready to record</span>
+                    <span className="text-xs text-green-600">Ready to record</span>
                   )}
                 </div>
-                {!isRecording && (
-                  <div className="flex items-center text-gray-500 text-sm">
-                    <Volume2 className="w-4 h-4 mr-2" />
-                    No audio recorded
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Scoring */}
-            <div className="space-y-3">
-              <Card>
-                <CardContent className="p-4">
+              {/* Scoring */}
+              <div className="space-y-3 flex-1">
+                <div className="bg-blue-50 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-blue-600">Lip Shape Match</span>
-                    <span className="text-sm text-blue-600">{lipShapeMatch}%</span>
+                    <span className="text-xs font-medium text-blue-600">Lip Shape Match</span>
+                    <span className="text-xs text-blue-600">{lipShapeMatch}%</span>
                   </div>
                   <Progress value={lipShapeMatch} className="h-2" />
-                </CardContent>
-              </Card>
+                </div>
 
-              <Card>
-                <CardContent className="p-4">
+                <div className="bg-green-50 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-green-600">Sound Match</span>
-                    <span className="text-sm text-green-600">{soundMatch}%</span>
+                    <span className="text-xs font-medium text-green-600">Sound Match</span>
+                    <span className="text-xs text-green-600">{soundMatch}%</span>
                   </div>
-                  <Progress value={soundMatch} className="h-2 bg-green-100" />
-                </CardContent>
-              </Card>
+                  <Progress value={soundMatch} className="h-2" />
+                </div>
 
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <div className="text-lg font-semibold text-purple-600 mb-1">Overall Score</div>
-                  <div className="text-3xl font-bold text-purple-600">{overallScore}</div>
-                  <div className="text-sm text-gray-600">Points</div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-
-        {/* Processing Indicator */}
-        {isProcessing && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <Card>
-              <CardContent className="p-6 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-blue-600">Processing your speech...</p>
-              </CardContent>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <div className="text-sm font-semibold text-purple-600 mb-1">Overall Score</div>
+                  <div className="text-2xl font-bold text-purple-600">{overallScore}</div>
+                  <div className="text-xs text-gray-600">Points</div>
+                </div>
+              </div>
             </Card>
           </div>
-        )}
-
-        {/* Score Display */}
-        {showScore && (
-          <div className="mt-6">
-            <ScoreCard
-              score={scores[currentIndex] || 0}
-              targetWord={currentContent.toString()}
-              spokenWord={spokenWords[currentIndex] || ''}
-              onRetry={handleRetry}
-              onNext={currentIndex < totalItems - 1 ? handleNext : undefined}
-            />
-            
-            {currentIndex === totalItems - 1 && (
-              <div className="text-center mt-4">
-                <Button onClick={handleNext} size="lg" className="bg-green-500 hover:bg-green-600">
-                  Complete Exercise
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
+
+      {/* Processing Indicator */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-blue-600">Processing your speech...</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Score Display */}
+      {showScore && (
+        <div className="mt-6">
+          <ScoreCard
+            score={scores[currentIndex] || 0}
+            targetWord={currentContent.toString()}
+            spokenWord={spokenWords[currentIndex] || ''}
+            onRetry={handleRetry}
+            onNext={currentIndex < totalItems - 1 ? handleNext : undefined}
+          />
+          
+          {currentIndex === totalItems - 1 && (
+            <div className="text-center mt-4">
+              <Button onClick={handleNext} size="lg" className="bg-green-500 hover:bg-green-600">
+                Complete Exercise
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
