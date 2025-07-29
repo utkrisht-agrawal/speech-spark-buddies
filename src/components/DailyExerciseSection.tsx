@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Star, Target, Play, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import ExercisePlayer from './ExercisePlayer';
 
 interface DailyExercise {
   id: string;
@@ -28,6 +29,8 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
   const [exercises, setExercises] = useState<DailyExercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [completedToday, setCompletedToday] = useState(0);
+  const [currentExercise, setCurrentExercise] = useState<DailyExercise | null>(null);
+  const [showPlayer, setShowPlayer] = useState(false);
 
   useEffect(() => {
     fetchDailyExercises();
@@ -105,10 +108,19 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
   };
 
   const startExercise = (exercise: DailyExercise) => {
-    // Emit custom event to start exercise
-    window.dispatchEvent(new CustomEvent('startExercise', { 
-      detail: { exercise } 
-    }));
+    setCurrentExercise(exercise);
+    setShowPlayer(true);
+  };
+
+  const handleExerciseComplete = () => {
+    setShowPlayer(false);
+    setCurrentExercise(null);
+    fetchDailyExercises(); // Refresh the exercises to show updated completion status
+  };
+
+  const handleExerciseExit = () => {
+    setShowPlayer(false);
+    setCurrentExercise(null);
   };
 
   const getDifficultyColor = (difficulty: number) => {
@@ -128,6 +140,25 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
       default: return '📚';
     }
   };
+
+  if (showPlayer && currentExercise) {
+    return (
+      <ExercisePlayer
+        exercise={{
+          id: currentExercise.id,
+          title: currentExercise.title,
+          type: currentExercise.type,
+          difficulty: currentExercise.difficulty,
+          points: currentExercise.points,
+          requiredAccuracy: currentExercise.requiredAccuracy,
+          instruction: currentExercise.instruction,
+          content: Array.isArray(currentExercise.content) ? currentExercise.content : []
+        }}
+        onComplete={handleExerciseComplete}
+        onExit={handleExerciseExit}
+      />
+    );
+  }
 
   if (loading) {
     return (
