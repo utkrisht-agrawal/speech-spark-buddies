@@ -84,7 +84,12 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
     try {
       // Get current user ID
       const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
+      if (!userData.user) {
+        console.log('No user found in fetchStudents');
+        return;
+      }
+      
+      console.log('Fetching assignments for therapist:', userData.user.id);
       
       const { data: assignmentData, error } = await supabase
         .from('student_therapist_assignments')
@@ -97,14 +102,25 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
         return;
       }
 
+      console.log('Found assignments:', assignmentData);
+
       // Get student details separately
       const studentsData = [];
       for (const assignment of assignmentData || []) {
-        const { data: studentProfile } = await supabase
+        console.log('Processing assignment for student:', assignment.student_id);
+        
+        const { data: studentProfile, error: profileError } = await supabase
           .from('profiles')
           .select('id, user_id, username, full_name, current_level')
           .eq('user_id', assignment.student_id)
           .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching student profile:', profileError);
+          continue;
+        }
+
+        console.log('Found student profile:', studentProfile);
 
         if (studentProfile) {
           studentsData.push({
@@ -117,6 +133,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
         }
       }
 
+      console.log('Final students data:', studentsData);
       setStudents(studentsData);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -456,20 +473,31 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
 
   const renderStudents = () => (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex justify-between items-center">
         <CardTitle>Student Management</CardTitle>
+        <Button onClick={fetchStudents} variant="outline" size="sm">
+          Refresh
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {students.map(student => (
-            <div key={student.id} className="flex justify-between items-center p-4 border rounded-lg">
-              <div>
-                <h3 className="font-medium">{student.full_name || student.username}</h3>
-                <p className="text-sm text-gray-600">Level {student.current_level}</p>
-              </div>
-              <Badge variant="secondary">Active</Badge>
+          {students.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No students assigned yet.</p>
+              <p className="text-sm">Ask your admin to assign students to you.</p>
             </div>
-          ))}
+          ) : (
+            students.map(student => (
+              <div key={student.id} className="flex justify-between items-center p-4 border rounded-lg">
+                <div>
+                  <h3 className="font-medium">{student.full_name || student.username}</h3>
+                  <p className="text-sm text-gray-600">Level {student.current_level}</p>
+                  <p className="text-xs text-gray-400">ID: {student.user_id}</p>
+                </div>
+                <Badge variant="secondary">Active</Badge>
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>
