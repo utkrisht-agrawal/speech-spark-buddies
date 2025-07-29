@@ -82,8 +82,9 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
 
   const fetchStudents = async () => {
     try {
-      // Fetch students assigned to this therapist
+      // Get current user ID
       const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
       
       const { data: assignmentData, error } = await supabase
         .from('student_therapist_assignments')
@@ -97,10 +98,13 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
             current_level
           )
         `)
-        .eq('therapist_id', userData.user?.id)
+        .eq('therapist_id', userData.user.id)
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching student assignments:', error);
+        return;
+      }
 
       const studentsData = assignmentData?.map(assignment => ({
         id: (assignment.student as any).id,

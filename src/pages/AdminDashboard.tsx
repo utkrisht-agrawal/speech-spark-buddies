@@ -64,12 +64,17 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
           therapist_id,
           assigned_at,
           is_active,
-          student:student_id(username, full_name),
-          therapist:therapist_id(username, full_name)
+          student:profiles!student_therapist_assignments_student_id_fkey(user_id, username, full_name),
+          therapist:profiles!student_therapist_assignments_therapist_id_fkey(user_id, username, full_name)
         `)
         .eq('is_active', true);
 
-      if (therapistError) throw therapistError;
+      if (therapistError) {
+        console.error('Therapist assignments error:', therapistError);
+        throw therapistError;
+      }
+      
+      console.log('Raw therapist data:', therapistData);
       
       const formattedTherapistAssignments = (therapistData || []).map(assignment => ({
         id: assignment.id,
@@ -80,6 +85,8 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
         assigned_at: assignment.assigned_at,
         is_active: assignment.is_active
       }));
+      
+      console.log('Formatted therapist assignments:', formattedTherapistAssignments);
       setTherapistAssignments(formattedTherapistAssignments);
 
       // Load parent assignments
