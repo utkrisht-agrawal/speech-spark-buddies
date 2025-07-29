@@ -226,6 +226,72 @@ export type Database = {
         }
         Relationships: []
       }
+      student_parent_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          created_at: string
+          id: string
+          is_active: boolean
+          parent_id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          parent_id: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          parent_id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      student_therapist_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          created_at: string
+          id: string
+          is_active: boolean
+          student_id: string
+          therapist_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          student_id: string
+          therapist_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          student_id?: string
+          therapist_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           badge_id: string
@@ -317,7 +383,7 @@ export type Database = {
       }
     }
     Enums: {
-      user_role: "child" | "parent" | "therapist"
+      user_role: "child" | "parent" | "therapist" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -445,7 +511,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      user_role: ["child", "parent", "therapist"],
+      user_role: ["child", "parent", "therapist", "admin"],
     },
   },
 } as const

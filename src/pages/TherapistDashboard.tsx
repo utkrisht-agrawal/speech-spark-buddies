@@ -82,13 +82,35 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
 
   const fetchStudents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, user_id, username, full_name, current_level')
-        .eq('role', 'child');
+      // Fetch students assigned to this therapist
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { data: assignmentData, error } = await supabase
+        .from('student_therapist_assignments')
+        .select(`
+          student_id,
+          student:student_id(
+            id,
+            user_id,
+            username,
+            full_name,
+            current_level
+          )
+        `)
+        .eq('therapist_id', userData.user?.id)
+        .eq('is_active', true);
 
       if (error) throw error;
-      setStudents(data || []);
+
+      const studentsData = assignmentData?.map(assignment => ({
+        id: (assignment.student as any).id,
+        user_id: (assignment.student as any).user_id,
+        username: (assignment.student as any).username,
+        full_name: (assignment.student as any).full_name || (assignment.student as any).username,
+        current_level: (assignment.student as any).current_level || 1
+      })) || [];
+
+      setStudents(studentsData);
     } catch (error) {
       console.error('Error fetching students:', error);
     }

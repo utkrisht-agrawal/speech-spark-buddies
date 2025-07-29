@@ -6,7 +6,7 @@ interface Profile {
   id: string;
   user_id: string;
   username: string;
-  role: 'child' | 'parent' | 'therapist';
+  role: 'child' | 'parent' | 'therapist' | 'admin';
   full_name?: string;
   assessment_completed?: boolean;
 }
@@ -15,7 +15,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
-  signUp: (username: string, password: string, role: 'child' | 'parent' | 'therapist', fullName?: string) => Promise<{ error: any }>;
+  signUp: (username: string, password: string, role: 'child' | 'parent' | 'therapist' | 'admin', fullName?: string) => Promise<{ error: any }>;
   signIn: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
   loading: boolean;
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     .insert({
                       user_id: session.user.id,
                       username: userData.username || session.user.email?.split('@')[0] || 'user',
-                      role: (userData.role as 'child' | 'parent' | 'therapist') || 'child',
+                      role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
                       full_name: userData.full_name || null
                     })
                     .select()
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                       id: session.user.id,
                       user_id: session.user.id,
                       username: userData.username || session.user.email?.split('@')[0] || 'user',
-                      role: (userData.role as 'child' | 'parent' | 'therapist') || 'child',
+                      role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
                       full_name: userData.full_name || null
                     });
                   }
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: session.user.id,
                   user_id: session.user.id,
                   username: userData.username || session.user.email?.split('@')[0] || 'user',
-                  role: (userData.role as 'child' | 'parent' | 'therapist') || 'child',
+                  role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
                   full_name: userData.full_name || null
                 });
                 setLoading(false);
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (username: string, password: string, role: 'child' | 'parent' | 'therapist', fullName?: string) => {
+  const signUp = async (username: string, password: string, role: 'child' | 'parent' | 'therapist' | 'admin', fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({

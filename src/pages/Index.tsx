@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import Dashboard from './Dashboard';
 import ParentDashboard from './ParentDashboard';
 import TherapistDashboard from './TherapistDashboard';
+import AdminDashboard from './AdminDashboard';
 import { Button } from '@/components/ui/button';
 import WordLibrary from './WordLibrary';
 import PracticeView from './PracticeView';
@@ -153,6 +154,11 @@ const Index = () => {
     );
   }
 
+  // Admin dashboard
+  if (profile.role === 'admin') {
+    return <AdminDashboard onLogout={handleLogout} />;
+  }
+
   // Therapist dashboard
   if (profile.role === 'therapist') {
     return (
@@ -248,10 +254,16 @@ const Index = () => {
     return <ExerciseView 
       exercise={currentExercise}
       onComplete={(score) => {
-        setCurrentView('curriculum');
+        // Go back to main view and set practice tab
+        setCurrentView('main');
+        setActiveTab('practice');
         setCurrentExercise(null);
       }}
-      onBack={() => setCurrentView('curriculum')}
+      onBack={() => {
+        // Go back to main view and set practice tab
+        setCurrentView('main');
+        setActiveTab('practice');
+      }}
     />;
   }
 
@@ -343,14 +355,6 @@ const Index = () => {
         />;
       case 'library':
         return <WordLibrary />;
-      case 'progress':
-        return <div className="min-h-screen bg-gray-50 pb-20 flex items-center justify-center">
-          <div className="text-center">
-            <span className="text-6xl mb-4 block">📊</span>
-            <h2 className="text-2xl font-bold text-gray-700">Level {studentLevel} Progress</h2>
-            <p className="text-gray-600">Track your learning journey!</p>
-          </div>
-        </div>;
       case 'settings':
         return <div className="min-h-screen bg-gray-50 pb-20 flex items-center justify-center">
           <div className="text-center">
