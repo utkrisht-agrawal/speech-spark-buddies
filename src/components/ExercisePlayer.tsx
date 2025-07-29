@@ -294,9 +294,9 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
 
     // Main exercise interface matching the level-based GUI
     return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-2 flex flex-col overflow-hidden">
+      <div className="min-h-screen max-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 flex flex-col overflow-hidden">
         {/* Compact Header */}
-        <div className="flex items-center justify-between mb-3 px-2">
+        <div className="flex items-center justify-between mb-4 px-2 flex-shrink-0">
           <Button
             onClick={onExit}
             variant="outline"
@@ -320,8 +320,8 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
         </div>
 
         {/* Main Content - Three Column Layout */}
-        <div className="flex-1 max-w-full mx-auto overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full">
+        <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full max-h-full">
             
             {/* Left Panel - Controls */}
             <div className="h-full">
