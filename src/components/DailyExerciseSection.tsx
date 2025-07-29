@@ -183,115 +183,123 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-5 h-5" />
-            <span>Today's Exercises</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Today's Practice</h2>
+        <p className="text-gray-600">Complete your daily exercises to build your skills</p>
+      </div>
+
+      {/* Progress Overview */}
+      <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Calendar className="w-6 h-6 text-purple-500" />
+            <h3 className="text-xl font-bold text-gray-800">Daily Progress</h3>
           </div>
           <Badge variant="outline" className="flex items-center space-x-1">
             <span>{completedToday}/{exercises.length}</span>
             <CheckCircle className="w-4 h-4" />
           </Badge>
-        </CardTitle>
+        </div>
         {exercises.length > 0 && (
           <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="flex justify-between text-sm text-gray-600">
               <span>Progress</span>
               <span>{Math.round((completedToday / exercises.length) * 100)}%</span>
             </div>
-            <Progress value={(completedToday / exercises.length) * 100} className="h-2" />
+            <Progress value={(completedToday / exercises.length) * 100} className="h-3" />
           </div>
         )}
-      </CardHeader>
-      <CardContent>
-        {exercises.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-4">📚</div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No exercises assigned yet</h3>
-            <p className="text-gray-500">Your therapist will assign exercises for you to practice.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {exercises.map((exercise) => (
-              <div 
-                key={exercise.id} 
-                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                  exercise.completed 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-white border-gray-200 hover:border-blue-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">{getTypeIcon(exercise.type)}</span>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{exercise.title}</h3>
-                      <p className="text-sm text-gray-600">{exercise.instruction}</p>
-                    </div>
-                  </div>
+      </div>
+
+      {exercises.length === 0 ? (
+        <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 text-center">
+          <div className="text-6xl mb-4">📚</div>
+          <h3 className="text-xl font-bold text-gray-700 mb-2">No exercises assigned yet</h3>
+          <p className="text-gray-500">Your therapist will assign exercises for you to practice.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {exercises.map((exercise) => (
+            <div 
+              key={exercise.id} 
+              className={`bg-white rounded-3xl p-6 shadow-xl border transition-all duration-200 hover:shadow-2xl ${
+                exercise.completed 
+                  ? 'border-green-200 bg-green-50' 
+                  : 'border-gray-100 hover:border-purple-200'
+              }`}
+            >
+              {/* Exercise Header */}
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center">
+                  <span className="text-3xl">{getTypeIcon(exercise.type)}</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">{exercise.title}</h3>
+                <p className="text-sm text-gray-600">{exercise.instruction}</p>
+              </div>
+
+              {/* Exercise Stats */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    {exercise.completed ? (
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          {exercise.accuracy}% accuracy
-                        </Badge>
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      </div>
-                    ) : (
-                      <Button 
-                        onClick={() => startExercise(exercise)}
-                        size="sm"
-                        className="flex items-center space-x-1"
-                      >
-                        <Play className="w-4 h-4" />
-                        <span>Start</span>
-                      </Button>
-                    )}
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm text-gray-600">Points</span>
                   </div>
+                  <span className="font-semibold text-gray-800">{exercise.points}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <Badge 
-                      variant="outline" 
-                      className={getDifficultyColor(exercise.difficulty)}
-                    >
-                      {exercise.difficulty === 1 ? 'Easy' : exercise.difficulty === 2 ? 'Medium' : 'Hard'}
-                    </Badge>
-                    <div className="flex items-center space-x-1 text-sm text-gray-600">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span>{exercise.points} points</span>
-                    </div>
-                    <div className="flex items-center space-x-1 text-sm text-gray-600">
-                      <Target className="w-4 h-4 text-blue-500" />
-                      <span>{exercise.requiredAccuracy}% required</span>
-                    </div>
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm text-gray-600">Required</span>
                   </div>
-                  
-                  {exercise.type === 'phoneme' && (
-                    <div className="text-xs text-gray-500">
-                      {Array.isArray(exercise.content) ? exercise.content.length : 0} phonemes
-                    </div>
-                  )}
-                  {exercise.type === 'word' && (
-                    <div className="text-xs text-gray-500">
-                      {Array.isArray(exercise.content) ? exercise.content.length : 0} words
-                    </div>
-                  )}
-                  {exercise.type === 'sentence' && (
-                    <div className="text-xs text-gray-500">
-                      {Array.isArray(exercise.content) ? exercise.content.length : 0} sentences
-                    </div>
-                  )}
+                  <span className="font-semibold text-gray-800">{exercise.requiredAccuracy}%</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-purple-500" />
+                    <span className="text-sm text-gray-600">Level</span>
+                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className={getDifficultyColor(exercise.difficulty)}
+                  >
+                    {exercise.difficulty === 1 ? 'Easy' : exercise.difficulty === 2 ? 'Medium' : 'Hard'}
+                  </Badge>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+
+              {/* Action Button */}
+              <div className="text-center">
+                {exercise.completed ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center space-x-2 text-green-600">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-semibold">Completed!</span>
+                    </div>
+                    {exercise.accuracy && (
+                      <Badge variant="default" className="bg-green-100 text-green-800">
+                        {exercise.accuracy}% accuracy
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={() => startExercise(exercise)}
+                    className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 hover:scale-105"
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Start Practice
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
