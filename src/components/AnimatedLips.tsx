@@ -13,6 +13,7 @@ const phonemeImages: { [key: string]: string } = {
   
   // Vowel sounds
   'A': '/lovable-uploads/cf41e91c-0d20-4de8-b614-0f2989a78eef.png',
+  '/a/': '/lovable-uploads/cf41e91c-0d20-4de8-b614-0f2989a78eef.png',
   'AH': '/lovable-uploads/7ad40a17-a62a-4a62-9ffa-1eddcb2c88c9.png',
   'E': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
   'EH': '/lovable-uploads/21a485f6-13a4-44af-bd9f-0e88eed4cabe.png',
