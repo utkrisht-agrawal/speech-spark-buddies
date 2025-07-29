@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CameraWindow } from '@/components/CameraWindow';
 import AnimatedLips from '@/components/AnimatedLips';
+import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 
 interface ExerciseData {
   id: string;
@@ -39,89 +40,110 @@ interface ExercisePlayerProps {
 const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, onExit }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [hasRecorded, setHasRecorded] = useState(false);
+  const [showScore, setShowScore] = useState(false);
   const [userResponses, setUserResponses] = useState<string[]>([]);
   const [scores, setScores] = useState<number[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [lipShapeMatch, setLipShapeMatch] = useState(0);
+  const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
+  const [lipShapeMatch, setLipShapeMatch] = useState(75);
   const [soundMatch, setSoundMatch] = useState(0);
   const [overallScore, setOverallScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioData, setAudioData] = useState<number[]>([]);
   const [animationSpeed, setAnimationSpeed] = useState('Normal');
+  const [recognitionResult, setRecognitionResult] = useState<string>("");
+  const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
 
   const currentItem = exercise.content[currentIndex];
   const isLastItem = currentIndex === exercise.content.length - 1;
   const progress = ((currentIndex + 1) / exercise.content.length) * 100;
 
   useEffect(() => {
-    setupAudioRecording();
-    return () => {
-      if (mediaRecorder) {
-        mediaRecorder.stop();
-      }
-    };
-  }, []);
-
-  const setupAudioRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      
-      recorder.ondataavailable = (event) => {
-        setAudioChunks(prev => [...prev, event.data]);
-      };
-      
-      recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        await processRecording(audioBlob);
-        setAudioChunks([]);
-      };
-      
-      setMediaRecorder(recorder);
-    } catch (error) {
-      console.error('Error setting up audio recording:', error);
-      toast.error('Could not access microphone');
+    // Calculate overall score from current scores
+    if (scores.length > 0) {
+      const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+      setOverallScore(Math.round(avgScore));
     }
-  };
+  }, [scores]);
 
-  const processRecording = async (audioBlob: Blob) => {
+  const startRecording = async () => {
     try {
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Audio = (reader.result as string).split(',')[1];
-        
-        // Send to speech recognition edge function
-        const { data, error } = await supabase.functions.invoke('speech-recognition', {
-          body: { audio: base64Audio }
-        });
+      setIsRecording(true);
+      setIsProcessing(true);
+      setHasRecorded(false);
+      setShowScore(false);
+      
+      await speechRecognition.startRecording();
+      
+      // Generate random waveform data for visualization
+      const interval = setInterval(() => {
+        setAudioData(prev => [...prev.slice(-14), Math.random() * 100].slice(-15));
+      }, 100);
 
-        if (error) throw error;
+      // Calculate recording duration based on exercise type
+      let recordingDuration = 2000; // Default 2 seconds for phoneme
+      if (exercise.type === 'word') {
+        recordingDuration = 3000; // 3 seconds for words
+      } else if (exercise.type === 'sentence') {
+        const currentText = getExpectedText(currentItem);
+        const wordCount = currentText.split(' ').length;
+        recordingDuration = wordCount * 2000; // 2 seconds per word for sentences
+      }
 
-        const transcription = data.text || '';
-        const expectedText = getExpectedText(currentItem);
-        const accuracy = calculateAccuracy(transcription, expectedText);
-        
-        setUserResponses(prev => [...prev, transcription]);
-        setScores(prev => [...prev, accuracy]);
-        
-        toast.success(`Accuracy: ${accuracy}%`);
-        
-        // Auto-advance after recording
-        setTimeout(() => {
-          if (isLastItem) {
-            finishExercise();
-          } else {
-            nextItem();
+      setTimeout(async () => {
+        if (speechRecognition.isRecording()) {
+          const audioBlob = await speechRecognition.stopRecording();
+          clearInterval(interval);
+          setIsRecording(false);
+          setLastRecordedAudio(audioBlob);
+          
+          // Process with backend
+          const target = getExpectedText(currentItem);
+          console.log(`🎯 Processing target: "${target}"`);
+          
+          try {
+            const result = await speechRecognition.recognizeSpeech(audioBlob, target);
+            console.log(`🗣️ Backend result:`, result);
+            
+            setSoundMatch(result.similarityScore);
+            setRecognitionResult(result.transcription);
+            setHasRecorded(true);
+            setShowScore(true);
+            setIsProcessing(false);
+            
+            // Store results
+            setUserResponses(prev => {
+              const newSpoken = [...prev];
+              newSpoken[currentIndex] = result.transcription;
+              return newSpoken;
+            });
+            
+            setScores(prev => {
+              const newScores = [...prev];
+              newScores[currentIndex] = result.similarityScore;
+              return newScores;
+            });
+
+            // Simulate lip shape match
+            const mockLipScore = Math.floor(Math.random() * 30) + 70;
+            setLipShapeMatch(mockLipScore);
+            
+          } catch (error) {
+            console.error('Error with backend recording:', error);
+            setSoundMatch(0);
+            setRecognitionResult('Recognition failed');
+            setIsProcessing(false);
+            setHasRecorded(true);
+            setShowScore(true);
           }
-        }, 1500);
-      };
-      reader.readAsDataURL(audioBlob);
+        }
+      }, recordingDuration);
     } catch (error) {
-      console.error('Error processing recording:', error);
-      toast.error('Error processing your recording');
+      console.error('Error starting recording:', error);
+      setIsRecording(false);
+      setIsProcessing(false);
+      toast.error('Could not start recording');
     }
   };
 
@@ -138,22 +160,47 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
     }
   };
 
-  const calculateAccuracy = (spoken: string, expected: string): number => {
-    if (!spoken || !expected) return 0;
-    
-    const spokenWords = spoken.toLowerCase().trim().split(/\s+/);
-    const expectedWords = expected.toLowerCase().trim().split(/\s+/);
-    
-    if (expectedWords.length === 0) return 0;
-    
-    let matches = 0;
-    expectedWords.forEach(word => {
-      if (spokenWords.includes(word)) {
-        matches++;
-      }
-    });
-    
-    return Math.round((matches / expectedWords.length) * 100);
+  const handleRetry = () => {
+    setHasRecorded(false);
+    setShowScore(false);
+    setSoundMatch(0);
+    setLipShapeMatch(75);
+    setRecognitionResult('');
+  };
+
+  const handleNext = () => {
+    if (currentIndex < exercise.content.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setHasRecorded(false);
+      setShowScore(false);
+      setSoundMatch(0);
+      setLipShapeMatch(75);
+      setRecognitionResult('');
+    } else {
+      finishExercise();
+    }
+  };
+
+  const nextItem = () => {
+    if (currentIndex < exercise.content.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setHasRecorded(false);
+      setShowScore(false);
+      setSoundMatch(0);
+      setLipShapeMatch(75);
+      setRecognitionResult('');
+    }
+  };
+
+  const previousItem = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setHasRecorded(false);
+      setShowScore(false);
+      setSoundMatch(0);
+      setLipShapeMatch(75);
+      setRecognitionResult('');
+    }
   };
 
   const finishExercise = async () => {
@@ -179,33 +226,6 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
     } catch (error) {
       console.error('Error saving progress:', error);
       toast.error('Error saving your progress');
-    }
-  };
-
-  const startRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'inactive') {
-      setAudioChunks([]);
-      mediaRecorder.start();
-      setIsRecording(true);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
-  };
-
-  const nextItem = () => {
-    if (currentIndex < exercise.content.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    }
-  };
-
-  const previousItem = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
     }
   };
 
@@ -385,7 +405,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                       disabled={isRecording || isProcessing}
                     >
                       <Mic className="w-3 h-3 mr-1" />
-                      Test Phoneme
+                      {isRecording ? 'Recording...' : 'Test Phoneme'}
                     </Button>
                     
                     <Button
@@ -395,8 +415,30 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                       className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
                       disabled={isRecording || isProcessing}
                     >
-                      Test Word
+                      {isRecording ? 'Recording...' : 'Test Word'}
                     </Button>
+
+                    {hasRecorded && showScore && (
+                      <div className="mt-2 space-y-1">
+                        <Button
+                          onClick={handleRetry}
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-7 text-xs"
+                        >
+                          <RotateCcw className="w-3 h-3 mr-1" />
+                          Retry
+                        </Button>
+                        <Button
+                          onClick={handleNext}
+                          variant="default"
+                          size="sm"
+                          className="w-full h-7 text-xs"
+                        >
+                          {isLastItem ? 'Finish' : 'Next'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -474,8 +516,16 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                   {/* Status */}
                   <div className="text-center mt-4">
                     <span className="text-sm text-gray-600 flex items-center justify-center">
-                      🗣️ {isRecording ? 'Recording...' : 'Ready'}
+                      🗣️ {isRecording ? 'Recording...' : 
+                           isProcessing ? 'Processing...' :
+                           hasRecorded ? `Got: "${recognitionResult}"` :
+                           'Ready'}
                     </span>
+                    {showScore && (
+                      <div className="mt-2 text-xs text-gray-600">
+                        Score: {soundMatch}% accuracy
+                      </div>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -538,6 +588,16 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                     <Progress value={soundMatch} className="h-2" />
                   </div>
 
+                  {hasRecorded && recognitionResult && (
+                    <div className="bg-gray-50 rounded-lg p-2 mt-2">
+                      <div className="text-xs text-gray-600 mb-1">You said:</div>
+                      <div className="text-sm font-medium">"{recognitionResult}"</div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        Target: "{getExpectedText(currentItem)}"
+                      </div>
+                    </div>
+                  )}
+
                   <div className="text-center mt-6">
                     <div className="text-sm text-gray-600 mb-1">Overall Score</div>
                     <div className="text-4xl font-bold text-purple-600 mb-1">{overallScore}</div>
@@ -558,8 +618,8 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                   </Button>
                   
                   <Button
-                    onClick={currentIndex === exercise.content.length - 1 ? finishExercise : nextItem}
-                    disabled={isRecording}
+                    onClick={currentIndex === exercise.content.length - 1 ? finishExercise : handleNext}
+                    disabled={isRecording || isProcessing}
                     size="sm"
                   >
                     {currentIndex === exercise.content.length - 1 ? 'Finish' : 'Next'}
