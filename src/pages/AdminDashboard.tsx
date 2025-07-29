@@ -58,35 +58,40 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
       // Load therapist assignments
       const { data: therapistData, error: therapistError } = await supabase
         .from('student_therapist_assignments')
-        .select(`
-          id,
-          student_id,
-          therapist_id,
-          assigned_at,
-          is_active,
-          student:profiles!student_therapist_assignments_student_id_fkey(user_id, username, full_name),
-          therapist:profiles!student_therapist_assignments_therapist_id_fkey(user_id, username, full_name)
-        `)
+        .select('*')
         .eq('is_active', true);
 
       if (therapistError) {
         console.error('Therapist assignments error:', therapistError);
         throw therapistError;
       }
+
+      // Get student and therapist details separately
+      const formattedTherapistAssignments = [];
+      for (const assignment of therapistData || []) {
+        const { data: studentData } = await supabase
+          .from('profiles')
+          .select('username, full_name')
+          .eq('user_id', assignment.student_id)
+          .single();
+
+        const { data: therapistData } = await supabase
+          .from('profiles')
+          .select('username, full_name')
+          .eq('user_id', assignment.therapist_id)
+          .single();
+
+        formattedTherapistAssignments.push({
+          id: assignment.id,
+          student_id: assignment.student_id,
+          therapist_id: assignment.therapist_id,
+          student_name: studentData?.full_name || studentData?.username || 'Unknown',
+          assigned_name: therapistData?.full_name || therapistData?.username || 'Unknown',
+          assigned_at: assignment.assigned_at,
+          is_active: assignment.is_active
+        });
+      }
       
-      console.log('Raw therapist data:', therapistData);
-      
-      const formattedTherapistAssignments = (therapistData || []).map(assignment => ({
-        id: assignment.id,
-        student_id: assignment.student_id,
-        therapist_id: assignment.therapist_id,
-        student_name: (assignment.student as any)?.full_name || (assignment.student as any)?.username || 'Unknown',
-        assigned_name: (assignment.therapist as any)?.full_name || (assignment.therapist as any)?.username || 'Unknown',
-        assigned_at: assignment.assigned_at,
-        is_active: assignment.is_active
-      }));
-      
-      console.log('Formatted therapist assignments:', formattedTherapistAssignments);
       setTherapistAssignments(formattedTherapistAssignments);
 
       // Load parent assignments
