@@ -37,6 +37,7 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
   }, [userId]);
 
   const fetchDailyExercises = async () => {
+    console.log('🔄 Fetching daily exercises for user:', userId);
     try {
       setLoading(true);
       
@@ -67,12 +68,16 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
 
       // Get today's progress
       const today = new Date().toISOString().split('T')[0];
+      console.log('📅 Checking progress for date:', today);
+      
       const { data: progressData, error: progressError } = await supabase
         .from('user_progress')
-        .select('exercise_id, accuracy')
+        .select('exercise_id, accuracy, completed_at')
         .eq('user_id', userId)
         .gte('completed_at', `${today}T00:00:00`)
         .lt('completed_at', `${today}T23:59:59`);
+
+      console.log('📊 Progress data found:', progressData);
 
       if (progressError) {
         console.error('Error fetching progress:', progressError);
@@ -113,9 +118,13 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
   };
 
   const handleExerciseComplete = () => {
+    console.log('✅ Exercise completed - refreshing exercise list');
     setShowPlayer(false);
     setCurrentExercise(null);
-    fetchDailyExercises(); // Refresh the exercises to show updated completion status
+    // Add a small delay to ensure database has been updated
+    setTimeout(() => {
+      fetchDailyExercises(); // Refresh the exercises to show updated completion status
+    }, 500);
   };
 
   const handleExerciseExit = () => {

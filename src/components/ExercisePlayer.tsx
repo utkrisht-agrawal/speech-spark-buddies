@@ -207,19 +207,40 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
     const totalAccuracy = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     const passed = totalAccuracy >= exercise.requiredAccuracy;
     
+    console.log('🎯 Finishing exercise:', {
+      exerciseId: exercise.id,
+      totalAccuracy,
+      requiredAccuracy: exercise.requiredAccuracy,
+      passed,
+      scores
+    });
+    
     try {
       // Save progress to database
       const { data: userData } = await supabase.auth.getUser();
       
       if (userData.user) {
-        await supabase.from('user_progress').insert({
+        const progressRecord = {
           user_id: userData.user.id,
           exercise_id: exercise.id,
           exercise_type: exercise.type,
           score: Math.round(totalAccuracy),
           accuracy: Math.round(totalAccuracy),
           xp_earned: passed ? exercise.points : Math.round(exercise.points * 0.5)
-        });
+        };
+        
+        console.log('💾 Saving progress record:', progressRecord);
+        
+        const { data, error } = await supabase
+          .from('user_progress')
+          .insert(progressRecord);
+          
+        if (error) {
+          console.error('❌ Database error:', error);
+          throw error;
+        }
+        
+        console.log('✅ Progress saved successfully:', data);
       }
       
       setShowResults(true);
@@ -284,14 +305,11 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                 Return to Dashboard
               </Button>
               <Button onClick={() => {
-                // Call onComplete only if exercise was passed
-                if (passed) {
-                  onComplete();
-                } else {
-                  onExit();
-                }
+                console.log('🚀 Exercise results - calling onComplete to refresh dashboard');
+                // Always call onComplete to refresh the dashboard, regardless of pass/fail
+                onComplete();
               }} className="flex-1">
-                {passed ? 'Continue Learning' : 'Try Again Later'}
+                {passed ? 'Continue Learning' : 'Back to Dashboard'}
               </Button>
             </div>
           </CardContent>
