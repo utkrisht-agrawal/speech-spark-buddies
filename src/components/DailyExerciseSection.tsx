@@ -143,20 +143,22 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
 
   if (showPlayer && currentExercise) {
     return (
-      <ExercisePlayer
-        exercise={{
-          id: currentExercise.id,
-          title: currentExercise.title,
-          type: currentExercise.type,
-          difficulty: currentExercise.difficulty,
-          points: currentExercise.points,
-          requiredAccuracy: currentExercise.requiredAccuracy,
-          instruction: currentExercise.instruction,
-          content: Array.isArray(currentExercise.content) ? currentExercise.content : []
-        }}
-        onComplete={handleExerciseComplete}
-        onExit={handleExerciseExit}
-      />
+      <div className="h-screen w-full overflow-hidden">
+        <ExercisePlayer
+          exercise={{
+            id: currentExercise.id,
+            title: currentExercise.title,
+            type: currentExercise.type,
+            difficulty: currentExercise.difficulty,
+            points: currentExercise.points,
+            requiredAccuracy: currentExercise.requiredAccuracy,
+            instruction: currentExercise.instruction,
+            content: Array.isArray(currentExercise.content) ? currentExercise.content : []
+          }}
+          onComplete={handleExerciseComplete}
+          onExit={handleExerciseExit}
+        />
+      </div>
     );
   }
 

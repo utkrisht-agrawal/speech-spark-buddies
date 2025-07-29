@@ -283,8 +283,15 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                 <Home className="w-4 h-4 mr-2" />
                 Return to Dashboard
               </Button>
-              <Button onClick={onComplete} className="flex-1">
-                Continue Learning
+              <Button onClick={() => {
+                // Call onComplete only if exercise was passed
+                if (passed) {
+                  onComplete();
+                } else {
+                  onExit();
+                }
+              }} className="flex-1">
+                {passed ? 'Continue Learning' : 'Try Again Later'}
               </Button>
             </div>
           </CardContent>
@@ -294,7 +301,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
 
     // Main exercise interface matching the level-based GUI
     return (
-      <div className="min-h-screen max-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 flex flex-col overflow-hidden">
+      <div className="h-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-2 flex flex-col overflow-hidden max-h-screen">
         {/* Compact Header */}
         <div className="flex items-center justify-between mb-4 px-2 flex-shrink-0">
           <Button
