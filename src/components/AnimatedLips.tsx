@@ -67,55 +67,20 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
 }) => {
   console.log(phoneme);
   const [currentImage, setCurrentImage] = useState(phonemeImages['REST']);
-  const [animationPhase, setAnimationPhase] = useState(0);
 
   useEffect(() => {
     const targetImage = phonemeImages[phoneme as keyof typeof phonemeImages] || phonemeImages['REST'];
     setCurrentImage(targetImage);
   }, [phoneme]);
 
-  useEffect(() => {
-    if (isAnimating) {
-      const interval = setInterval(() => {
-        setAnimationPhase(prev => (prev + 1) % 8);
-      }, 150);
-      return () => clearInterval(interval);
-    } else {
-      setAnimationPhase(0);
-    }
-  }, [isAnimating]);
-
-  const animationScale = isAnimating ? 1 + Math.sin(animationPhase * 0.8) * 0.05 : 1;
-  const animationRotation = isAnimating ? Math.sin(animationPhase * 0.6) * 2 : 0;
-
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
-      <div 
-        className="relative transition-transform duration-300"
-        style={{ 
-          transform: `scale(${animationScale}) rotate(${animationRotation}deg)` 
-        }}
-      >
+      <div className="relative">
         <img 
           src={currentImage}
           alt={`Mouth position for phoneme ${phoneme}`}
           className="w-80 h-60 object-contain rounded-lg shadow-lg"
-          style={{
-            filter: isAnimating ? 'brightness(1.1) contrast(1.05)' : 'none',
-            transition: 'filter 0.3s ease'
-          }}
         />
-        
-        {/* Animation overlay effect */}
-        {isAnimating && (
-          <div 
-            className="absolute inset-0 rounded-lg"
-            style={{
-              background: `radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)`,
-              opacity: Math.sin(animationPhase * 0.8) * 0.3 + 0.3
-            }}
-          />
-        )}
       </div>
       
       {/* Phoneme info */}
