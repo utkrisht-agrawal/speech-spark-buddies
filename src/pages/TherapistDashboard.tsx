@@ -104,6 +104,12 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
 
       console.log('Found assignments:', assignmentData);
 
+      // Debug: Check all profiles to see what user_ids exist
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('user_id, username, full_name, role');
+      console.log('All profiles in database:', allProfiles);
+
       // Get student details separately
       const studentsData = [];
       for (const assignment of assignmentData || []) {
@@ -121,6 +127,17 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
         }
 
         console.log('Found student profile:', studentProfile);
+        
+        // Debug: Try finding by username if user_id doesn't work
+        if (!studentProfile) {
+          console.log('Trying to find student by username or full_name...');
+          const { data: altProfile } = await supabase
+            .from('profiles')
+            .select('id, user_id, username, full_name, current_level')
+            .or(`username.eq.${assignment.student_id},full_name.eq.${assignment.student_id}`)
+            .maybeSingle();
+          console.log('Alternative profile search result:', altProfile);
+        }
 
         if (studentProfile) {
           studentsData.push({
