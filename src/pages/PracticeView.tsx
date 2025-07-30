@@ -1,171 +1,191 @@
 
-import React, { useState } from 'react';
-import { ArrowLeft, Volume2 } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
-import RecordButton from '@/components/RecordButton';
-import ScoreCard from '@/components/ScoreCard';
-import { CameraWindow } from '@/components/CameraWindow';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { 
+  ArrowLeft, 
+  Play, 
+  Lock, 
+  Trophy, 
+  Target, 
+  Book,
+  RefreshCw
+} from 'lucide-react';
+import { CURRICULUM_LEVELS } from '@/data/curriculum';
+import { useDetailedProgress } from '@/hooks/useDetailedProgress';
+import { useAuth } from '@/hooks/useAuth';
+import ExercisePlayer from '@/components/ExercisePlayer';
 
 const PracticeView = () => {
-  const [isRecording, setIsRecording] = useState(false);
-  const [showScore, setShowScore] = useState(false);
-  const [hasRecorded, setHasRecorded] = useState(false);
+  const { user } = useAuth();
+  const { exerciseProgress, levelProgress, loading, refreshProgress } = useDetailedProgress();
+  const [selectedExercise, setSelectedExercise] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock data - in real app this would come from props/route params
-  const currentWord = {
-    word: 'Cat',
-    category: 'animals',
-    imageUrl: undefined, // Will show emoji placeholder
-  };
-
-  const mockResults = {
-    score: 85,
-    spokenWord: 'Kat',
-  };
-
-  const handleToggleRecording = () => {
-    setIsRecording(!isRecording);
-    
-    // Simulate recording completion
-    if (isRecording) {
-      setHasRecorded(true);
-      // In real app, this would trigger speech recognition
-      setTimeout(() => {
-        setShowScore(true);
-      }, 1000);
+  useEffect(() => {
+    if (user) {
+      refreshProgress();
     }
+  }, [user]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshProgress();
+    setRefreshing(false);
   };
 
-  const handleRetry = () => {
-    setShowScore(false);
-    setHasRecorded(false);
-    setIsRecording(false);
+  const handleStartExercise = (exercise) => {
+    setSelectedExercise(exercise);
   };
 
-  const handleNext = () => {
-    // Navigate to next word
-    console.log('Next word');
+  const handleExerciseComplete = () => {
+    setSelectedExercise(null);
+    // Refresh progress after completing exercise
+    setTimeout(() => {
+      refreshProgress();
+    }, 1000);
   };
 
-  const handlePlayPronunciation = () => {
-    // In real app, this would play the correct pronunciation
-    console.log('Playing pronunciation for:', currentWord.word);
-  };
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <CardTitle className="mb-4">Please Log In</CardTitle>
+          <p className="text-gray-600">You need to be logged in to access practice exercises.</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (selectedExercise) {
+    return (
+      <ExercisePlayer
+        exercise={selectedExercise}
+        onComplete={handleExerciseComplete}
+        onExit={() => setSelectedExercise(null)}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading exercises...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
-      <div className="container mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center space-x-4 mb-8">
-          <button className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl transition-shadow">
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Practice Time!</h1>
-            <p className="text-gray-600 capitalize">{currentWord.category} • Level 1</p>
-          </div>
-        </div>
-
-        {/* Word Display */}
-        <div className="bg-white rounded-3xl p-8 mb-8 shadow-xl border border-gray-100 text-center">
-          {/* Word Image */}
-          <div className="w-32 h-32 mx-auto mb-6 bg-gray-100 rounded-2xl flex items-center justify-center">
-            <span className="text-6xl">🐱</span>
-          </div>
-
-          {/* Word Text */}
-          <h2 className="text-4xl font-bold text-gray-800 mb-4">
-            {currentWord.word}
-          </h2>
-
-          {/* Pronunciation Button */}
-          <button
-            onClick={handlePlayPronunciation}
-            className="bg-blue-100 hover:bg-blue-200 text-blue-600 px-6 py-3 rounded-xl font-semibold transition-colors duration-200 flex items-center space-x-2 mx-auto"
-          >
-            <Volume2 className="w-5 h-5" />
-            <span>Hear Pronunciation</span>
-          </button>
-        </div>
-
-        {/* Avatar Guide and Camera */}
-        <div className="mb-8">
-          <div className="flex gap-4 justify-center items-start">
-            <AvatarGuide
-              isListening={isRecording}
-              isSpeaking={false}
-              mood={hasRecorded ? 'encouraging' : 'happy'}
-              message={
-                isRecording 
-                  ? "I'm listening..." 
-                  : hasRecorded 
-                    ? "Processing your speech..." 
-                    : "Say the word clearly!"
-              }
-            />
-            <CameraWindow 
-              isActive={isRecording}
-              className="w-80 h-60"
-            />
-          </div>
-        </div>
-
-        {/* Recording Interface */}
-        {!showScore && (
-          <div className="text-center mb-8">
-            <RecordButton
-              isRecording={isRecording}
-              onToggleRecording={handleToggleRecording}
-            />
-            
-            {hasRecorded && !isRecording && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-2xl">
-                <p className="text-lg font-semibold text-blue-700">
-                  Processing your speech...
-                </p>
-                <div className="flex justify-center space-x-1 mt-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Score Display */}
-        {showScore && (
-          <div className="mb-8">
-            <ScoreCard
-              score={mockResults.score}
-              targetWord={currentWord.word}
-              spokenWord={mockResults.spokenWord}
-              onRetry={handleRetry}
-              onNext={handleNext}
-            />
-          </div>
-        )}
-
-        {/* Waveform Visualization (Mock) */}
-        {hasRecorded && !showScore && (
-          <div className="bg-white rounded-2xl p-6 mb-6 shadow-lg">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4 text-center">
-              Your Recording
-            </h3>
-            <div className="flex items-center justify-center space-x-1 h-16">
-              {Array.from({ length: 20 }, (_, i) => (
-                <div
-                  key={i}
-                  className="bg-purple-400 rounded-full w-1"
-                  style={{
-                    height: `${Math.random() * 60 + 10}px`,
-                    animationDelay: `${i * 0.1}s`,
-                  }}
-                />
-              ))}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-purple-800">Practice Exercises</h1>
+              <p className="text-gray-600">Master speech sounds through targeted practice</p>
             </div>
           </div>
-        )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Exercises by Level */}
+        <div className="space-y-6">
+          {CURRICULUM_LEVELS.map(level => (
+            <Card key={level.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold">
+                      {level.id}
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{level.name}</CardTitle>
+                      <p className="text-sm text-gray-600">{level.ageRange}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600">Level Progress</div>
+                    <div className="text-lg font-semibold">
+                      {levelProgress[level.id]?.completion_percentage || 0}%
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {level.exercises.map(exercise => {
+                    const progress = exerciseProgress[exercise.id];
+                    const hasProgress = progress && progress.items.some(item => item.attempts > 0);
+                    
+                    return (
+                      <div 
+                        key={exercise.id} 
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{exercise.title}</h4>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="text-xs">
+                                {exercise.type}
+                              </Badge>
+                              <span className="text-xs text-gray-500">
+                                {exercise.points} XP
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{exercise.instruction}</p>
+                          
+                          {/* Progress Information */}
+                          <div className="text-sm text-gray-500">
+                            {hasProgress ? (
+                              <div className="space-y-1">
+                                <div className="flex justify-between">
+                                  <span>Progress: {progress.completion_percentage}%</span>
+                                  <span>Best Score: {progress.overall_best_score}%</span>
+                                </div>
+                                <Progress value={progress.completion_percentage} className="h-1" />
+                              </div>
+                            ) : (
+                              <div className="text-orange-600">Not attempted</div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartExercise(exercise)}
+                          className="ml-4"
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Start
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
