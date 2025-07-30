@@ -240,7 +240,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
                         {exercise.points} XP
                       </span>
                       <div className="flex">
-                        {[...Array(3)].map((_, i) => (
+                        {Array.from({ length: 3 }, (_, i) => (
                           <div
                             key={i}
                             className={`w-2 h-2 rounded-full mr-1 ${
