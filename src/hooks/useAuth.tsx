@@ -9,6 +9,7 @@ interface Profile {
   role: 'child' | 'parent' | 'therapist' | 'admin';
   full_name?: string;
   assessment_completed?: boolean;
+  current_level?: number;
 }
 
 interface AuthContextType {
@@ -198,6 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updates.current_level = currentLevel;
       }
 
+      console.log('🔄 Updating assessment status:', { userId: user.id, updates });
+
       const { data, error } = await supabase
         .from('profiles')
         .update(updates)
@@ -205,15 +208,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select()
         .single();
 
+      console.log('📊 Assessment update result:', { data, error });
+
       if (!error && data) {
         // Update local profile state
         setProfile(prev => prev ? { ...prev, ...updates } : null);
-        console.log('Assessment status updated successfully:', data);
+        console.log('✅ Assessment status updated successfully:', data);
       }
 
       return { error };
     } catch (err) {
-      console.error('Error updating assessment status:', err);
+      console.error('❌ Error updating assessment status:', err);
       return { error: err };
     }
   };
