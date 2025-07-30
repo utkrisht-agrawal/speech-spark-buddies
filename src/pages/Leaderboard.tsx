@@ -42,7 +42,7 @@ const Leaderboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       console.log('👤 Current user:', user?.id);
       
-      // Fetch daily leaderboard - today's practice scores
+      // Fetch daily leaderboard - today's practice scores from ALL users
       const today = new Date().toISOString().split('T')[0];
       console.log('📅 Today\'s date for leaderboard:', today);
       
@@ -57,7 +57,7 @@ const Leaderboard = () => {
         .gte('completed_at', `${today}T00:00:00`)
         .lt('completed_at', `${today}T23:59:59`);
 
-      console.log('📊 Raw daily data from database:', dailyData);
+      console.log('📊 Raw daily data from database (all users):', dailyData);
       console.log('❌ Daily data error:', dailyError);
 
       let dailyProcessed: DailyLeaderboardEntry[] = [];
@@ -68,7 +68,7 @@ const Leaderboard = () => {
       } else if (dailyData && dailyData.length > 0) {
         // Get unique user IDs
         const userIds = [...new Set(dailyData.map(record => record.user_id))];
-        console.log('👥 User IDs found:', userIds);
+        console.log('👥 Unique user IDs found:', userIds.length, 'users');
         
         // Fetch profile data for these users
         const { data: profilesData, error: profilesError } = await supabase
@@ -76,7 +76,7 @@ const Leaderboard = () => {
           .select('user_id, username, full_name')
           .in('user_id', userIds);
           
-        console.log('👤 Profiles data:', profilesData);
+        console.log('👤 Profiles data fetched:', profilesData?.length, 'profiles');
         console.log('❌ Profiles error:', profilesError);
         
         if (!profilesError && profilesData) {
@@ -89,41 +89,41 @@ const Leaderboard = () => {
             };
           });
           
-          console.log('🔗 Combined data:', combinedData);
+          console.log('🔗 Combined data for', combinedData.length, 'records');
           dailyProcessed = processDailyData(combinedData);
         }
+      } else {
+        console.log('ℹ️ No daily practice data found for today');
       }
       
       setDailyLeaderboard(dailyProcessed);
 
-      // Fetch level leaderboard - overall rankings
+      // Fetch level leaderboard - ALL users with any XP or level data
       const { data: levelData, error: levelError } = await supabase
         .from('profiles')
         .select('user_id, username, full_name, current_level, total_xp')
-        .not('current_level', 'is', null)
-        .not('total_xp', 'is', null)
-        .gt('total_xp', 0)
-        .order('total_xp', { ascending: false })
-        .limit(50);
+        .not('username', 'is', null)
+        .order('total_xp', { ascending: false, nullsFirst: false })
+        .limit(100);
 
-      console.log('🏆 Level data:', levelData);
+      console.log('🏆 Level data fetched:', levelData?.length, 'users');
       console.log('❌ Level error:', levelError);
 
       if (levelError) {
         console.error('Error fetching level leaderboard:', levelError);
         toast.error('Failed to load level leaderboard');
       } else {
-        // Process level data
+        // Process level data - include all users, even with 0 XP
         const levelProcessed = (levelData || []).map((entry, index) => ({
           user_id: entry.user_id,
           username: entry.username,
           full_name: entry.full_name,
-          score: entry.total_xp,
+          score: entry.total_xp || 0,
           rank: index + 1,
-          level: entry.current_level,
-          total_xp: entry.total_xp
+          level: entry.current_level || 1,
+          total_xp: entry.total_xp || 0
         }));
-        console.log('✅ Processed level leaderboard:', levelProcessed);
+        console.log('✅ Processed level leaderboard:', levelProcessed.length, 'entries');
         setLevelLeaderboard(levelProcessed);
       }
       
