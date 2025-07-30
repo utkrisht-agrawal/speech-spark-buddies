@@ -13,7 +13,7 @@ import {
   Book,
   RefreshCw
 } from 'lucide-react';
-import { CURRICULUM_LEVELS } from '@/data/curriculum';
+import { supabase } from '@/integrations/supabase/client';
 import { useDetailedProgress } from '@/hooks/useDetailedProgress';
 import { useAuth } from '@/hooks/useAuth';
 import ExercisePlayer from '@/components/ExercisePlayer';
@@ -23,16 +23,39 @@ const PracticeView = () => {
   const { exerciseProgress, levelProgress, loading, refreshProgress } = useDetailedProgress();
   const [selectedExercise, setSelectedExercise] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [exercises, setExercises] = useState([]);
+  const [loadingExercises, setLoadingExercises] = useState(true);
+
+  // Fetch actual exercises from database
+  const fetchExercises = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at');
+      
+      if (error) throw error;
+      
+      console.log('📚 Fetched exercises:', data);
+      setExercises(data || []);
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
+    } finally {
+      setLoadingExercises(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
+      fetchExercises();
       refreshProgress();
     }
   }, [user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refreshProgress();
+    await Promise.all([fetchExercises(), refreshProgress()]);
     setRefreshing(false);
   };
 
@@ -44,7 +67,7 @@ const PracticeView = () => {
     setSelectedExercise(null);
     // Refresh progress after completing exercise
     setTimeout(() => {
-      refreshProgress();
+      Promise.all([fetchExercises(), refreshProgress()]);
     }, 1000);
   };
 
@@ -69,7 +92,7 @@ const PracticeView = () => {
     );
   }
 
-  if (loading) {
+  if (loading || loadingExercises) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="text-center">
@@ -106,86 +129,96 @@ const PracticeView = () => {
           </Button>
         </div>
 
-        {/* Exercises by Level */}
-        <div className="space-y-6">
-          {CURRICULUM_LEVELS.map(level => (
-            <Card key={level.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-purple-500 text-white rounded-full flex items-center justify-center font-bold">
-                      {level.id}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{level.name}</CardTitle>
-                      <p className="text-sm text-gray-600">{level.ageRange}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-600">Level Progress</div>
-                    <div className="text-lg font-semibold">
-                      {levelProgress[level.id]?.completion_percentage || 0}%
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {level.exercises.map(exercise => {
-                    const progress = exerciseProgress[exercise.id];
-                    const hasProgress = progress && progress.items.some(item => item.attempts > 0);
-                    
-                    return (
-                      <div 
-                        key={exercise.id} 
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">{exercise.title}</h4>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="text-xs">
-                                {exercise.type}
-                              </Badge>
-                              <span className="text-xs text-gray-500">
-                                {exercise.points} XP
-                              </span>
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">{exercise.instruction}</p>
-                          
-                          {/* Progress Information */}
-                          <div className="text-sm text-gray-500">
-                            {hasProgress ? (
-                              <div className="space-y-1">
-                                <div className="flex justify-between">
-                                  <span>Progress: {progress.completion_percentage}%</span>
-                                  <span>Best Score: {progress.overall_best_score}%</span>
-                                </div>
-                                <Progress value={progress.completion_percentage} className="h-1" />
-                              </div>
-                            ) : (
-                              <div className="text-orange-600">Not attempted</div>
-                            )}
+        {/* All Available Exercises */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <Book className="w-5 h-5 mr-2" />
+                Practice Exercises
+              </CardTitle>
+              <div className="text-sm text-gray-600">
+                Total: {exercises.length} exercises
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {exercises.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Book className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No exercises available yet.</p>
+                <p className="text-sm">Ask your therapist to create some exercises for you!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {exercises.map(exercise => {
+                  const progress = exerciseProgress[exercise.id];
+                  const hasProgress = progress && progress.items.some(item => item.attempts > 0);
+                  
+                  console.log(`🔍 Exercise ${exercise.id}:`, {
+                    progress,
+                    hasProgress,
+                    exerciseProgressKeys: Object.keys(exerciseProgress)
+                  });
+                  
+                  return (
+                    <div 
+                      key={exercise.id} 
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">{exercise.title}</h4>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline" className="text-xs">
+                              {exercise.type}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {exercise.points} XP
+                            </span>
                           </div>
                         </div>
+                        <p className="text-sm text-gray-600 mb-2">{exercise.instruction}</p>
                         
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartExercise(exercise)}
-                          className="ml-4"
-                        >
-                          <Play className="w-4 h-4 mr-1" />
-                          Start
-                        </Button>
+                        {/* Progress Information */}
+                        <div className="text-sm">
+                          {hasProgress ? (
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-green-600">
+                                <span>✅ Progress: {progress.completion_percentage}%</span>
+                                <span>Best Score: {progress.overall_best_score}%</span>
+                              </div>
+                              <Progress value={progress.completion_percentage} className="h-2" />
+                              <div className="text-xs text-gray-500">
+                                Attempts: {progress.items.reduce((sum, item) => sum + item.attempts, 0)}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-orange-600 font-medium">
+                              📝 Not attempted
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                      
+                      <Button
+                        size="sm"
+                        onClick={() => handleStartExercise({
+                          ...exercise,
+                          content: exercise.content || []
+                        })}
+                        className="ml-4"
+                      >
+                        <Play className="w-4 h-4 mr-1" />
+                        Start
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
