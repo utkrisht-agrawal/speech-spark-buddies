@@ -59,9 +59,26 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
   const [recognitionResult, setRecognitionResult] = useState<string>("");
   const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
 
-  const currentItem = exercise.content[currentIndex];
-  const isLastItem = currentIndex === exercise.content.length - 1;
-  const progress = ((currentIndex + 1) / exercise.content.length) * 100;
+  // Ensure exercise content is properly structured
+  const exerciseContent = Array.isArray(exercise.content) ? exercise.content : [];
+  
+  // Safeguard against empty content
+  if (exerciseContent.length === 0) {
+    console.error('Exercise has no content:', exercise);
+    return (
+      <Card className="w-full max-w-2xl mx-auto p-6">
+        <CardContent className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Exercise Content Missing</h3>
+          <p className="text-gray-600 mb-4">This exercise doesn't have any content to practice.</p>
+          <Button onClick={onExit}>Return to Dashboard</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const currentItem = exerciseContent[currentIndex] || {};
+  const isLastItem = currentIndex === exerciseContent.length - 1;
+  const progress = ((currentIndex + 1) / exerciseContent.length) * 100;
 
   useEffect(() => {
     // Calculate overall score from current scores
@@ -182,7 +199,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
   };
 
   const handleNext = () => {
-    if (currentIndex < exercise.content.length - 1) {
+    if (currentIndex < exerciseContent.length - 1) {
       setCurrentIndex(prev => prev + 1);
       setHasRecorded(false);
       setShowScore(false);
@@ -195,7 +212,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
   };
 
   const nextItem = () => {
-    if (currentIndex < exercise.content.length - 1) {
+    if (currentIndex < exerciseContent.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setHasRecorded(false);
       setShowScore(false);
@@ -339,7 +356,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <CheckCircle className="w-6 h-6 text-green-500 mx-auto mb-2" />
-                <div className="font-semibold">{exercise.content.length}</div>
+                <div className="font-semibold">{exerciseContent.length}</div>
                 <div className="text-sm text-gray-600">Items Completed</div>
               </div>
             </div>
@@ -380,7 +397,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
           <div className="text-center">
             <h1 className="text-lg font-bold text-gray-800">{exercise.title}</h1>
             <p className="text-xs text-gray-600">
-              {currentIndex + 1} of {exercise.content.length}
+              {currentIndex + 1} of {exerciseContent.length}
             </p>
           </div>
 
@@ -404,7 +421,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                      exercise.type === 'word' ? 'Words' : 'Sentences'}
                   </h3>
                   <div className="flex gap-1 mb-3 flex-wrap">
-                    {exercise.content.map((item: any, idx: number) => (
+                    {exerciseContent.map((item: any, idx: number) => (
                       <Button
                         key={idx}
                         onClick={() => setCurrentIndex(idx)}
@@ -545,7 +562,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                       onClick={nextItem}
                       variant="outline"
                       size="sm"
-                      disabled={currentIndex === exercise.content.length - 1}
+                      disabled={currentIndex === exerciseContent.length - 1}
                       className="h-8 px-2 text-xs"
                     >
                       Next →
@@ -688,11 +705,11 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                   </Button>
                   
                   <Button
-                    onClick={currentIndex === exercise.content.length - 1 ? finishExercise : handleNext}
+                    onClick={currentIndex === exerciseContent.length - 1 ? finishExercise : handleNext}
                     disabled={isRecording || isProcessing}
                     size="sm"
                   >
-                    {currentIndex === exercise.content.length - 1 ? 'Finish' : 'Next'}
+                    {currentIndex === exerciseContent.length - 1 ? 'Finish' : 'Next'}
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>

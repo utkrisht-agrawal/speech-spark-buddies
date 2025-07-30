@@ -275,7 +275,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
                     size="sm"
                     onClick={() => handleStartExercise({
                       ...exercise,
-                      content: exercise.content || []
+                      content: Array.isArray(exercise.content) ? exercise.content : []
                     })}
                     className="ml-4"
                   >
