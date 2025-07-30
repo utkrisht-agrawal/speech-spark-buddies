@@ -7,7 +7,6 @@ import { Lock, Star, Play, Trophy, Target, Book } from 'lucide-react';
 import { CURRICULUM_LEVELS } from '@/data/curriculum';
 import { Level, Exercise } from '@/types/curriculum';
 import { useDetailedProgress } from '@/hooks/useDetailedProgress';
-import { supabase } from '@/integrations/supabase/client';
 
 interface CurriculumViewProps {
   studentLevel: number;
@@ -22,32 +21,9 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
 }) => {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
   const { levelProgress, exerciseProgress, levelConfigs, loading, refreshProgress } = useDetailedProgress();
-  const [databaseExercises, setDatabaseExercises] = useState([]);
-  const [loadingExercises, setLoadingExercises] = useState(true);
-
-  // Fetch actual exercises from database
-  const fetchDatabaseExercises = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('exercises')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at');
-      
-      if (error) throw error;
-      
-      console.log('📚 Fetched database exercises for curriculum:', data);
-      setDatabaseExercises(data || []);
-    } catch (error) {
-      console.error('Error fetching database exercises:', error);
-    } finally {
-      setLoadingExercises(false);
-    }
-  };
 
   // Refresh progress data when component mounts or when coming back from exercises
   useEffect(() => {
-    fetchDatabaseExercises();
     refreshProgress();
   }, []);
 
@@ -55,34 +31,14 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
     onStartExercise(exercise);
     // Refresh progress when returning from exercise
     setTimeout(() => {
-      Promise.all([fetchDatabaseExercises(), refreshProgress()]);
+      refreshProgress();
     }, 1000);
-  };
-
-  // Group database exercises by difficulty/level for display
-  const getExercisesForLevel = (levelId: number) => {
-    return databaseExercises.filter(exercise => {
-      // You can add logic here to determine which exercises belong to which level
-      // For now, we'll show all exercises in all levels, but you can customize this
-      return true;
-    });
   };
 
   const renderLevelCard = (level: Level) => {
     const isUnlocked = level.id <= studentLevel;
     const isCurrent = level.id === studentLevel;
     const isCompleted = level.id < studentLevel;
-    
-    // Calculate progress based on actual database exercises
-    const levelExercises = getExercisesForLevel(level.id);
-    const completedExercises = levelExercises.filter(exercise => {
-      const progress = exerciseProgress[exercise.id];
-      return progress && progress.items.some(item => item.attempts > 0);
-    }).length;
-    
-    const levelProgressPercentage = levelExercises.length > 0 
-      ? Math.round((completedExercises / levelExercises.length) * 100)
-      : 0;
 
     return (
       <Card 
@@ -120,9 +76,9 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
             <div className="mb-3">
               <div className="flex justify-between text-sm mb-1">
                 <span>Progress</span>
-                <span>{levelProgressPercentage}%</span>
+                <span>{levelProgress[level.id]?.completion_percentage || 0}%</span>
               </div>
-              <Progress value={levelProgressPercentage} className="h-2" />
+              <Progress value={levelProgress[level.id]?.completion_percentage || 0} className="h-2" />
             </div>
           )}
 
@@ -130,7 +86,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
           <div className="flex space-x-4 text-xs text-gray-600">
             <span className="flex items-center">
               <Target className="w-3 h-3 mr-1" />
-              {levelExercises.length} exercises
+              {level.exercises.length} exercises
             </span>
             <span className="flex items-center">
               <Star className="w-3 h-3 mr-1" />
@@ -206,86 +162,64 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {getExercisesForLevel(level.id).length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Book className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No exercises available for this level yet.</p>
-              <p className="text-sm">Ask your therapist to create exercises for Level {level.id}!</p>
-            </div>
-          ) : (
-            getExercisesForLevel(level.id).map((exercise) => {
-              const progress = exerciseProgress[exercise.id];
-              const hasProgress = progress && progress.items.some(item => item.attempts > 0);
-              
-              console.log(`🔍 Level ${level.id} Exercise ${exercise.id}:`, {
-                title: exercise.title,
-                progress,
-                hasProgress,
-                exerciseProgressKeys: Object.keys(exerciseProgress)
-              });
-
-              return (
-                <div
-                  key={exercise.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <h4 className="font-medium">{exercise.title}</h4>
-                    <p className="text-sm text-gray-600">{exercise.instruction}</p>
-                    <div className="flex items-center mt-1 space-x-2">
-                      <Badge variant="outline" className="text-xs">
-                        {exercise.type}
-                      </Badge>
-                      <span className="text-xs text-gray-500">
-                        {exercise.points} XP
-                      </span>
-                      <div className="flex">
-                        {Array.from({ length: 3 }, (_, i) => (
-                          <div
-                            key={i}
-                            className={`w-2 h-2 rounded-full mr-1 ${
-                              i < exercise.difficulty ? 'bg-orange-400' : 'bg-gray-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
+          {level.exercises.map((exercise) => {
+            const progress = exerciseProgress[exercise.id];
+            return (
+              <div
+                key={exercise.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex-1">
+                  <h4 className="font-medium">{exercise.title}</h4>
+                  <p className="text-sm text-gray-600">{exercise.instruction}</p>
+                  <div className="flex items-center mt-1 space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      {exercise.type}
+                    </Badge>
+                    <span className="text-xs text-gray-500">
+                      {exercise.points} XP
+                    </span>
+                    <div className="flex">
+                      {[...Array(3)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-2 h-2 rounded-full mr-1 ${
+                            i < exercise.difficulty ? 'bg-orange-400' : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
                     </div>
-                    {hasProgress ? (
-                      <div className="mt-2">
-                        <div className="flex justify-between text-xs mb-1 text-green-600">
-                          <span>✅ Progress: {progress.completion_percentage}%</span>
-                          <span>Best: {progress.overall_best_score}%</span>
-                          <span>Last: {progress.overall_last_score}%</span>
-                        </div>
-                        <Progress value={progress.completion_percentage} className="h-1" />
-                        <div className="text-xs text-gray-500 mt-1">
-                          Attempts: {progress.items.reduce((sum, item) => sum + item.attempts, 0)}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-2">
-                        <div className="flex justify-between text-xs mb-1 text-orange-600">
-                          <span>📝 Not attempted</span>
-                        </div>
-                        <Progress value={0} className="h-1" />
-                      </div>
-                    )}
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleStartExercise({
-                      ...exercise,
-                      content: Array.isArray(exercise.content) ? exercise.content : []
-                    })}
-                    className="ml-4"
-                  >
-                    <Play className="w-4 h-4 mr-1" />
-                    Start
-                  </Button>
+                  {progress ? (
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Progress: {progress.completion_percentage}%</span>
+                        <span>Best: {progress.overall_best_score}%</span>
+                        <span>Last: {progress.overall_last_score}%</span>
+                      </div>
+                      <Progress value={progress.completion_percentage} className="h-1" />
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Progress: 0%</span>
+                        <span>Not attempted</span>
+                      </div>
+                      <Progress value={0} className="h-1" />
+                    </div>
+                  )}
                 </div>
-              );
-            })
-          )}
+                <Button
+                  size="sm"
+                  onClick={() => handleStartExercise(exercise)}
+                  className="ml-4"
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  Start
+                </Button>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

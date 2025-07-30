@@ -210,14 +210,7 @@ export const useDetailedProgress = () => {
     if (!user?.id) return;
 
     try {
-      // Get the latest pass score from level_config or default
-      const { data: configData } = await supabase
-        .from('level_config')
-        .select('pass_score')
-        .eq('level_id', levelId)
-        .single();
-      
-      const passScore = configData?.pass_score || levelConfigs[levelId]?.pass_score || 80;
+      const passScore = levelConfigs[levelId]?.pass_score || 80;
       const isCompleted = averageScore >= passScore && completedExercises === totalExercises;
 
       const { data: existing } = await supabase
@@ -259,38 +252,19 @@ export const useDetailedProgress = () => {
     try {
       console.log(`🔧 Updating level ${levelId} pass score to ${passScore}%`);
       
-      // Check if config exists first
-      const { data: existing } = await supabase
+      const { error: configError } = await supabase
         .from('level_config')
-        .select('id')
-        .eq('level_id', levelId)
-        .single();
-
-      let configError;
-      if (existing) {
-        // Update existing record
-        const { error } = await supabase
-          .from('level_config')
-          .update({ pass_score: passScore })
-          .eq('level_id', levelId);
-        configError = error;
-      } else {
-        // Insert new record
-        const { error } = await supabase
-          .from('level_config')
-          .insert({
-            level_id: levelId,
-            pass_score: passScore,
-          });
-        configError = error;
-      }
+        .upsert({
+          level_id: levelId,
+          pass_score: passScore,
+        });
 
       if (configError) {
         console.error('❌ Error updating level config:', configError);
         throw configError;
       }
 
-      // Update all user progress records for this level to use new pass score
+      // Update all user progress records for this level
       const { error: progressError } = await supabase
         .from('level_progress')
         .update({ pass_score: passScore })
@@ -298,7 +272,7 @@ export const useDetailedProgress = () => {
 
       if (progressError) {
         console.error('❌ Error updating level progress:', progressError);
-        // Don't throw, this is not critical
+        throw progressError;
       }
 
       // Refresh data

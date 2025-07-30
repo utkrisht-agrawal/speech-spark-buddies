@@ -9,7 +9,6 @@ interface Profile {
   role: 'child' | 'parent' | 'therapist' | 'admin';
   full_name?: string;
   assessment_completed?: boolean;
-  current_level?: number;
 }
 
 interface AuthContextType {
@@ -19,7 +18,6 @@ interface AuthContextType {
   signUp: (username: string, password: string, role: 'child' | 'parent' | 'therapist' | 'admin', fullName?: string) => Promise<{ error: any }>;
   signIn: (username: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
-  updateAssessmentStatus: (completed: boolean, currentLevel?: number) => Promise<{ error: any }>;
   loading: boolean;
 }
 
@@ -45,56 +43,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user && mounted) {
-          // Fetch user profile - wait a bit for trigger to complete
+          // Fetch user profile
           setTimeout(async () => {
             if (!mounted) return;
             
             try {
               console.log('Fetching profile for user:', session.user.id);
+              let { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
               
-              // Retry logic for profile fetching (in case trigger is still processing)
-              let profileData = null;
-              let attempts = 0;
-              const maxAttempts = 5;
-              
-              while (!profileData && attempts < maxAttempts) {
-                const { data, error } = await supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('user_id', session.user.id)
-                  .maybeSingle();
-                
-                if (error) {
-                  console.error('Profile fetch error:', error);
-                  break;
-                }
-                
-                if (data) {
-                  profileData = data;
-                  console.log('Profile found:', profileData);
-                  break;
-                }
-                
-                attempts++;
-                console.log(`Profile not found, attempt ${attempts}/${maxAttempts}, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
-              }
+              console.log('Profile fetch result:', { profileData, error });
               
               if (mounted) {
-                if (profileData) {
-                  setProfile(profileData);
-                } else {
-                  console.log('Profile still not found after retries, using fallback');
-                  // Create fallback profile object (don't insert to DB as trigger should handle it)
+                // If no profile exists, create one immediately
+                if (!profileData) {
+                  console.log('No profile found, creating one...');
                   const userData = session.user.user_metadata || {};
-                  setProfile({
-                    id: session.user.id,
-                    user_id: session.user.id,
-                    username: userData.username || session.user.email?.split('@')[0] || 'user',
-                    role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
-                    full_name: userData.full_name || null,
-                    assessment_completed: false
-                  });
+                  console.log('Creating profile with metadata:', userData);
+                  
+                  const { data: newProfile, error: insertError } = await supabase
+                    .from('profiles')
+                    .insert({
+                      user_id: session.user.id,
+                      username: userData.username || session.user.email?.split('@')[0] || 'user',
+                      role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
+                      full_name: userData.full_name || null
+                    })
+                    .select()
+                    .single();
+                  
+                  if (!insertError && newProfile) {
+                    console.log('Successfully created profile:', newProfile);
+                    setProfile(newProfile);
+                  } else {
+                    console.error('Profile creation error:', insertError);
+                    // Create a minimal profile to prevent infinite loading
+                    setProfile({
+                      id: session.user.id,
+                      user_id: session.user.id,
+                      username: userData.username || session.user.email?.split('@')[0] || 'user',
+                      role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
+                      full_name: userData.full_name || null
+                    });
+                  }
+                } else {
+                  console.log('Profile found:', profileData);
+                  setProfile(profileData);
                 }
                 setLoading(false);
               }
@@ -108,13 +105,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   user_id: session.user.id,
                   username: userData.username || session.user.email?.split('@')[0] || 'user',
                   role: (userData.role as 'child' | 'parent' | 'therapist' | 'admin') || 'child',
-                  full_name: userData.full_name || null,
-                  assessment_completed: false
+                  full_name: userData.full_name || null
                 });
                 setLoading(false);
               }
             }
-          }, 1000); // Increased delay to allow trigger to complete
+          }, 100);
         } else {
           setProfile(null);
           setLoading(false);
@@ -185,44 +181,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const updateAssessmentStatus = async (completed: boolean, currentLevel?: number) => {
-    if (!user?.id) {
-      return { error: new Error('No user logged in') };
-    }
-
-    try {
-      const updates: any = {
-        assessment_completed: completed
-      };
-      
-      if (currentLevel) {
-        updates.current_level = currentLevel;
-      }
-
-      console.log('🔄 Updating assessment status:', { userId: user.id, updates });
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      console.log('📊 Assessment update result:', { data, error });
-
-      if (!error && data) {
-        // Update local profile state
-        setProfile(prev => prev ? { ...prev, ...updates } : null);
-        console.log('✅ Assessment status updated successfully:', data);
-      }
-
-      return { error };
-    } catch (err) {
-      console.error('❌ Error updating assessment status:', err);
-      return { error: err };
-    }
-  };
-
   return (
     <AuthContext.Provider value={{
       user,
@@ -231,7 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signOut,
-      updateAssessmentStatus,
       loading
     }}>
       {children}

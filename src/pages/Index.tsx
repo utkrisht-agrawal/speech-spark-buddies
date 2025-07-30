@@ -63,25 +63,19 @@ const Index = () => {
   useEffect(() => {
     if (profile?.role === 'child') {
       console.log('Child profile detected, checking assessment status');
-      console.log('Profile data:', profile);
-      
       // Check if assessment already completed
       if (profile.assessment_completed) {
         console.log('Assessment already completed');
         setNeedsAssessment(false);
         setHasCompletedAssessment(true);
-        
-        // Set student level from profile's current_level
-        const levelFromProfile = profile.current_level || 1;
-        console.log('Setting student level from profile:', levelFromProfile);
-        setStudentLevel(levelFromProfile);
+        // Set student level from database
+        setStudentLevel(userStats.currentLevel || 1);
       } else {
         console.log('Assessment not completed, setting needs assessment');
         setNeedsAssessment(true);
-        setStudentLevel(1); // Default level for new users
       }
     }
-  }, [profile?.role, profile?.assessment_completed, profile?.current_level]);
+  }, [profile?.role, profile?.assessment_completed, userStats.currentLevel]);
 
   const handleLogout = async () => {
     await signOut();
