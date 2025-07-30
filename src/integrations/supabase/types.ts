@@ -136,6 +136,48 @@ export type Database = {
           },
         ]
       }
+      exercise_progress: {
+        Row: {
+          attempts: number
+          best_score: number
+          created_at: string
+          exercise_id: string
+          id: string
+          item_content: string
+          item_index: number
+          last_score: number
+          level_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          best_score?: number
+          created_at?: string
+          exercise_id: string
+          id?: string
+          item_content: string
+          item_index: number
+          last_score?: number
+          level_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          best_score?: number
+          created_at?: string
+          exercise_id?: string
+          id?: string
+          item_content?: string
+          item_index?: number
+          last_score?: number
+          level_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercises: {
         Row: {
           content: Json
@@ -181,6 +223,69 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      level_config: {
+        Row: {
+          created_at: string
+          id: string
+          level_id: number
+          pass_score: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_id: number
+          pass_score?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_id?: number
+          pass_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      level_progress: {
+        Row: {
+          average_score: number
+          completed_exercises: number
+          created_at: string
+          id: string
+          is_completed: boolean
+          level_id: number
+          pass_score: number
+          total_exercises: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_score?: number
+          completed_exercises?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          level_id: number
+          pass_score?: number
+          total_exercises?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_score?: number
+          completed_exercises?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          level_id?: number
+          pass_score?: number
+          total_exercises?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

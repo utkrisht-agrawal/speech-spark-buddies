@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Lock, Star, Play, Trophy, Target, Book } from 'lucide-react';
 import { CURRICULUM_LEVELS } from '@/data/curriculum';
 import { Level, Exercise } from '@/types/curriculum';
+import { useDetailedProgress } from '@/hooks/useDetailedProgress';
 
 interface CurriculumViewProps {
   studentLevel: number;
@@ -19,6 +20,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
   onStartGame 
 }) => {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
+  const { levelProgress, exerciseProgress, levelConfigs, loading } = useDetailedProgress();
 
   const renderLevelCard = (level: Level) => {
     const isUnlocked = level.id <= studentLevel;
@@ -61,9 +63,9 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
             <div className="mb-3">
               <div className="flex justify-between text-sm mb-1">
                 <span>Progress</span>
-                <span>65%</span>
+                <span>{levelProgress[level.id]?.completion_percentage || 0}%</span>
               </div>
-              <Progress value={65} className="h-2" />
+              <Progress value={levelProgress[level.id]?.completion_percentage || 0} className="h-2" />
             </div>
           )}
 
@@ -113,7 +115,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
             Age: {level.ageRange}
           </span>
           <span className="bg-white/20 px-3 py-1 rounded-full">
-            Pass Score: {level.requiredScoreToPass}%
+            Pass Score: {levelConfigs[level.id]?.pass_score || level.requiredScoreToPass}%
           </span>
         </div>
       </div>
@@ -147,43 +149,55 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {level.exercises.map((exercise) => (
-            <div
-              key={exercise.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div>
-                <h4 className="font-medium">{exercise.title}</h4>
-                <p className="text-sm text-gray-600">{exercise.instruction}</p>
-                <div className="flex items-center mt-1 space-x-2">
-                  <Badge variant="outline" className="text-xs">
-                    {exercise.type}
-                  </Badge>
-                  <span className="text-xs text-gray-500">
-                    {exercise.points} XP
-                  </span>
-                  <div className="flex">
-                    {[...Array(3)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`w-2 h-2 rounded-full mr-1 ${
-                          i < exercise.difficulty ? 'bg-orange-400' : 'bg-gray-200'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => onStartExercise(exercise)}
-                className="ml-4"
+          {level.exercises.map((exercise) => {
+            const progress = exerciseProgress[exercise.id];
+            return (
+              <div
+                key={exercise.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <Play className="w-4 h-4 mr-1" />
-                Start
-              </Button>
-            </div>
-          ))}
+                <div className="flex-1">
+                  <h4 className="font-medium">{exercise.title}</h4>
+                  <p className="text-sm text-gray-600">{exercise.instruction}</p>
+                  <div className="flex items-center mt-1 space-x-2">
+                    <Badge variant="outline" className="text-xs">
+                      {exercise.type}
+                    </Badge>
+                    <span className="text-xs text-gray-500">
+                      {exercise.points} XP
+                    </span>
+                    <div className="flex">
+                      {[...Array(3)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-2 h-2 rounded-full mr-1 ${
+                            i < exercise.difficulty ? 'bg-orange-400' : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {progress && (
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Progress: {progress.completion_percentage}%</span>
+                        <span>Best: {progress.overall_best_score}%</span>
+                      </div>
+                      <Progress value={progress.completion_percentage} className="h-1" />
+                    </div>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => onStartExercise(exercise)}
+                  className="ml-4"
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  Start
+                </Button>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { CameraWindow } from '@/components/CameraWindow';
 import AnimatedLips from '@/components/AnimatedLips';
 import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
+import { useDetailedProgress } from '@/hooks/useDetailedProgress';
 
 interface ExerciseData {
   id: string;
@@ -29,6 +30,7 @@ interface ExerciseData {
   requiredAccuracy: number;
   instruction: string;
   content: any[];
+  level?: number;
 }
 
 interface ExercisePlayerProps {
@@ -38,6 +40,7 @@ interface ExercisePlayerProps {
 }
 
 const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, onExit }) => {
+  const { recordItemProgress, updateLevelProgress, levelConfigs } = useDetailedProgress();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
@@ -128,6 +131,15 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
             // Simulate lip shape match
             const mockLipScore = Math.floor(Math.random() * 30) + 70;
             setLipShapeMatch(mockLipScore);
+
+            // Record individual item progress
+            await recordItemProgress(
+              exercise.id,
+              exercise.level || 1,
+              currentIndex,
+              target,
+              result.similarityScore
+            );
             
           } catch (error) {
             console.error('Error with backend recording:', error);
@@ -205,12 +217,13 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
 
   const finishExercise = async () => {
     const totalAccuracy = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    const passed = totalAccuracy >= exercise.requiredAccuracy;
+    const requiredAccuracy = levelConfigs[exercise.level || 1]?.pass_score || exercise.requiredAccuracy;
+    const passed = totalAccuracy >= requiredAccuracy;
     
     console.log('🎯 Finishing exercise:', {
       exerciseId: exercise.id,
       totalAccuracy,
-      requiredAccuracy: exercise.requiredAccuracy,
+      requiredAccuracy,
       passed,
       scores
     });
@@ -239,6 +252,10 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
           console.error('❌ Database error:', error);
           throw error;
         }
+
+        // Update level progress
+        const levelId = exercise.level || 1;
+        await updateLevelProgress(levelId, 1, passed ? 1 : 0, totalAccuracy);
         
         console.log('✅ Progress saved successfully:', data);
       }
@@ -262,7 +279,8 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
   const renderContent = () => {
     if (showResults) {
       const totalAccuracy = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-      const passed = totalAccuracy >= exercise.requiredAccuracy;
+      const requiredAccuracy = levelConfigs[exercise.level || 1]?.pass_score || exercise.requiredAccuracy;
+      const passed = totalAccuracy >= requiredAccuracy;
 
       return (
         <Card className="w-full max-w-2xl mx-auto">
