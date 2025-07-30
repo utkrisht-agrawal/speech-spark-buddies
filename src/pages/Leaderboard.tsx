@@ -36,26 +36,39 @@ const Leaderboard = () => {
   const fetchLeaderboardData = async () => {
     try {
       setLoading(true);
+      console.log('🏆 Fetching leaderboard data...');
+      
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 Current user:', user?.id);
       
       // Fetch daily leaderboard - today's practice scores
       const today = new Date().toISOString().split('T')[0];
+      console.log('📅 Today\'s date for leaderboard:', today);
+      
       const { data: dailyData, error: dailyError } = await supabase
         .from('user_progress')
         .select(`
           user_id,
           accuracy,
           xp_earned,
+          completed_at,
           profiles!inner(username, full_name)
         `)
         .gte('completed_at', `${today}T00:00:00`)
         .lt('completed_at', `${today}T23:59:59`);
 
+      console.log('📊 Raw daily data from database:', dailyData);
+      console.log('❌ Daily data error:', dailyError);
+
       if (dailyError) {
-        console.error('Error fetching daily leaderboard:', dailyError);
+        console.error('❌ Error fetching daily leaderboard:', dailyError);
         toast.error('Failed to load daily leaderboard');
       } else {
         // Process daily data
+        console.log('🔄 Processing daily data:', dailyData?.length, 'records');
         const dailyProcessed = processDailyData(dailyData || []);
+        console.log('✅ Processed daily leaderboard:', dailyProcessed);
         setDailyLeaderboard(dailyProcessed);
       }
 
@@ -93,8 +106,11 @@ const Leaderboard = () => {
   };
 
   const processDailyData = (data: any[]) => {
+    console.log('🔄 Processing daily data input:', data);
+    
     // Group by user and calculate stats
     const userStats = data.reduce((acc, record) => {
+      console.log('📝 Processing record:', record);
       const userId = record.user_id;
       if (!acc[userId]) {
         acc[userId] = {
@@ -112,6 +128,8 @@ const Leaderboard = () => {
       return acc;
     }, {});
 
+    console.log('📊 Grouped user stats:', userStats);
+
     // Convert to array and calculate averages
     const processed = Object.values(userStats).map((stats: any) => ({
       user_id: stats.user_id,
@@ -123,12 +141,15 @@ const Leaderboard = () => {
       rank: 0
     }));
 
+    console.log('🎯 Processed array before sorting:', processed);
+
     // Sort by total XP and assign ranks
     processed.sort((a, b) => b.score - a.score);
     processed.forEach((entry, index) => {
       entry.rank = index + 1;
     });
 
+    console.log('🏆 Final processed leaderboard:', processed);
     return processed;
   };
 
