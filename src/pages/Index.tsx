@@ -14,6 +14,7 @@ import PracticeView from './PracticeView';
 import AssessmentTest from './AssessmentTest';
 import CurriculumView from './CurriculumView';
 import ExerciseView from './ExerciseView';
+import Leaderboard from './Leaderboard';
 import CandleBlowGame from './CandleBlowGame';
 import PopTheBalloonGame from './PopTheBalloonGame';
 import FeedTheMonsterGame from './FeedTheMonsterGame';
@@ -355,6 +356,8 @@ const Index = () => {
         />;
       case 'library':
         return <WordLibrary />;
+      case 'leaderboard':
+        return <Leaderboard />;
       case 'settings':
         return <div className="min-h-screen bg-gray-50 pb-20 flex items-center justify-center">
           <div className="text-center">

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, Clock, Star, Target, Play, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Star, Target, Play, CheckCircle, Timer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ExercisePlayer from './ExercisePlayer';
@@ -19,6 +19,7 @@ interface DailyExercise {
   content: any;
   completed: boolean;
   accuracy?: number;
+  expiresAt?: string;
 }
 
 interface DailyExerciseSectionProps {
@@ -41,11 +42,13 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
     try {
       setLoading(true);
       
-      // Get exercises assigned to this student
+      // Get exercises assigned to this student that haven't expired
+      const now = new Date().toISOString();
       const { data: assignments, error: assignmentError } = await supabase
         .from('exercise_assignments')
         .select(`
           exercise_id,
+          expires_at,
           exercises (
             id,
             title,
@@ -58,7 +61,8 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
           )
         `)
         .eq('assigned_to', userId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gt('expires_at', now);
 
       if (assignmentError) {
         console.error('Error fetching assignments:', assignmentError);
@@ -98,7 +102,8 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
           instruction: exercise.instruction,
           content: exercise.content,
           completed: !!progress,
-          accuracy: progress?.accuracy || 0
+          accuracy: progress?.accuracy || 0,
+          expiresAt: assignment.expires_at
         };
       }) || [];
 
@@ -148,6 +153,26 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
       case 'sentence': return '💬';
       default: return '📚';
     }
+  };
+
+  const getTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    const diff = expiry.getTime() - now.getTime();
+    
+    if (diff <= 0) return 'Expired';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m remaining`;
+    }
+    return `${minutes}m remaining`;
+  };
+
+  const isExpired = (expiresAt: string) => {
+    return new Date(expiresAt) <= new Date();
   };
 
   if (showPlayer && currentExercise) {
@@ -280,6 +305,21 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
                     {exercise.difficulty === 1 ? 'Easy' : exercise.difficulty === 2 ? 'Medium' : 'Hard'}
                   </Badge>
                 </div>
+
+                {exercise.expiresAt && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Timer className="w-4 h-4 text-orange-500" />
+                      <span className="text-sm text-gray-600">Time</span>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={isExpired(exercise.expiresAt) ? 'bg-red-100 text-red-800 border-red-200' : 'bg-orange-100 text-orange-800 border-orange-200'}
+                    >
+                      {getTimeRemaining(exercise.expiresAt)}
+                    </Badge>
+                  </div>
+                )}
               </div>
 
               {/* Action Button */}
@@ -296,6 +336,14 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
                       </Badge>
                     )}
                   </div>
+                ) : exercise.expiresAt && isExpired(exercise.expiresAt) ? (
+                  <Button 
+                    disabled
+                    className="w-full bg-gray-300 text-gray-500 cursor-not-allowed py-3 px-6 rounded-xl"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Expired
+                  </Button>
                 ) : (
                   <Button 
                     onClick={() => startExercise(exercise)}
