@@ -34,7 +34,9 @@ const LevelConfigAdmin = () => {
           title: "Success",
           description: `Pass score for Level ${levelId} updated to ${newScore}%`,
         });
+        console.log(`✅ Level ${levelId} pass score updated to ${newScore}%`);
       } catch (error) {
+        console.error('❌ Error updating pass score:', error);
         toast({
           title: "Error",
           description: "Failed to update pass score",

@@ -20,6 +20,7 @@ import { CameraWindow } from '@/components/CameraWindow';
 import AnimatedLips from '@/components/AnimatedLips';
 import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 import { useDetailedProgress } from '@/hooks/useDetailedProgress';
+import { CURRICULUM_LEVELS } from '@/data/curriculum';
 
 interface ExerciseData {
   id: string;
@@ -253,11 +254,37 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
           throw error;
         }
 
-        // Update level progress
+        // Update level progress - calculate proper totals
         const levelId = exercise.level || 1;
-        await updateLevelProgress(levelId, 1, passed ? 1 : 0, totalAccuracy);
+        
+        // Get all exercises for this level to calculate proper progress
+        const levelData = CURRICULUM_LEVELS.find(level => level.id === levelId);
+        const totalExercisesInLevel = levelData?.exercises.length || 1;
+        
+        // Get current exercise progress for this level
+        const { data: levelExercises } = await supabase
+          .from('exercise_progress')
+          .select('exercise_id, user_id, best_score')
+          .eq('user_id', userData.user.id)
+          .eq('level_id', levelId);
+        
+        // Calculate unique exercises completed and average score
+        const uniqueExercises = new Set(levelExercises?.map(ep => ep.exercise_id) || []);
+        const completedExercises = uniqueExercises.size;
+        
+        const averageScore = levelExercises && levelExercises.length > 0 
+          ? levelExercises.reduce((sum, ex) => sum + ex.best_score, 0) / levelExercises.length
+          : totalAccuracy;
+        
+        await updateLevelProgress(levelId, totalExercisesInLevel, completedExercises, averageScore);
         
         console.log('✅ Progress saved successfully:', data);
+        console.log('📊 Level progress updated:', {
+          levelId,
+          totalExercisesInLevel,
+          completedExercises,
+          averageScore
+        });
       }
       
       setShowResults(true);
@@ -327,7 +354,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                 // Always call onComplete to refresh the dashboard, regardless of pass/fail
                 onComplete();
               }} className="flex-1">
-                {passed ? 'Continue Learning' : 'Back to Dashboard'}
+                {passed ? 'Continue Learning' : 'Try Again'}
               </Button>
             </div>
           </CardContent>

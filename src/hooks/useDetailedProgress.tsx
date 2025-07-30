@@ -250,23 +250,38 @@ export const useDetailedProgress = () => {
 
   const updateLevelPassScore = async (levelId: number, passScore: number) => {
     try {
-      await supabase
+      console.log(`🔧 Updating level ${levelId} pass score to ${passScore}%`);
+      
+      const { error: configError } = await supabase
         .from('level_config')
         .upsert({
           level_id: levelId,
           pass_score: passScore,
         });
 
+      if (configError) {
+        console.error('❌ Error updating level config:', configError);
+        throw configError;
+      }
+
       // Update all user progress records for this level
-      await supabase
+      const { error: progressError } = await supabase
         .from('level_progress')
         .update({ pass_score: passScore })
         .eq('level_id', levelId);
 
+      if (progressError) {
+        console.error('❌ Error updating level progress:', progressError);
+        throw progressError;
+      }
+
       // Refresh data
       await Promise.all([fetchLevelConfigs(), fetchLevelProgress()]);
+      
+      console.log(`✅ Level ${levelId} pass score successfully updated to ${passScore}%`);
     } catch (error) {
-      console.error('Error updating level pass score:', error);
+      console.error('❌ Error updating level pass score:', error);
+      throw error;
     }
   };
 

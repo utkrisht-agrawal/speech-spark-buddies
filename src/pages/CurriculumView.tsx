@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,20 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
   onStartGame 
 }) => {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
-  const { levelProgress, exerciseProgress, levelConfigs, loading } = useDetailedProgress();
+  const { levelProgress, exerciseProgress, levelConfigs, loading, refreshProgress } = useDetailedProgress();
+
+  // Refresh progress data when component mounts or when coming back from exercises
+  useEffect(() => {
+    refreshProgress();
+  }, []);
+
+  const handleStartExercise = (exercise: Exercise) => {
+    onStartExercise(exercise);
+    // Refresh progress when returning from exercise
+    setTimeout(() => {
+      refreshProgress();
+    }, 1000);
+  };
 
   const renderLevelCard = (level: Level) => {
     const isUnlocked = level.id <= studentLevel;
@@ -177,19 +190,28 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
                       ))}
                     </div>
                   </div>
-                  {progress && (
+                  {progress ? (
                     <div className="mt-2">
                       <div className="flex justify-between text-xs mb-1">
                         <span>Progress: {progress.completion_percentage}%</span>
                         <span>Best: {progress.overall_best_score}%</span>
+                        <span>Last: {progress.overall_last_score}%</span>
                       </div>
                       <Progress value={progress.completion_percentage} className="h-1" />
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Progress: 0%</span>
+                        <span>Not attempted</span>
+                      </div>
+                      <Progress value={0} className="h-1" />
                     </div>
                   )}
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => onStartExercise(exercise)}
+                  onClick={() => handleStartExercise(exercise)}
                   className="ml-4"
                 >
                   <Play className="w-4 h-4 mr-1" />
