@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, BookOpen, Target, BarChart3, Settings } from 'lucide-react';
+import { Plus, Users, BookOpen, Target, BarChart3, Settings, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ExerciseCreationForm from '@/components/ExerciseCreationForm';
+import Leaderboard from './Leaderboard';
 
 interface TherapistDashboardProps {
   therapistData: any;
@@ -36,7 +37,7 @@ interface Student {
 }
 
 const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'assign' | 'students' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'assign' | 'students' | 'leaderboard' | 'analytics'>('overview');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -256,17 +257,24 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
       const assignments = [];
 
       if (assignmentData.assignmentType === 'individual' && assignmentData.selectedStudents.length > 0) {
-        // Assign to specific students
+        // Assign to specific students - set expires_at to 24 hours from now
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        
         for (const studentId of assignmentData.selectedStudents) {
           assignments.push({
             exercise_id: assignmentData.exerciseId,
             assigned_to: studentId,
             assigned_by: userData.user.id, // Add this required field
             assignment_type: assignmentData.assignmentType,
+            expires_at: expiresAt.toISOString()
           });
         }
       } else {
-        // Assign to all students or by age group
+        // Assign to all students or by age group - set expires_at to 24 hours from now
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        
         assignments.push({
           exercise_id: assignmentData.exerciseId,
           assigned_to: null,
@@ -274,6 +282,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
           assignment_type: assignmentData.assignmentType,
           age_group: assignmentData.ageGroup || 'all',
           target_level: assignmentData.targetLevel,
+          expires_at: expiresAt.toISOString()
         });
       }
 
@@ -498,6 +507,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
       case 'create': return renderCreateExercise();
       case 'assign': return renderAssignExercise();
       case 'students': return renderStudents();
+      case 'leaderboard': return <Leaderboard />;
       case 'analytics': return <div>Analytics coming soon...</div>;
       default: return renderOverview();
     }
@@ -522,6 +532,7 @@ const TherapistDashboard: React.FC<TherapistDashboardProps> = ({ therapistData, 
             { id: 'create', label: 'Create Exercise', icon: Plus },
             { id: 'assign', label: 'Assign', icon: Target },
             { id: 'students', label: 'Students', icon: Users },
+            { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
             { id: 'analytics', label: 'Analytics', icon: BarChart3 },
           ].map(tab => (
             <button

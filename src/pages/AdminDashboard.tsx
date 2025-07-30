@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Users, UserPlus, BookOpen, BarChart3 } from 'lucide-react';
+import { Users, UserPlus, BookOpen, BarChart3, Trophy } from 'lucide-react';
+import Leaderboard from './Leaderboard';
 
 interface Profile {
   id: string;
@@ -30,6 +31,7 @@ interface Assignment {
 const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'leaderboard'>('overview');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [therapistAssignments, setTherapistAssignments] = useState<Assignment[]>([]);
   const [parentAssignments, setParentAssignments] = useState<Assignment[]>([]);
@@ -330,199 +332,232 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
           </Button>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{students.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Therapists</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{therapists.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Parents</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{parents.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Assignments</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{therapistAssignments.length + parentAssignments.length}</div>
-            </CardContent>
-          </Card>
+        {/* Navigation Tabs */}
+        <div className="flex space-x-4 border-b">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 font-medium ${activeTab === 'overview' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('assignments')}
+            className={`px-4 py-2 font-medium ${activeTab === 'assignments' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+          >
+            Assignments
+          </button>
+          <button
+            onClick={() => setActiveTab('leaderboard')}
+            className={`px-4 py-2 font-medium flex items-center space-x-2 ${activeTab === 'leaderboard' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+          >
+            <Trophy className="w-4 h-4" />
+            <span>Leaderboard</span>
+          </button>
         </div>
 
-        {/* Assignment Forms */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Assign Student to Therapist */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Assign Student to Therapist</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Student</label>
-                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a student" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map(student => (
-                      <SelectItem key={student.user_id} value={student.user_id}>
-                        {student.full_name || student.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Therapist</label>
-                <Select value={selectedTherapist} onValueChange={setSelectedTherapist}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a therapist" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {therapists.map(therapist => (
-                      <SelectItem key={therapist.user_id} value={therapist.user_id}>
-                        {therapist.full_name || therapist.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={assignStudentToTherapist} className="w-full">
-                Assign to Therapist
-              </Button>
-            </CardContent>
-          </Card>
+        {activeTab === 'leaderboard' && <Leaderboard />}
+        
+        {activeTab === 'overview' && (
+          <>
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{students.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Therapists</CardTitle>
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{therapists.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Parents</CardTitle>
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{parents.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Assignments</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{therapistAssignments.length + parentAssignments.length}</div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
 
-          {/* Assign Student to Parent */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Assign Student to Parent</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Student</label>
-                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a student" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map(student => (
-                      <SelectItem key={student.user_id} value={student.user_id}>
-                        {student.full_name || student.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Parent</label>
-                <Select value={selectedParent} onValueChange={setSelectedParent}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a parent" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {parents.map(parent => (
-                      <SelectItem key={parent.user_id} value={parent.user_id}>
-                        {parent.full_name || parent.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={assignStudentToParent} className="w-full">
-                Assign to Parent
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Current Assignments */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Therapist Assignments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Student-Therapist Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {therapistAssignments.map(assignment => (
-                  <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{assignment.student_name}</p>
-                      <p className="text-sm text-gray-600">→ {assignment.assigned_name}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">Active</Badge>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => removeAssignment(assignment.id, 'therapist')}
-                      >
-                        Remove
-                      </Button>
-                    </div>
+        {activeTab === 'assignments' && (
+          <>
+            {/* Assignment Forms */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Assign Student to Therapist */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Assign Student to Therapist</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Select Student</label>
+                    <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a student" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {students.map(student => (
+                          <SelectItem key={student.user_id} value={student.user_id}>
+                            {student.full_name || student.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
-                {therapistAssignments.length === 0 && (
-                  <p className="text-gray-500 text-center py-4">No assignments yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Parent Assignments */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Student-Parent Assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {parentAssignments.map(assignment => (
-                  <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{assignment.student_name}</p>
-                      <p className="text-sm text-gray-600">→ {assignment.assigned_name}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">Active</Badge>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => removeAssignment(assignment.id, 'parent')}
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Select Therapist</label>
+                    <Select value={selectedTherapist} onValueChange={setSelectedTherapist}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a therapist" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {therapists.map(therapist => (
+                          <SelectItem key={therapist.user_id} value={therapist.user_id}>
+                            {therapist.full_name || therapist.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
-                {parentAssignments.length === 0 && (
-                  <p className="text-gray-500 text-center py-4">No assignments yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  <Button onClick={assignStudentToTherapist} className="w-full">
+                    Assign to Therapist
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Assign Student to Parent */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Assign Student to Parent</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Select Student</label>
+                    <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a student" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {students.map(student => (
+                          <SelectItem key={student.user_id} value={student.user_id}>
+                            {student.full_name || student.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Select Parent</label>
+                    <Select value={selectedParent} onValueChange={setSelectedParent}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a parent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parents.map(parent => (
+                          <SelectItem key={parent.user_id} value={parent.user_id}>
+                            {parent.full_name || parent.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={assignStudentToParent} className="w-full">
+                    Assign to Parent
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Current Assignments */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Therapist Assignments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Student-Therapist Assignments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {therapistAssignments.map(assignment => (
+                      <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{assignment.student_name}</p>
+                          <p className="text-sm text-gray-600">→ {assignment.assigned_name}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="secondary">Active</Badge>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => removeAssignment(assignment.id, 'therapist')}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {therapistAssignments.length === 0 && (
+                      <p className="text-gray-500 text-center py-4">No assignments yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Parent Assignments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Student-Parent Assignments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {parentAssignments.map(assignment => (
+                      <div key={assignment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{assignment.student_name}</p>
+                          <p className="text-sm text-gray-600">→ {assignment.assigned_name}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="secondary">Active</Badge>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => removeAssignment(assignment.id, 'parent')}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {parentAssignments.length === 0 && (
+                      <p className="text-gray-500 text-center py-4">No assignments yet</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

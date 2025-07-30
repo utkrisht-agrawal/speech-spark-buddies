@@ -98,15 +98,16 @@ const Leaderboard = () => {
       
       setDailyLeaderboard(dailyProcessed);
 
-      // Fetch level leaderboard - ALL users with any XP or level data
+      // Fetch level leaderboard - ONLY children (not parents, admins, therapists)
       const { data: levelData, error: levelError } = await supabase
         .from('profiles')
-        .select('user_id, username, full_name, current_level, total_xp')
+        .select('user_id, username, full_name, current_level, total_xp, role')
+        .eq('role', 'child')
         .not('username', 'is', null)
         .order('total_xp', { ascending: false, nullsFirst: false })
         .limit(100);
 
-      console.log('🏆 Level data fetched:', levelData?.length, 'users');
+      console.log('🏆 Level data fetched (children only):', levelData?.length, 'users');
       console.log('❌ Level error:', levelError);
 
       if (levelError) {
