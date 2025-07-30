@@ -52,8 +52,7 @@ const Leaderboard = () => {
           user_id,
           accuracy,
           xp_earned,
-          completed_at,
-          profiles!inner(username, full_name)
+          completed_at
         `)
         .gte('completed_at', `${today}T00:00:00`)
         .lt('completed_at', `${today}T23:59:59`);
@@ -61,24 +60,54 @@ const Leaderboard = () => {
       console.log('📊 Raw daily data from database:', dailyData);
       console.log('❌ Daily data error:', dailyError);
 
+      let dailyProcessed: DailyLeaderboardEntry[] = [];
+      
       if (dailyError) {
         console.error('❌ Error fetching daily leaderboard:', dailyError);
         toast.error('Failed to load daily leaderboard');
-      } else {
-        // Process daily data
-        console.log('🔄 Processing daily data:', dailyData?.length, 'records');
-        const dailyProcessed = processDailyData(dailyData || []);
-        console.log('✅ Processed daily leaderboard:', dailyProcessed);
-        setDailyLeaderboard(dailyProcessed);
+      } else if (dailyData && dailyData.length > 0) {
+        // Get unique user IDs
+        const userIds = [...new Set(dailyData.map(record => record.user_id))];
+        console.log('👥 User IDs found:', userIds);
+        
+        // Fetch profile data for these users
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, username, full_name')
+          .in('user_id', userIds);
+          
+        console.log('👤 Profiles data:', profilesData);
+        console.log('❌ Profiles error:', profilesError);
+        
+        if (!profilesError && profilesData) {
+          // Combine progress data with profile data
+          const combinedData = dailyData.map(progress => {
+            const profile = profilesData.find(p => p.user_id === progress.user_id);
+            return {
+              ...progress,
+              profiles: profile || { username: 'Unknown', full_name: null }
+            };
+          });
+          
+          console.log('🔗 Combined data:', combinedData);
+          dailyProcessed = processDailyData(combinedData);
+        }
       }
+      
+      setDailyLeaderboard(dailyProcessed);
 
       // Fetch level leaderboard - overall rankings
       const { data: levelData, error: levelError } = await supabase
         .from('profiles')
         .select('user_id, username, full_name, current_level, total_xp')
         .not('current_level', 'is', null)
+        .not('total_xp', 'is', null)
+        .gt('total_xp', 0)
         .order('total_xp', { ascending: false })
         .limit(50);
+
+      console.log('🏆 Level data:', levelData);
+      console.log('❌ Level error:', levelError);
 
       if (levelError) {
         console.error('Error fetching level leaderboard:', levelError);
@@ -94,6 +123,7 @@ const Leaderboard = () => {
           level: entry.current_level,
           total_xp: entry.total_xp
         }));
+        console.log('✅ Processed level leaderboard:', levelProcessed);
         setLevelLeaderboard(levelProcessed);
       }
       
