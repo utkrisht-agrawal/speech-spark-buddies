@@ -164,6 +164,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
         <CardContent className="space-y-3">
           {level.exercises.map((exercise) => {
             const progress = exerciseProgress[exercise.id];
+            const hasProgress = progress && progress.items.some(item => item.attempts > 0);
             return (
               <div
                 key={exercise.id}
@@ -190,7 +191,7 @@ const CurriculumView: React.FC<CurriculumViewProps> = ({
                       ))}
                     </div>
                   </div>
-                  {progress ? (
+                  {hasProgress ? (
                     <div className="mt-2">
                       <div className="flex justify-between text-xs mb-1">
                         <span>Progress: {progress.completion_percentage}%</span>
