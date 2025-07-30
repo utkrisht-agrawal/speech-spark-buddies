@@ -97,6 +97,7 @@ export type Database = {
           assignment_type: string
           created_at: string
           exercise_id: string
+          expires_at: string | null
           id: string
           is_active: boolean
           target_level: number | null
@@ -108,6 +109,7 @@ export type Database = {
           assignment_type: string
           created_at?: string
           exercise_id: string
+          expires_at?: string | null
           id?: string
           is_active?: boolean
           target_level?: number | null
@@ -119,6 +121,7 @@ export type Database = {
           assignment_type?: string
           created_at?: string
           exercise_id?: string
+          expires_at?: string | null
           id?: string
           is_active?: boolean
           target_level?: number | null
