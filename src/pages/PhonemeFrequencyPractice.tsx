@@ -123,25 +123,47 @@ const PhonemeFrequencyPractice = () => {
         ctx.fillStyle = 'hsl(var(--background))';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Draw frequency bars
-        const barWidth = (canvas.width / bufferLength) * 2.5;
-        let x = 0;
+        // Find top 5 peaks in frequency data
+        const frequencies = Array.from(dataArray.slice(0, bufferLength / 4)); // Only lower frequencies
+        const peaks: { index: number; value: number; frequency: number }[] = [];
+        
+        // Create frequency-value pairs with actual frequency calculation
+        frequencies.forEach((value, index) => {
+          if (value > 10) { // Minimum threshold to avoid noise
+            const frequency = (index * audioContextRef.current!.sampleRate) / (2 * bufferLength);
+            peaks.push({ index, value, frequency });
+          }
+        });
+        
+        // Sort by amplitude and take top 5
+        peaks.sort((a, b) => b.value - a.value);
+        const top5Peaks = peaks.slice(0, 5);
+        
+        // Draw only the top 5 peaks
+        const barWidth = canvas.width / 5; // 5 bars for 5 peaks
         let totalAmplitude = 0;
         
-        for (let i = 0; i < bufferLength / 4; i++) { // Only show lower frequencies
-          const barHeight = (dataArray[i] / 255) * canvas.height;
-          const hue = (i / bufferLength) * 360;
+        top5Peaks.forEach((peak, i) => {
+          const x = i * barWidth;
+          const barHeight = (peak.value / 255) * canvas.height;
+          const hue = (peak.frequency / 2000) * 240; // Map frequency to hue (0-240 for blue to red)
           ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
-          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-          x += barWidth + 1;
-          totalAmplitude += dataArray[i];
-        }
+          ctx.fillRect(x, canvas.height - barHeight, barWidth * 0.8, barHeight);
+          
+          // Add frequency label
+          ctx.fillStyle = 'hsl(var(--foreground))';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${Math.round(peak.frequency)}Hz`, x + barWidth * 0.4, canvas.height - 5);
+          
+          totalAmplitude += peak.value;
+        });
         
-        // Calculate frequency match based on amplitude pattern
+        // Calculate frequency match based on top peaks
         if (targetFrequency.length > 0) {
-          const avgAmplitude = totalAmplitude / (bufferLength / 4);
+          const avgAmplitude = totalAmplitude / Math.max(top5Peaks.length, 1);
           const targetAvg = targetFrequency.reduce((a, b) => a + b, 0) / targetFrequency.length;
-          const normalizedTarget = (targetAvg / 1000) * 255; // Normalize to 0-255 range
+          const normalizedTarget = (targetAvg / 1000) * 255;
           const match = Math.max(0, 100 - Math.abs(normalizedTarget - avgAmplitude) / normalizedTarget * 100);
           setFrequencyMatch(match);
         }
