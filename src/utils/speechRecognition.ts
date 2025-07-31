@@ -1,10 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface PhonemeMatch {
+  target: string;
+  spoken: string;
+  match: 'green' | 'orange' | 'red';
+}
+
 export interface SpeechRecognitionResult {
   transcription: string;
   similarityScore: number;
   visemeScore: number;
-  phonemeAnalysis?: any;
+  phonemeAnalysis?: PhonemeMatch[];
 }
 
 export class AdvancedSpeechRecognition {
@@ -149,10 +155,7 @@ export class AdvancedSpeechRecognition {
         transcription: data.transcript || '',
         similarityScore: data.score || 0,
         visemeScore: data.score || 0,
-        phonemeAnalysis: {
-          spokenPhoneme: data.spoken_phoneme,
-          targetPhoneme: data.target_phoneme
-        }
+        phonemeAnalysis: data.phoneme_results || []
       };
       
     } catch (error) {
