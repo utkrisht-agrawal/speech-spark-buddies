@@ -367,17 +367,19 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                 <div className="flex gap-1 mb-3 flex-wrap">
                   {currentWord.phonemes.map((phoneme, index) => {
                     const match = phonemeResults[index]?.match;
-                    let colorClass = "bg-white text-gray-700 hover:bg-purple-50";
+                    let colorClass = index === currentPhonemeIndex
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-purple-50';
+
                     if (match === 'green') colorClass = 'bg-green-500 text-white';
                     else if (match === 'orange') colorClass = 'bg-orange-500 text-white';
                     else if (match === 'red') colorClass = 'bg-red-500 text-white';
-                    else if (index === currentPhonemeIndex) colorClass = 'bg-purple-600 text-white';
 
                     return (
                       <Button
                         key={index}
                         onClick={() => setCurrentPhonemeIndex(index)}
-                        variant="outline"
+                        variant={index === currentPhonemeIndex ? 'default' : 'outline'}
                         size="sm"
                         className={`min-w-[50px] h-7 text-xs ${colorClass}`}
                       >
