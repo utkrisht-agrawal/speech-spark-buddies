@@ -9,55 +9,51 @@ interface AnimatedLipsProps {
 // Map phonemes to realistic mouth images
 const phonemeImages: { [key: string]: string } = {
   // Rest/closed position
-  'REST': '/lovable-uploads/fe78d736-c1df-4cef-baa4-49d4b4ce1497.png',
-  
-  // Vowel sounds
-  'A': '/lovable-uploads/cf41e91c-0d20-4de8-b614-0f2989a78eef.png',
-  '/a/': '/lovable-uploads/cf41e91c-0d20-4de8-b614-0f2989a78eef.png',
-  'a': '/lovable-uploads/cf41e91c-0d20-4de8-b614-0f2989a78eef.png',
-  'AH': '/lovable-uploads/7ad40a17-a62a-4a62-9ffa-1eddcb2c88c9.png',
-  'E': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  'EH': '/lovable-uploads/21a485f6-13a4-44af-bd9f-0e88eed4cabe.png',
-  'I': '/lovable-uploads/4da68f6d-66e5-4ce9-9264-ad07085bc0ca.png',
-  'O': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
-  'OH': '/lovable-uploads/7d4fdd62-32d3-4245-bdc7-e81a346cfb09.png', // Wide open O
-  'U': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png', // Rounded U
-  'UH': '/lovable-uploads/30720bc1-7fed-41bc-8e3b-8bdef0cf37d7.png',
-  'OO': '/lovable-uploads/86d1165c-6cce-4846-8781-1eac7d585207.png', // Very rounded OO sound
-  
-  // Consonants with teeth visible
-  'S': '/lovable-uploads/d873d199-8958-4221-9823-a475b7d81aa2.png', // Teeth showing for S
-  'Z': '/lovable-uploads/d873d199-8958-4221-9823-a475b7d81aa2.png',
-  'TH': '/lovable-uploads/45e1a1b2-a37c-4ccd-ab4b-14b107082147.png', // Tongue between teeth
-  'F': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
-  'V': '/lovable-uploads/6fab2811-5a1d-4476-945f-3b242ed919e5.png',
-  'T': '/lovable-uploads/4370128a-f160-4141-8d84-50d0b9df4cfb.png', // Updated T sound
-  'D': '/lovable-uploads/39d73371-0814-45b0-bc9c-38974fe5508e.png', // Updated D sound
-  'N': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  'L': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  
-  // Closed lips for M, B, P sounds
-  'M': '/lovable-uploads/53910fa3-314b-4a4c-a85a-5b8a2c7782a2.png', // Closed lips
-  'B': '/lovable-uploads/53910fa3-314b-4a4c-a85a-5b8a2c7782a2.png',
-  'P': '/lovable-uploads/53910fa3-314b-4a4c-a85a-5b8a2c7782a2.png',
-  
-  // Wide open sounds
-  'C': '/lovable-uploads/4f31a9e8-ec80-499e-ae84-30b7625a8e40.png',
-  'G': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
-  'K': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
-  'R': '/lovable-uploads/b9586459-e4bf-46a3-82e8-1b6a601e1db4.png', // R sound
-  'H': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  'Y': '/lovable-uploads/4da68f6d-66e5-4ce9-9264-ad07085bc0ca.png',
-  'W': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png', // Rounded W
-  'Q': '/lovable-uploads/34c72fd0-7acb-4e9b-a4cf-f7b77f83fbff.png',
-  'ER': '/lovable-uploads/218c2284-1af8-4094-945a-6b0bac61bd21.png',
-  
-  // Additional mouth positions
-  'SMILE': '/lovable-uploads/2d893f64-43ef-4d23-aa71-8881a2316df7.png',
-  'NEUTRAL': '/lovable-uploads/72c68f48-d424-4640-a96a-33d9712c6c4c.png', // Final neutral position
-  'WIDE': '/lovable-uploads/da338f87-3623-451d-a6ce-31751ee7f34d.png',
-  'ROUND': '/lovable-uploads/f329d3e9-47ff-4780-8417-365560d73ea6.png',
-  'CLOSED': '/lovable-uploads/90e12974-881e-4b81-a674-8f747fa3f6cf.png',
+  'REST': '/mouth_shapes/phoneme_rest1.png',
+
+  // // Vowel sounds
+  'AA': '/mouth_shapes/phoneme_o.png',
+  'AE': '/mouth_shapes/phoneme_a_i.png',
+  'AH0': '/mouth_shapes/phoneme_u.png',
+  'AH': '/mouth_shapes/phoneme_u.png',
+  'AO': '/mouth_shapes/phoneme_o.png',
+  'AW': '/mouth_shapes/phoneme_w_q.png',
+  'AY': '/mouth_shapes/phoneme_a_i.png',
+  'EH': '/mouth_shapes/phoneme_e.png',
+  'ER': '/mouth_shapes/phoneme_u.png',
+  'EY': '/mouth_shapes/phoneme_a_i.png',
+  'IH': '/mouth_shapes/phoneme_c_d_g_k_n_r_s_y_z.png',
+  'IY': '/mouth_shapes/phoneme_e.png',
+  'OW': '/mouth_shapes/phoneme_o.png',
+  'OY': '/mouth_shapes/phoneme_o.png',
+  'UH': '/mouth_shapes/phoneme_u.png',
+  'UW': '/mouth_shapes/phoneme_u.png',
+
+  // Consonants
+  'B': '/mouth_shapes/phoneme_m_b_p.png',
+  'CH': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'D': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'DH': '/mouth_shapes/phoneme_th.png',
+  'F': '/mouth_shapes/phoneme_f_v.png',
+  'G': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'HH': '/mouth_shapes/phoneme_rest.png',
+  'JH': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'K': '/mouth_shapes/phoneme_c_d_g_k_n_r_s_y_z.png',
+  'L': '/mouth_shapes/phoneme_l.png',
+  'M': '/mouth_shapes/phoneme_m_b_p.png',
+  'N': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'NG': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'P': '/mouth_shapes/phoneme_m_b_p.png',
+  'R': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'S': '/mouth_shapes/phoneme_c_d_g_k_n_r_s_y_z.png',
+  'SH': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
+  'T': '/mouth_shapes/phoneme_th.png',
+  'TH': '/mouth_shapes/phoneme_th.png',
+  'V': '/mouth_shapes/phoneme_f_v.png',
+  'W': '/mouth_shapes/phoneme_w_q.png',
+  'Y': '/mouth_shapes/phoneme_c_d_g_k_n_r_s_y_z.png',
+  'Z': '/mouth_shapes/phoneme_c_d_g_k_n_r_s_y_z.png',
+  'ZH': '/mouth_shapes/phoneme_c_d_g_j_k_n_r_s_y_z.png',
 };
 
 const AnimatedLips: React.FC<AnimatedLipsProps> = ({ 
