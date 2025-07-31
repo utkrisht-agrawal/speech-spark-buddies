@@ -15,17 +15,11 @@ interface VisemePracticeProps {
   onComplete?: (score: number) => void;
 }
 
-// Sample words with their phoneme breakdowns
-const practiceWords = [
-  { word: "HELLO", phonemes: ['H', 'EH', 'L', 'OH'] },
-  { word: "APPLE", phonemes: ['AH', 'P', 'AH', 'L'] },
-  { word: "MOTHER", phonemes: ['M', 'AH', 'TH', 'ER'] },
-  { word: "FISH", phonemes: ['F', 'IH', 'S', 'H'] },
-  { word: "BOOK", phonemes: ['B', 'UH', 'K'] },
-  { word: "WATER", phonemes: ['W', 'AH', 'T', 'ER'] },
-];
+// Words to practice
+const practiceWordList = ["HELLO", "APPLE", "MOTHER", "FISH", "BOOK", "WATER"];
 
 const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) => {
+  const [practiceWords, setPracticeWords] = useState<{ word: string; phonemes: string[] }[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [attempts, setAttempts] = useState(0);
@@ -43,12 +37,47 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
   const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
+  const [phonemeMatches, setPhonemeMatches] = useState<string[]>([]);
   
   // Advanced speech recognition instance
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
   const { speak, stop, isSpeaking } = useTextToSpeech();
 
   const currentWord = practiceWords[currentWordIndex];
+
+  useEffect(() => {
+    if (practiceWords.length > 0) {
+      setPhonemeMatches(new Array(practiceWords[currentWordIndex].phonemes.length).fill(''));
+    }
+  }, [practiceWords, currentWordIndex]);
+
+  useEffect(() => {
+    const fetchPhonemes = async () => {
+      const words = await Promise.all(
+        practiceWordList.map(async (word) => {
+          try {
+            const formData = new FormData();
+            formData.append('text', word);
+            const res = await fetch('http://localhost:8001/phonemeSequence', {
+              method: 'POST',
+              body: formData
+            });
+            if (!res.ok) throw new Error('Failed request');
+            const data = await res.json();
+            const phonemes = Array.isArray(data.phoneme_sequence)
+              ? data.phoneme_sequence.map((p: string) => p.toUpperCase())
+              : [];
+            return { word, phonemes };
+          } catch (err) {
+            console.error(`Error fetching phonemes for ${word}`, err);
+            return { word, phonemes: [] };
+          }
+        })
+      );
+      setPracticeWords(words);
+    };
+    fetchPhonemes();
+  }, []);
 
   // Initialize backend speech recognition
   useEffect(() => {
@@ -116,9 +145,17 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           
           const result = await speechRecognition.recognizeSpeech(audioBlob, target);
           console.log(`🗣️ Backend result:`, result);
-          
+
           setSoundScore(result.similarityScore);
           setRecognitionResult(result.transcription);
+          if (Array.isArray(result.phonemeAnalysis) && result.phonemeAnalysis[0]) {
+            const status = result.phonemeAnalysis[0].status;
+            setPhonemeMatches(prev => {
+              const arr = [...prev];
+              arr[currentPhonemeIndex] = status;
+              return arr;
+            });
+          }
           setIsProcessing(false);
         }
       }, 3000);
@@ -139,9 +176,17 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         // Process the audio
         const target = currentWord.phonemes[currentPhonemeIndex];
         const result = await speechRecognition.recognizeSpeech(audioBlob, target);
-        
+
         setSoundScore(result.similarityScore);
         setRecognitionResult(result.transcription);
+        if (Array.isArray(result.phonemeAnalysis) && result.phonemeAnalysis[0]) {
+          const status = result.phonemeAnalysis[0].status;
+          setPhonemeMatches(prev => {
+            const arr = [...prev];
+            arr[currentPhonemeIndex] = status;
+            return arr;
+          });
+        }
         setIsProcessing(false);
       } catch (error) {
         console.error('Error stopping recording:', error);
@@ -197,9 +242,12 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           
           // Use backend for word-level recognition
           const result = await speechRecognition.recognizeSpeech(audioBlob, currentWord.word);
-          
+
           setSoundScore(result.similarityScore);
           setRecognitionResult(result.transcription);
+          if (Array.isArray(result.phonemeAnalysis)) {
+            setPhonemeMatches(result.phonemeAnalysis.map((p: any) => p.status));
+          }
           
           // Simulate lip score for the complete word
           const avgLipScore = Math.floor(Math.random() * 30) + 70;
@@ -222,6 +270,14 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       setIsProcessing(false);
     }
   };
+
+  if (practiceWords.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading words...
+      </div>
+    );
+  }
 
   if (isComplete) {
     return (
@@ -332,21 +388,25 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Phonemes</h3>
                 <div className="flex gap-1 mb-3 flex-wrap">
-                  {currentWord.phonemes.map((phoneme, index) => (
-                    <Button
-                      key={index}
-                      onClick={() => setCurrentPhonemeIndex(index)}
-                      variant={index === currentPhonemeIndex ? "default" : "outline"}
-                      size="sm"
-                      className={`min-w-[50px] h-7 text-xs ${
-                        index === currentPhonemeIndex 
-                          ? "bg-purple-600 text-white" 
-                          : "bg-white text-gray-700 hover:bg-purple-50"
-                      }`}
-                    >
-                      {phoneme}
-                    </Button>
-                  ))}
+                  {currentWord.phonemes.map((phoneme, index) => {
+                    const status = phonemeMatches[index];
+                    let color = '';
+                    if (status === 'match') color = 'bg-green-500 text-white';
+                    else if (status === 'stress') color = 'bg-orange-500 text-white';
+                    else if (status === 'mismatch') color = 'bg-red-500 text-white';
+                    else if (index === currentPhonemeIndex) color = 'bg-purple-600 text-white';
+                    else color = 'bg-white text-gray-700 hover:bg-purple-50';
+                    return (
+                      <Button
+                        key={index}
+                        onClick={() => setCurrentPhonemeIndex(index)}
+                        size="sm"
+                        className={`min-w-[50px] h-7 text-xs ${color}`}
+                      >
+                        {phoneme}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 

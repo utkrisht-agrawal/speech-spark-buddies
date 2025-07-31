@@ -50,13 +50,38 @@ def convert_audio(input_path):
 def text_to_phonemes(text: str) -> str:
     return ' '.join(g2p(text))
 
+def list_phonemes(text: str):
+    return g2p(text)
+
+def compare_phoneme_lists(target_list, spoken_list):
+    analysis = []
+    for i, tgt in enumerate(target_list):
+        spoken = spoken_list[i] if i < len(spoken_list) else ""
+        if tgt == spoken:
+            status = "match"
+        elif tgt[:-1] == spoken[:-1] and tgt[-1].isdigit() and spoken[-1:].isdigit():
+            status = "stress"
+        else:
+            status = "mismatch"
+        analysis.append({
+            "target": tgt,
+            "spoken": spoken,
+            "status": status
+        })
+    return analysis
+
 def transcribe_with_whisper(wav_path, target):
     result = whisper_model.transcribe(wav_path, language="en")
     transcript = result["text"].strip().lower()
 
     print(f"🗣️ Whisper Transcript: {transcript}")
     ratio = SequenceMatcher(None, target.lower(), transcript).ratio()
-    return int(ratio * 100), transcript, transcript, target
+
+    spoken_list = list_phonemes(transcript)
+    target_list = list_phonemes(target)
+    analysis = compare_phoneme_lists(target_list, spoken_list)
+
+    return int(ratio * 100), transcript, ' '.join(spoken_list), ' '.join(target_list), analysis
 
 def transcribe_with_wav2vec(wav_path, target):
     waveform, sample_rate = sf.read(wav_path)
@@ -74,14 +99,17 @@ def transcribe_with_wav2vec(wav_path, target):
     transcript = wav2vec_processor.batch_decode(predicted_ids)[0].lower().strip()
     print(f"🗣️ Wav2Vec2 Transcript: {transcript}")
 
-    spoken_phonemes = text_to_phonemes(transcript)
-    target_phonemes = text_to_phonemes(target)
+    spoken_list = list_phonemes(transcript)
+    target_list = list_phonemes(target)
+    spoken_phonemes = ' '.join(spoken_list)
+    target_phonemes = ' '.join(target_list)
 
     print(f"✅ Target Phonemes: {target_phonemes}")
     print(f"🗣️ Spoken Phonemes: {spoken_phonemes}")
 
     ratio = SequenceMatcher(None, target_phonemes, spoken_phonemes).ratio()
-    return int(ratio * 100), transcript, spoken_phonemes, target_phonemes
+    analysis = compare_phoneme_lists(target_list, spoken_list)
+    return int(ratio * 100), transcript, spoken_phonemes, target_phonemes, analysis
 
 @app.post("/score")
 async def score(
@@ -99,9 +127,9 @@ async def score(
 
     try:
         if mode == "sentence":
-            score, transcript, spoken, target_proc = transcribe_with_whisper(wav_path, target_phoneme)
+            score, transcript, spoken, target_proc, analysis = transcribe_with_whisper(wav_path, target_phoneme)
         else:
-            score, transcript, spoken, target_proc = transcribe_with_wav2vec(wav_path, target_phoneme)
+            score, transcript, spoken, target_proc, analysis = transcribe_with_wav2vec(wav_path, target_phoneme)
     finally:
         os.remove(tmp_path)
         os.remove(wav_path)
@@ -112,7 +140,8 @@ async def score(
         "score": score,
         "transcript": transcript,
         "spoken_phoneme": spoken,
-        "target_phoneme": target_proc
+        "target_phoneme": target_proc,
+        "analysis": analysis
     }
 
 @app.post("/phonemeSequence")

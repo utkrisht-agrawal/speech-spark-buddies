@@ -149,7 +149,7 @@ export class AdvancedSpeechRecognition {
         transcription: data.transcript || '',
         similarityScore: data.score || 0,
         visemeScore: data.score || 0,
-        phonemeAnalysis: {
+        phonemeAnalysis: data.analysis || {
           spokenPhoneme: data.spoken_phoneme,
           targetPhoneme: data.target_phoneme
         }
