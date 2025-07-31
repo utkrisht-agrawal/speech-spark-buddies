@@ -110,94 +110,44 @@ const PhonemeFrequencyPractice = () => {
       const bufferLength = analyserRef.current.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       
-        const updateFrequency = () => {
-          if (!analyserRef.current || !canvasRef.current) return;
-          
-          analyserRef.current.getByteFrequencyData(dataArray);
-          
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          
-          // Reduce range to focus on speech frequencies (0-4kHz approximately)
-          const reducedRange = Math.min(bufferLength / 8, 256);
-          const processedData = new Array(reducedRange);
-          
-          // Calculate average energy for noise reduction
-          let totalEnergy = 0;
-          for (let i = 0; i < reducedRange; i++) {
-            totalEnergy += dataArray[i];
-          }
-          const averageEnergy = totalEnergy / reducedRange;
-          
-          // Apply noise reduction and normalize
-          for (let i = 0; i < reducedRange; i++) {
-            processedData[i] = dataArray[i] > averageEnergy ? dataArray[i] - averageEnergy : 0;
-          }
-          
-          // Find top 5 peaks
-          const peaks = [];
-          for (let i = 1; i < reducedRange - 1; i++) {
-            if (processedData[i] > processedData[i - 1] && processedData[i] > processedData[i + 1]) {
-              peaks.push({ index: i, value: processedData[i] });
-            }
-          }
-          peaks.sort((a, b) => b.value - a.value);
-          const topPeaks = peaks.slice(0, 5);
-          
-          // Create smoothed curve with only top peaks
-          const smoothedData = new Array(reducedRange).fill(0);
-          topPeaks.forEach(peak => {
-            // Apply gaussian smoothing around each peak
-            const sigma = 3;
-            for (let i = Math.max(0, peak.index - 10); i < Math.min(reducedRange, peak.index + 10); i++) {
-              const distance = Math.abs(i - peak.index);
-              const weight = Math.exp(-(distance * distance) / (2 * sigma * sigma));
-              smoothedData[i] += peak.value * weight;
-            }
-          });
-          
-          // Normalize smoothed data
-          const maxSmoothed = Math.max(...smoothedData);
-          if (maxSmoothed > 0) {
-            for (let i = 0; i < reducedRange; i++) {
-              smoothedData[i] = (smoothedData[i] / maxSmoothed) * 255;
-            }
-          }
-          
-          // Clear canvas
-          ctx.fillStyle = 'hsl(var(--background))';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          // Draw smoothed frequency curve
-          ctx.beginPath();
-          ctx.strokeStyle = 'hsl(var(--primary))';
-          ctx.lineWidth = 2;
-          
-          const barWidth = canvas.width / reducedRange;
-          for (let i = 0; i < reducedRange; i++) {
-            const x = i * barWidth;
-            const y = canvas.height - (smoothedData[i] / 255) * canvas.height;
-            
-            if (i === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
-            }
-          }
-          ctx.stroke();
-          
-          // Calculate frequency match based on smoothed pattern
-          if (targetFrequency.length > 0) {
-            const avgAmplitude = smoothedData.reduce((a, b) => a + b, 0) / reducedRange;
-            const targetAvg = targetFrequency.reduce((a, b) => a + b, 0) / targetFrequency.length;
-            const normalizedTarget = (targetAvg / 1000) * 255;
-            const match = Math.max(0, 100 - Math.abs(normalizedTarget - avgAmplitude) / normalizedTarget * 100);
-            setFrequencyMatch(match);
-          }
-          
-          animationFrameRef.current = requestAnimationFrame(updateFrequency);
-        };
+      const updateFrequency = () => {
+        if (!analyserRef.current || !canvasRef.current) return;
+        
+        analyserRef.current.getByteFrequencyData(dataArray);
+        
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        // Clear canvas
+        ctx.fillStyle = 'hsl(var(--background))';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw frequency bars
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let x = 0;
+        let totalAmplitude = 0;
+        
+        for (let i = 0; i < bufferLength / 4; i++) { // Only show lower frequencies
+          const barHeight = (dataArray[i] / 255) * canvas.height;
+          const hue = (i / bufferLength) * 360;
+          ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+          x += barWidth + 1;
+          totalAmplitude += dataArray[i];
+        }
+        
+        // Calculate frequency match based on amplitude pattern
+        if (targetFrequency.length > 0) {
+          const avgAmplitude = totalAmplitude / (bufferLength / 4);
+          const targetAvg = targetFrequency.reduce((a, b) => a + b, 0) / targetFrequency.length;
+          const normalizedTarget = (targetAvg / 1000) * 255; // Normalize to 0-255 range
+          const match = Math.max(0, 100 - Math.abs(normalizedTarget - avgAmplitude) / normalizedTarget * 100);
+          setFrequencyMatch(match);
+        }
+        
+        animationFrameRef.current = requestAnimationFrame(updateFrequency);
+      };
       
       updateFrequency();
     } catch (error) {
