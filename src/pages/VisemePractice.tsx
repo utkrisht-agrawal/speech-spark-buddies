@@ -9,6 +9,7 @@ import AnimatedLips from '@/components/AnimatedLips';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { AudioPlayback } from '@/components/AudioPlayback';
 import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/speechRecognition';
+import { comparePhonemes, getPhonemeStyles, PhonemeMatch } from '@/utils/phonemeComparison';
 
 interface VisemePracticeProps {
   onBack?: () => void;
@@ -37,6 +38,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
   const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
+  const [phonemeMatches, setPhonemeMatches] = useState<PhonemeMatch[]>([]);
   
   // Advanced speech recognition instance
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
@@ -223,6 +225,13 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           setSoundScore(result.similarityScore);
           setRecognitionResult(result.transcription);
           
+          // Process phoneme analysis if available
+          if (result.phonemeAnalysis && result.phonemeAnalysis.spokenPhoneme && result.phonemeAnalysis.targetPhoneme) {
+            const matches = comparePhonemes(result.phonemeAnalysis.spokenPhoneme, result.phonemeAnalysis.targetPhoneme);
+            setPhonemeMatches(matches);
+            console.log('📊 Phoneme comparison:', matches);
+          }
+          
           // Simulate lip score for the complete word
           const avgLipScore = Math.floor(Math.random() * 30) + 70;
           setLipScore(avgLipScore);
@@ -362,22 +371,54 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Phonemes</h3>
                 <div className="flex gap-1 mb-3 flex-wrap">
-                  {currentWord.phonemes.map((phoneme, index) => (
-                    <Button
-                      key={index}
-                      onClick={() => setCurrentPhonemeIndex(index)}
-                      variant={index === currentPhonemeIndex ? "default" : "outline"}
-                      size="sm"
-                      className={`min-w-[50px] h-7 text-xs ${
-                        index === currentPhonemeIndex 
-                          ? "bg-purple-600 text-white" 
-                          : "bg-white text-gray-700 hover:bg-purple-50"
-                      }`}
-                    >
-                      {phoneme}
-                    </Button>
-                  ))}
+                  {currentWord.phonemes.map((phoneme, index) => {
+                    // Get phoneme match for highlighting if available
+                    const phoneMatch = phonemeMatches[index];
+                    const isSelected = index === currentPhonemeIndex;
+                    
+                    let buttonClass = "min-w-[50px] h-7 text-xs border-2 shadow-sm transition-all duration-200";
+                    
+                    if (isSelected) {
+                      buttonClass += " bg-purple-600 text-white border-purple-600";
+                    } else if (phoneMatch) {
+                      buttonClass += " " + getPhonemeStyles(phoneMatch.color);
+                    } else {
+                      buttonClass += " bg-white text-gray-700 border-gray-300 hover:bg-purple-50";
+                    }
+                    
+                    return (
+                      <Button
+                        key={index}
+                        onClick={() => setCurrentPhonemeIndex(index)}
+                        variant="outline"
+                        size="sm"
+                        className={buttonClass}
+                      >
+                        {phoneme}
+                      </Button>
+                    );
+                  })}
                 </div>
+                
+                {/* Phoneme Match Legend */}
+                {phonemeMatches.length > 0 && (
+                  <div className="text-xs text-gray-600 mb-2">
+                    <div className="flex gap-4 items-center">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-green-100 border border-green-400 rounded"></div>
+                        <span>Exact match</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-orange-100 border border-orange-400 rounded"></div>
+                        <span>Stress mismatch</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 bg-red-100 border border-red-400 rounded"></div>
+                        <span>Wrong phoneme</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Lip Animation Guide - Flexible height */}
