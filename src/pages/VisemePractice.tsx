@@ -56,15 +56,35 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   if (!phonemesLoaded) {
     return (
       <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <Card className="p-8 text-center">
+        <Card className="p-8 text-center max-w-md">
           <div className="text-lg font-semibold text-gray-800 mb-4">
             Loading phoneme sequences...
           </div>
-          <div className="animate-pulse flex justify-center space-x-2">
+          <div className="text-sm text-gray-600 mb-4">
+            Connecting to backend API at localhost:8000
+          </div>
+          <div className="animate-pulse flex justify-center space-x-2 mb-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="w-3 h-3 bg-purple-300 rounded-full" />
             ))}
           </div>
+          <div className="text-xs text-gray-500">
+            If this takes too long, the app will use fallback phonemes
+          </div>
+          <Button 
+            onClick={() => {
+              console.log("⚡ User requested skip - using fallback phonemes");
+              practiceWords.forEach((word, index) => {
+                practiceWords[index].phonemes = word.word.toLowerCase().split('');
+              });
+              setPhonemesLoaded(true);
+            }}
+            variant="outline" 
+            size="sm" 
+            className="mt-4"
+          >
+            Skip & Use Fallback
+          </Button>
         </Card>
       </div>
     );
@@ -79,7 +99,22 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       try {
         console.log("📝 Loading phoneme sequences from backend...");
         const words = practiceWords.map(w => w.word);
+        
+        // Add a maximum loading timeout
+        const maxLoadTime = 15000; // 15 seconds max
+        const loadingTimeout = setTimeout(() => {
+          console.warn("⏰ Phoneme loading taking too long, using fallbacks");
+          // Force fallback if taking too long
+          practiceWords.forEach((word, index) => {
+            if (practiceWords[index].phonemes.length === 0) {
+              practiceWords[index].phonemes = word.word.toLowerCase().split('');
+            }
+          });
+          setPhonemesLoaded(true);
+        }, maxLoadTime);
+        
         const phonemeMap = await preloadPhonemeSequences(words);
+        clearTimeout(loadingTimeout);
         
         // Update practice words with dynamic phonemes
         practiceWords.forEach((word, index) => {
@@ -87,7 +122,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         });
         
         setPhonemesLoaded(true);
-        console.log("✅ Phoneme sequences loaded:", practiceWords);
+        console.log("✅ Phoneme sequences loaded successfully:", practiceWords);
       } catch (error) {
         console.error("❌ Failed to load phonemes, using fallback:", error);
         // Use simple character split as fallback
