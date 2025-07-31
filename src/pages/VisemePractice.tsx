@@ -9,21 +9,20 @@ import AnimatedLips from '@/components/AnimatedLips';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { AudioPlayback } from '@/components/AudioPlayback';
 import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/speechRecognition';
-import { getPhonemeSequence, preloadPhonemeSequences } from '@/utils/phonemeAPI';
 
 interface VisemePracticeProps {
   onBack?: () => void;
   onComplete?: (score: number) => void;
 }
 
-// Sample words - phonemes will be loaded dynamically from backend
+// Sample words with their phoneme breakdowns
 const practiceWords = [
-  { word: "HELLO", phonemes: [] as string[] },
-  { word: "APPLE", phonemes: [] as string[] },
-  { word: "MOTHER", phonemes: [] as string[] },
-  { word: "FISH", phonemes: [] as string[] },
-  { word: "BOOK", phonemes: [] as string[] },
-  { word: "WATER", phonemes: [] as string[] },
+  { word: "HELLO", phonemes: ['H', 'EH', 'L', 'OH'] },
+  { word: "APPLE", phonemes: ['AH', 'P', 'AH', 'L'] },
+  { word: "MOTHER", phonemes: ['M', 'AH', 'TH', 'ER'] },
+  { word: "FISH", phonemes: ['F', 'IH', 'S', 'H'] },
+  { word: "BOOK", phonemes: ['B', 'UH', 'K'] },
+  { word: "WATER", phonemes: ['W', 'AH', 'T', 'ER'] },
 ];
 
 const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) => {
@@ -44,7 +43,6 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
   const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
-  const [phonemesLoaded, setPhonemesLoaded] = useState(false);
   
   // Advanced speech recognition instance
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
@@ -52,88 +50,9 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
 
   const currentWord = practiceWords[currentWordIndex];
 
-  // Show loading screen if phonemes aren't loaded yet
-  if (!phonemesLoaded) {
-    return (
-      <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <div className="text-lg font-semibold text-gray-800 mb-4">
-            Loading phoneme sequences...
-          </div>
-          <div className="text-sm text-gray-600 mb-4">
-            Connecting to backend API at localhost:8001
-          </div>
-          <div className="animate-pulse flex justify-center space-x-2 mb-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-3 h-3 bg-purple-300 rounded-full" />
-            ))}
-          </div>
-          <div className="text-xs text-gray-500">
-            If this takes too long, the app will use fallback phonemes
-          </div>
-          <Button 
-            onClick={() => {
-              console.log("⚡ User requested skip - using fallback phonemes");
-              practiceWords.forEach((word, index) => {
-                practiceWords[index].phonemes = word.word.toLowerCase().split('');
-              });
-              setPhonemesLoaded(true);
-            }}
-            variant="outline" 
-            size="sm" 
-            className="mt-4"
-          >
-            Skip & Use Fallback
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  // Initialize backend speech recognition and load phonemes
+  // Initialize backend speech recognition
   useEffect(() => {
     console.log("🤖 Using FREE backend speech recognition with Whisper + wav2vec");
-    
-    // Load phoneme sequences for all practice words
-    const loadPhonemes = async () => {
-      try {
-        console.log("📝 Loading phoneme sequences from backend...");
-        const words = practiceWords.map(w => w.word);
-        
-        // Add a maximum loading timeout
-        const maxLoadTime = 15000; // 15 seconds max
-        const loadingTimeout = setTimeout(() => {
-          console.warn("⏰ Phoneme loading taking too long, using fallbacks");
-          // Force fallback if taking too long
-          practiceWords.forEach((word, index) => {
-            if (practiceWords[index].phonemes.length === 0) {
-              practiceWords[index].phonemes = word.word.toLowerCase().split('');
-            }
-          });
-          setPhonemesLoaded(true);
-        }, maxLoadTime);
-        
-        const phonemeMap = await preloadPhonemeSequences(words);
-        clearTimeout(loadingTimeout);
-        
-        // Update practice words with dynamic phonemes
-        practiceWords.forEach((word, index) => {
-          practiceWords[index].phonemes = phonemeMap[word.word] || word.word.toLowerCase().split('');
-        });
-        
-        setPhonemesLoaded(true);
-        console.log("✅ Phoneme sequences loaded successfully:", practiceWords);
-      } catch (error) {
-        console.error("❌ Failed to load phonemes, using fallback:", error);
-        // Use simple character split as fallback
-        practiceWords.forEach((word, index) => {
-          practiceWords[index].phonemes = word.word.toLowerCase().split('');
-        });
-        setPhonemesLoaded(true);
-      }
-    };
-    
-    loadPhonemes();
   }, []);
 
   const handleVisemeComplete = () => {
