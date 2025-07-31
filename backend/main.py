@@ -83,6 +83,33 @@ def transcribe_with_wav2vec(wav_path, target):
     ratio = SequenceMatcher(None, target_phonemes, spoken_phonemes).ratio()
     return int(ratio * 100), transcript, spoken_phonemes, target_phonemes
 
+
+def compare_phonemes(spoken: str, target: str):
+    spoken_list = spoken.split()
+    target_list = target.split()
+    results = []
+    for idx, tp in enumerate(target_list):
+        sp = spoken_list[idx] if idx < len(spoken_list) else ""
+        base_tp = ''.join([c for c in tp if not c.isdigit()])
+        stress_tp = ''.join([c for c in tp if c.isdigit()])
+        base_sp = ''.join([c for c in sp if not c.isdigit()])
+        stress_sp = ''.join([c for c in sp if c.isdigit()])
+
+        if base_tp == base_sp and stress_tp == stress_sp:
+            match = "green"
+        elif base_tp == base_sp and stress_tp != stress_sp:
+            match = "orange"
+        else:
+            match = "red"
+
+        results.append({
+            "target": tp,
+            "spoken": sp,
+            "match": match,
+        })
+
+    return results
+
 @app.post("/score")
 async def score(
     audio: UploadFile = File(...),
@@ -108,11 +135,14 @@ async def score(
 
     print(f"✅ Score: {score}%")
 
+    phoneme_results = compare_phonemes(spoken, target_proc)
+
     return {
         "score": score,
         "transcript": transcript,
         "spoken_phoneme": spoken,
-        "target_phoneme": target_proc
+        "target_phoneme": target_proc,
+        "phoneme_results": phoneme_results
     }
 
 @app.post("/phonemeSequence")

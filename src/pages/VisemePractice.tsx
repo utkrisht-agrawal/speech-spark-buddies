@@ -8,7 +8,7 @@ import ScoreCard from '@/components/ScoreCard';
 import AnimatedLips from '@/components/AnimatedLips';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
 import { AudioPlayback } from '@/components/AudioPlayback';
-import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/speechRecognition';
+import { AdvancedSpeechRecognition, SpeechRecognitionResult, PhonemeMatch } from '@/utils/speechRecognition';
 
 interface VisemePracticeProps {
   onBack?: () => void;
@@ -37,6 +37,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
   const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
+  const [phonemeResults, setPhonemeResults] = useState<PhonemeMatch[]>([]);
   
   // Advanced speech recognition instance
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
@@ -188,6 +189,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
     setIsLooping(true);
     setIsAnimating(true);
     setIsProcessing(true);
+    setPhonemeResults([]);
     
     try {
       await speechRecognition.startRecording();
@@ -219,9 +221,10 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           
           // Use backend for word-level recognition
           const result = await speechRecognition.recognizeSpeech(audioBlob, currentWord.word);
-          
+
           setSoundScore(result.similarityScore);
           setRecognitionResult(result.transcription);
+          setPhonemeResults(result.phonemeAnalysis || []);
           
           // Simulate lip score for the complete word
           const avgLipScore = Math.floor(Math.random() * 30) + 70;
@@ -362,21 +365,26 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-800 mb-2">Phonemes</h3>
                 <div className="flex gap-1 mb-3 flex-wrap">
-                  {currentWord.phonemes.map((phoneme, index) => (
-                    <Button
-                      key={index}
-                      onClick={() => setCurrentPhonemeIndex(index)}
-                      variant={index === currentPhonemeIndex ? "default" : "outline"}
-                      size="sm"
-                      className={`min-w-[50px] h-7 text-xs ${
-                        index === currentPhonemeIndex 
-                          ? "bg-purple-600 text-white" 
-                          : "bg-white text-gray-700 hover:bg-purple-50"
-                      }`}
-                    >
-                      {phoneme}
-                    </Button>
-                  ))}
+                  {currentWord.phonemes.map((phoneme, index) => {
+                    const match = phonemeResults[index]?.match;
+                    let colorClass = "bg-white text-gray-700 hover:bg-purple-50";
+                    if (match === 'green') colorClass = 'bg-green-500 text-white';
+                    else if (match === 'orange') colorClass = 'bg-orange-500 text-white';
+                    else if (match === 'red') colorClass = 'bg-red-500 text-white';
+                    else if (index === currentPhonemeIndex) colorClass = 'bg-purple-600 text-white';
+
+                    return (
+                      <Button
+                        key={index}
+                        onClick={() => setCurrentPhonemeIndex(index)}
+                        variant="outline"
+                        size="sm"
+                        className={`min-w-[50px] h-7 text-xs ${colorClass}`}
+                      >
+                        {phoneme}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 
