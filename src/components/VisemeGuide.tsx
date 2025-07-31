@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Play, Pause, RotateCcw, Volume2 } from 'lucide-react';
+import { getPhonemeSequence } from '@/utils/phonemeAPI';
 
 interface VisemeData {
   phoneme: string;
@@ -16,6 +17,7 @@ interface VisemeGuideProps {
   phonemes?: string[];
   className?: string;
   onComplete?: () => void;
+  useDynamicPhonemes?: boolean; // Enable dynamic phoneme loading
 }
 
 // Viseme mapping for common phonemes
@@ -42,22 +44,48 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
   word = "HELLO", 
   phonemes = defaultPhonemes,
   className = "",
-  onComplete 
+  onComplete,
+  useDynamicPhonemes = false
 }) => {
   const [currentPhonemeIndex, setCurrentPhonemeIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1000);
+  const [dynamicPhonemes, setDynamicPhonemes] = useState<string[]>([]);
+  const [phonemesLoaded, setPhonemesLoaded] = useState(!useDynamicPhonemes);
 
-  const currentPhoneme = phonemes[currentPhonemeIndex];
+  // Use dynamic phonemes if enabled and loaded, otherwise use provided phonemes
+  const activePhonemes = useDynamicPhonemes && dynamicPhonemes.length > 0 ? dynamicPhonemes : phonemes;
+  const currentPhoneme = activePhonemes[currentPhonemeIndex];
   const currentViseme = visemeMap[currentPhoneme] || visemeMap['AH'];
+
+  // Load dynamic phonemes when word changes
+  useEffect(() => {
+    if (useDynamicPhonemes) {
+      const loadPhonemes = async () => {
+        try {
+          console.log(`📝 Loading phonemes for word: "${word}"`);
+          const sequence = await getPhonemeSequence(word);
+          setDynamicPhonemes(sequence);
+          setPhonemesLoaded(true);
+          setCurrentPhonemeIndex(0); // Reset index when new phonemes are loaded
+        } catch (error) {
+          console.error('Failed to load phonemes, using fallback:', error);
+          setDynamicPhonemes(word.toLowerCase().split(''));
+          setPhonemesLoaded(true);
+        }
+      };
+      
+      loadPhonemes();
+    }
+  }, [word, useDynamicPhonemes]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (isPlaying && currentPhonemeIndex < phonemes.length) {
+    if (isPlaying && currentPhonemeIndex < activePhonemes.length && phonemesLoaded) {
       interval = setInterval(() => {
         setCurrentPhonemeIndex(prev => {
-          if (prev >= phonemes.length - 1) {
+          if (prev >= activePhonemes.length - 1) {
             setIsPlaying(false);
             onComplete?.();
             return 0; // Reset to beginning
@@ -68,7 +96,7 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
     }
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentPhonemeIndex, phonemes.length, playbackSpeed, onComplete]);
+  }, [isPlaying, currentPhonemeIndex, activePhonemes.length, playbackSpeed, onComplete, phonemesLoaded]);
 
   const togglePlayback = () => {
     setIsPlaying(!isPlaying);
@@ -81,7 +109,7 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
 
   const nextPhoneme = () => {
     setCurrentPhonemeIndex(prev => 
-      prev >= phonemes.length - 1 ? 0 : prev + 1
+      prev >= activePhonemes.length - 1 ? 0 : prev + 1
     );
   };
 
@@ -203,23 +231,36 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
 
       {/* Progress Indicator */}
       <div className="mb-6">
-        <div className="flex justify-center space-x-2 mb-2">
-          {phonemes.map((_, index) => (
-            <div
-              key={index}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                index === currentPhonemeIndex 
-                  ? 'bg-purple-500 scale-110' 
-                  : index < currentPhonemeIndex 
-                    ? 'bg-green-400' 
-                    : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </div>
-        <p className="text-xs text-center text-gray-500">
-          {currentPhonemeIndex + 1} of {phonemes.length}
-        </p>
+        {!phonemesLoaded ? (
+          <div className="text-center">
+            <div className="text-sm text-gray-600">Loading phonemes...</div>
+            <div className="animate-pulse flex justify-center space-x-2 mt-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="w-3 h-3 bg-gray-300 rounded-full" />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-center space-x-2 mb-2">
+              {activePhonemes.map((_, index) => (
+                <div
+                  key={index}
+                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                    index === currentPhonemeIndex 
+                      ? 'bg-purple-500 scale-110' 
+                      : index < currentPhonemeIndex 
+                        ? 'bg-green-400' 
+                        : 'bg-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-center text-gray-500">
+              {currentPhonemeIndex + 1} of {activePhonemes.length}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Controls */}
@@ -228,6 +269,7 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
           onClick={togglePlayback}
           variant={isPlaying ? "default" : "outline"}
           size="sm"
+          disabled={!phonemesLoaded}
         >
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
         </Button>
@@ -236,6 +278,7 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
           onClick={resetSequence}
           variant="outline"
           size="sm"
+          disabled={!phonemesLoaded}
         >
           <RotateCcw className="w-4 h-4" />
         </Button>
@@ -244,7 +287,7 @@ export const VisemeGuide: React.FC<VisemeGuideProps> = ({
           onClick={nextPhoneme}
           variant="outline"
           size="sm"
-          disabled={isPlaying}
+          disabled={isPlaying || !phonemesLoaded}
         >
           Next
         </Button>
