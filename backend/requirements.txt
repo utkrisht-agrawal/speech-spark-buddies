@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+ffmpeg-python
+openai-whisper
+python-multipart
+whisper
+torch
+torchaudio
+transformers
+g2p-en
+nltk
+torchaudio[soundfile]
+soundfile
+librosa
+numpy
+opencv-python
+mediapipe
