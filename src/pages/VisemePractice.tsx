@@ -61,7 +61,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
             Loading phoneme sequences...
           </div>
           <div className="text-sm text-gray-600 mb-4">
-            Connecting to backend API at localhost:8000
+            Connecting to backend API at localhost:8001
           </div>
           <div className="animate-pulse flex justify-center space-x-2 mb-4">
             {[...Array(5)].map((_, i) => (
