@@ -46,6 +46,8 @@ const PhonemeFrequencyPractice = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number>();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const targetCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     speechRecognition.current = new AdvancedSpeechRecognition();
@@ -74,6 +76,27 @@ const PhonemeFrequencyPractice = () => {
     );
   };
 
+  const drawTargetWaveform = () => {
+    if (!targetCanvasRef.current || targetFrequency.length === 0) return;
+    
+    const canvas = targetCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.fillStyle = 'hsl(var(--background))';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const barWidth = (canvas.width / targetFrequency.length) * 0.8;
+    let x = 0;
+    
+    for (let i = 0; i < targetFrequency.length; i++) {
+      const barHeight = (targetFrequency[i] / 1000) * canvas.height * 0.8;
+      ctx.fillStyle = 'hsl(var(--primary))';
+      ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+      x += barWidth + 2;
+    }
+  };
+
   const startFrequencyAnalysis = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -88,29 +111,38 @@ const PhonemeFrequencyPractice = () => {
       const dataArray = new Uint8Array(bufferLength);
       
       const updateFrequency = () => {
-        if (!analyserRef.current) return;
+        if (!analyserRef.current || !canvasRef.current) return;
         
         analyserRef.current.getByteFrequencyData(dataArray);
         
-        // Find dominant frequency
-        let maxIndex = 0;
-        let maxValue = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          if (dataArray[i] > maxValue) {
-            maxValue = dataArray[i];
-            maxIndex = i;
-          }
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        // Clear canvas
+        ctx.fillStyle = 'hsl(var(--background))';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw frequency bars
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let x = 0;
+        let totalAmplitude = 0;
+        
+        for (let i = 0; i < bufferLength / 4; i++) { // Only show lower frequencies
+          const barHeight = (dataArray[i] / 255) * canvas.height;
+          const hue = (i / bufferLength) * 360;
+          ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+          ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+          x += barWidth + 1;
+          totalAmplitude += dataArray[i];
         }
         
-        const frequency = (maxIndex * audioContextRef.current!.sampleRate) / (2 * bufferLength);
-        
-        setRealTimeFrequency(prev => [...prev.slice(-49), frequency]);
-        
-        // Calculate match percentage
-        if (targetFrequency.length > 0 && realTimeFrequency.length > 0) {
-          const avgTarget = targetFrequency.reduce((a, b) => a + b, 0) / targetFrequency.length;
-          const avgReal = realTimeFrequency.reduce((a, b) => a + b, 0) / realTimeFrequency.length;
-          const match = Math.max(0, 100 - Math.abs(avgTarget - avgReal) / avgTarget * 100);
+        // Calculate frequency match based on amplitude pattern
+        if (targetFrequency.length > 0) {
+          const avgAmplitude = totalAmplitude / (bufferLength / 4);
+          const targetAvg = targetFrequency.reduce((a, b) => a + b, 0) / targetFrequency.length;
+          const normalizedTarget = (targetAvg / 1000) * 255; // Normalize to 0-255 range
+          const match = Math.max(0, 100 - Math.abs(normalizedTarget - avgAmplitude) / normalizedTarget * 100);
           setFrequencyMatch(match);
         }
         
@@ -143,6 +175,9 @@ const PhonemeFrequencyPractice = () => {
     setTargetFrequency(generateTargetFrequency(phoneme));
     setRealTimeFrequency([]);
     setFrequencyMatch(0);
+    
+    // Draw target waveform after state update
+    setTimeout(() => drawTargetWaveform(), 100);
   };
 
   const handleStartPractice = async () => {
@@ -178,26 +213,6 @@ const PhonemeFrequencyPractice = () => {
     speak(phonemeExamples[phoneme as keyof typeof phonemeExamples] || phoneme);
   };
 
-  const renderWaveform = (data: number[], color: string, label: string) => (
-    <div className="space-y-2">
-      <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="h-20 border rounded-lg p-2 bg-card">
-        <svg width="100%" height="100%" viewBox="0 0 400 60">
-          {data.map((value, index) => (
-            <rect
-              key={index}
-              x={index * 8}
-              y={60 - (value / 10)}
-              width="6"
-              height={value / 10}
-              fill={color}
-              opacity={0.7}
-            />
-          ))}
-        </svg>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
@@ -302,11 +317,31 @@ const PhonemeFrequencyPractice = () => {
                     </div>
                   </div>
 
-                  {/* Waveforms */}
-                  <div className="space-y-4">
-                    {renderWaveform(targetFrequency, "hsl(var(--primary))", "Target Frequency")}
-                    {renderWaveform(realTimeFrequency, "hsl(var(--destructive))", "Your Voice")}
-                  </div>
+                   {/* Waveforms */}
+                   <div className="space-y-4">
+                     <div className="space-y-2">
+                       <div className="text-sm font-medium text-muted-foreground">Target Frequency</div>
+                       <div className="border rounded-lg overflow-hidden">
+                         <canvas 
+                           ref={targetCanvasRef}
+                           width={400}
+                           height={120}
+                           className="w-full bg-card"
+                         />
+                       </div>
+                     </div>
+                     <div className="space-y-2">
+                       <div className="text-sm font-medium text-muted-foreground">Your Voice (Live FFT)</div>
+                       <div className="border rounded-lg overflow-hidden">
+                         <canvas 
+                           ref={canvasRef}
+                           width={400}
+                           height={120}
+                           className="w-full bg-card"
+                         />
+                       </div>
+                     </div>
+                   </div>
 
                   {/* Recording Controls */}
                   <div className="flex justify-center">
