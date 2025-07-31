@@ -54,7 +54,6 @@ def transcribe_with_whisper(wav_path, target):
     result = whisper_model.transcribe(wav_path, language="en")
     transcript = result["text"].strip().lower()
 
-    print(f"🗣️ Whisper Transcript: {transcript}")
     ratio = SequenceMatcher(None, target.lower(), transcript).ratio()
     return int(ratio * 100), transcript, transcript, target
 
@@ -72,13 +71,9 @@ def transcribe_with_wav2vec(wav_path, target):
     predicted_ids = torch.argmax(logits, dim=-1)
 
     transcript = wav2vec_processor.batch_decode(predicted_ids)[0].lower().strip()
-    print(f"🗣️ Wav2Vec2 Transcript: {transcript}")
 
     spoken_phonemes = text_to_phonemes(transcript)
     target_phonemes = text_to_phonemes(target)
-
-    print(f"✅ Target Phonemes: {target_phonemes}")
-    print(f"🗣️ Spoken Phonemes: {spoken_phonemes}")
 
     ratio = SequenceMatcher(None, target_phonemes, spoken_phonemes).ratio()
     return int(ratio * 100), transcript, spoken_phonemes, target_phonemes
@@ -89,8 +84,6 @@ async def score(
     target_phoneme: str = Form(...),
     mode: str = Form("phoneme")
 ):
-    print(f"\n🎯 Mode: {mode}, Target: {target_phoneme}")
-
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
         tmp.write(await audio.read())
         tmp_path = tmp.name
@@ -105,8 +98,9 @@ async def score(
     finally:
         os.remove(tmp_path)
         os.remove(wav_path)
-
-    print(f"✅ Score: {score}%")
+    
+    print("spken_phoneme:", spoken)
+    print("target_phoneme:", target_proc)
 
     return {
         "score": score,
@@ -117,9 +111,7 @@ async def score(
 
 @app.post("/phonemeSequence")
 async def phoneme_sequence(text: str = Form(...)):
-    print(f"🔤 Generating phoneme sequence for: {text}")
     phoneme_seq = g2p(text)
-    print(f"✅ Phoneme Sequence: {' '.join(phoneme_seq)}")
     return {
         "input_text": text,
         "phoneme_sequence": phoneme_seq
