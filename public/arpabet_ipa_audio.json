@@ -1,0 +1,242 @@
+{
+  "AA": {
+    "ipa": "ɑ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Open_central_unrounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/5/50/Open_central_unrounded_vowel.ogg",
+    "audio_file": "sounds\\AA.ogg"
+  },
+  "AE": {
+    "ipa": "æ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Near-open_front_unrounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Near-open_front_unrounded_vowel.ogg",
+    "audio_file": "sounds\\AE.ogg"
+  },
+  "AH0": {
+    "ipa": "ə",
+    "ipa_link": "https://en.wikipedia.org/wiki/Mid_central_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Mid-central_vowel.ogg",
+    "audio_file": "sounds\\AH0.ogg"
+  },
+  "AH": {
+    "ipa": "ʌ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Open-mid_back_unrounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/8/80/PR-open-mid_back_unrounded_vowel2.ogg",
+    "audio_file": "sounds\\AH.ogg"
+  },
+  "AO": {
+    "ipa": "ɔ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Open-mid_back_rounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/d/d0/PR-open-mid_back_rounded_vowel.ogg",
+    "audio_file": "sounds\\AO.ogg"
+  },
+  "AW": {
+    "ipa": "aʊ",
+    "ipa_link": null,
+    "audio_url": null,
+    "audio_file": null
+  },
+  "AY": {
+    "ipa": "aɪ",
+    "ipa_link": null,
+    "audio_url": null,
+    "audio_file": null
+  },
+  "EH": {
+    "ipa": "ɛ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Open-mid_front_unrounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/7/71/Open-mid_front_unrounded_vowel.ogg",
+    "audio_file": "sounds\\EH.ogg"
+  },
+  "ER": {
+    "ipa": "ɝ",
+    "ipa_link": "https://en.wikipedia.org/wiki/R-colored_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/e/e1/En-us-er.ogg",
+    "audio_file": "sounds\\ER.ogg"
+  },
+  "EY": {
+    "ipa": "eɪ",
+    "ipa_link": null,
+    "audio_url": null,
+    "audio_file": null
+  },
+  "IH": {
+    "ipa": "ɪ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Near-close_near-front_unrounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Near-close_near-front_unrounded_vowel.ogg",
+    "audio_file": "sounds\\IH.ogg"
+  },
+  "IY": {
+    "ipa": "i",
+    "ipa_link": "https://en.wikipedia.org/wiki/Close_front_unrounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/9/91/Close_front_unrounded_vowel.ogg",
+    "audio_file": "sounds\\IY.ogg"
+  },
+  "OW": {
+    "ipa": "oʊ",
+    "ipa_link": null,
+    "audio_url": null,
+    "audio_file": null
+  },
+  "OY": {
+    "ipa": "ɔɪ",
+    "ipa_link": null,
+    "audio_url": null,
+    "audio_file": null
+  },
+  "UH": {
+    "ipa": "ʊ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Near-close_near-back_rounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Near-close_near-back_rounded_vowel.ogg",
+    "audio_file": "sounds\\UH.ogg"
+  },
+  "UW": {
+    "ipa": "u",
+    "ipa_link": "https://en.wikipedia.org/wiki/Close_back_rounded_vowel",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Close_back_rounded_vowel.ogg",
+    "audio_file": "sounds\\UW.ogg"
+  },
+  "B": {
+    "ipa": "b",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_bilabial_plosive",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Voiced_bilabial_plosive.ogg",
+    "audio_file": "sounds\\B.ogg"
+  },
+  "CH": {
+    "ipa": "tʃ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_postalveolar_affricate",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/9/97/Voiceless_palato-alveolar_affricate.ogg",
+    "audio_file": "sounds\\CH.ogg"
+  },
+  "D": {
+    "ipa": "d",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_alveolar_plosive",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/0/01/Voiced_alveolar_plosive.ogg",
+    "audio_file": "sounds\\D.ogg"
+  },
+  "DH": {
+    "ipa": "ð",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_dental_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Voiced_dental_fricative.ogg",
+    "audio_file": "sounds\\DH.ogg"
+  },
+  "F": {
+    "ipa": "f",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_labiodental_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/c/c7/Voiceless_labio-dental_fricative.ogg",
+    "audio_file": "sounds\\F.ogg"
+  },
+  "G": {
+    "ipa": "ɡ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_velar_plosive",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/1/12/Voiced_velar_plosive_02.ogg",
+    "audio_file": "sounds\\G.ogg"
+  },
+  "HH": {
+    "ipa": "h",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_glottal_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/d/da/Voiceless_glottal_fricative.ogg",
+    "audio_file": "sounds\\HH.ogg"
+  },
+  "JH": {
+    "ipa": "dʒ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_postalveolar_affricate",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Voiced_palato-alveolar_affricate.ogg",
+    "audio_file": "sounds\\JH.ogg"
+  },
+  "K": {
+    "ipa": "k",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_velar_plosive",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/e/e3/Voiceless_velar_plosive.ogg",
+    "audio_file": "sounds\\K.ogg"
+  },
+  "L": {
+    "ipa": "l",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_alveolar_lateral_approximant",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Alveolar_lateral_approximant.ogg",
+    "audio_file": "sounds\\L.ogg"
+  },
+  "M": {
+    "ipa": "m",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_bilabial_nasal",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/a/a9/Bilabial_nasal.ogg",
+    "audio_file": "sounds\\M.ogg"
+  },
+  "N": {
+    "ipa": "n",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_alveolar_nasal",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/2/29/Alveolar_nasal.ogg",
+    "audio_file": "sounds\\N.ogg"
+  },
+  "NG": {
+    "ipa": "ŋ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_velar_nasal",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/3/39/Velar_nasal.ogg",
+    "audio_file": "sounds\\NG.ogg"
+  },
+  "P": {
+    "ipa": "p",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_bilabial_plosive",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/5/51/Voiceless_bilabial_plosive.ogg",
+    "audio_file": "sounds\\P.ogg"
+  },
+  "R": {
+    "ipa": "r",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_alveolar_trill",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Alveolar_trill.ogg",
+    "audio_file": "sounds\\R.ogg"
+  },
+  "S": {
+    "ipa": "s",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_alveolar_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Voiceless_alveolar_sibilant.ogg",
+    "audio_file": "sounds\\S.ogg"
+  },
+  "SH": {
+    "ipa": "ʃ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_postalveolar_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Voiceless_palato-alveolar_sibilant.ogg",
+    "audio_file": "sounds\\SH.ogg"
+  },
+  "T": {
+    "ipa": "t",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_alveolar_plosive",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/0/02/Voiceless_alveolar_plosive.ogg",
+    "audio_file": "sounds\\T.ogg"
+  },
+  "TH": {
+    "ipa": "θ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiceless_dental_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/8/80/Voiceless_dental_fricative.ogg",
+    "audio_file": "sounds\\TH.ogg"
+  },
+  "V": {
+    "ipa": "v",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_labiodental_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/4/42/Voiced_labio-dental_fricative.ogg",
+    "audio_file": "sounds\\V.ogg"
+  },
+  "W": {
+    "ipa": "w",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_labial%E2%80%93velar_approximant",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Voiced_labio-velar_approximant.ogg",
+    "audio_file": "sounds\\W.ogg"
+  },
+  "Y": {
+    "ipa": "j",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_palatal_approximant",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/e/e8/Palatal_approximant.ogg",
+    "audio_file": "sounds\\Y.ogg"
+  },
+  "Z": {
+    "ipa": "z",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_alveolar_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Voiced_alveolar_sibilant.ogg",
+    "audio_file": "sounds\\Z.ogg"
+  },
+  "ZH": {
+    "ipa": "ʒ",
+    "ipa_link": "https://en.wikipedia.org/wiki/Voiced_postalveolar_fricative",
+    "audio_url": "https://upload.wikimedia.org/wikipedia/commons/3/30/Voiced_palato-alveolar_sibilant.ogg",
+    "audio_file": "sounds\\ZH.ogg"
+  }
+}
