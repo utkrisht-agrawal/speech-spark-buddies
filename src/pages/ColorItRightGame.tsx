@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Palette } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface ColorItRightGameProps {
   targetItems?: { item: string; color: string; emoji: string }[];
@@ -22,85 +22,74 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
   onComplete,
   onBack 
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [currentItem, setCurrentItem] = useState(0);
   const [coloredItems, setColoredItems] = useState(0);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [colorDetected, setColorDetected] = useState(false);
   const [currentlyColoring, setCurrentlyColoring] = useState(false);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastColorTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
-  const startListening = async () => {
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
-      monitorAudio();
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 3 seconds
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-    setIsListening(false);
-    setAudioLevel(0);
-    setColorDetected(false);
-  }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const currentColor = getCurrentItem()?.color;
+      if (!currentColor) return;
       
-      setAudioLevel(level);
+      const result = await scoreSpeech(audioBlob, currentColor, 'word');
       
-      const detected = level > 30;
-      setColorDetected(detected);
-
-      if (detected && Date.now() - lastColorTime.current > 2000) {
+      if (result.similarityScore >= 80) {
         colorItem();
-        lastColorTime.current = Date.now();
+      } else {
+        setMicrophoneError(`Say "${currentColor}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
+    }
   };
 
   const colorItem = () => {
@@ -115,7 +104,6 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
       setCurrentlyColoring(false);
       if (newColoredItems >= targetItems.length) {
         setGameComplete(true);
-        stopListening();
         onComplete?.(newScore);
       } else {
         setCurrentItem(prev => prev + 1);
@@ -128,10 +116,12 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
     setColoredItems(0);
     setScore(0);
     setGameComplete(false);
-    setAudioLevel(0);
-    setColorDetected(false);
     setCurrentlyColoring(false);
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   const getCurrentItem = () => targetItems[currentItem];
@@ -150,8 +140,12 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
   };
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-yellow-50 p-4">
@@ -179,14 +173,14 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
               <Progress value={(coloredItems / targetItems.length) * 100} className="h-6" />
             </div>
             
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Voice Level</span>
-                <span className={`text-sm font-bold ${colorDetected ? 'text-green-600' : 'text-gray-400'}`}>
-                  {colorDetected ? '🎨 Coloring!' : '👂 Listening...'}
-                </span>
-              </div>
-              <Progress value={audioLevel} className="h-4" />
+            
+            <div className="text-center">
+              <p className="text-lg text-pink-700">
+                Current item: {getCurrentItem()?.item}
+              </p>
+              <p className="text-sm text-pink-600 mt-2">
+                Say: "<span className="font-bold text-pink-800">{getCurrentItem()?.color}</span>"
+              </p>
             </div>
             
             {microphoneError && (
@@ -197,18 +191,6 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : currentlyColoring ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All items colored!' :
-              currentlyColoring ? '🎨 Beautiful coloring!' :
-              isListening ? `Say "${getCurrentItem()?.color}" to color the ${getCurrentItem()?.item}!` :
-              'Press start to begin coloring!'
-            }
-          />
-        </div>
 
         {/* Coloring Area */}
         {!gameComplete && (
@@ -280,25 +262,17 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Coloring
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
-              
-              <Button 
-                variant="outline"
-                onClick={() => colorItem()}
-                disabled={currentlyColoring}
-              >
-                <Palette className="w-4 h-4 mr-2" />
-                Auto Color
-              </Button>
             </>
           ) : (
             <div className="text-center space-y-4">
