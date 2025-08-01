@@ -78,6 +78,17 @@ export const CURRICULUM_LEVELS: Level[] = [
         difficulty: 2,
         points: 15,
         requiredAccuracy: 75
+      },
+      {
+        id: 'l2e2',
+        type: 'frequency-analysis',
+        title: 'Phoneme Frequency Analysis',
+        instruction: 'Match your phoneme pronunciation to target frequency patterns',
+        content: 'Advanced phoneme pronunciation using frequency spectrum analysis',
+        targetPhonemes: ['f', 'v', 's', 'z', 'm', 'n', 'k', 'd', 'g'],
+        difficulty: 3,
+        points: 25,
+        requiredAccuracy: 80
       }
     ],
     dailyChallenges: [],

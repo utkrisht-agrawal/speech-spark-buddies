@@ -9,7 +9,13 @@ import { ArrowLeft, Play, Square, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 import { useTextToSpeech } from '@/hooks/useTextToSpeech';
+
 import referenceDictionaryData from '@/data/referenceDictionary';
+
+interface PhonemeFrequencyPracticeProps {
+  onBack?: () => void;
+  onComplete?: (score: number) => void;
+}
 
 const PHONEMES = [
   { symbol: 'AA', name: 'THOUGHT', example: 'father' },
@@ -53,7 +59,10 @@ const PHONEMES = [
   { symbol: 'ZH', name: 'VOICED FRICATIVE', example: 'measure' }
 ];
 
-const PhonemeFrequencyPractice = () => {
+const PhonemeFrequencyPractice: React.FC<PhonemeFrequencyPracticeProps> = ({ 
+  onBack, 
+  onComplete 
+}) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { speak, isSpeaking } = useTextToSpeech();
@@ -546,7 +555,7 @@ const PhonemeFrequencyPractice = () => {
         <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="ghost" 
-            onClick={() => navigate(-1)}
+            onClick={onBack || (() => navigate(-1))}
             className="p-2"
           >
             <ArrowLeft className="h-5 w-5" />

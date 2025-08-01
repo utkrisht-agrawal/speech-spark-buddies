@@ -33,7 +33,6 @@ import ChooseYourDialogGame from './ChooseYourDialogGame';
 import StorySpinnerGame from './StorySpinnerGame';
 import SpeakYourComicStripGame from './SpeakYourComicStripGame';
 import VisemePractice from './VisemePractice';
-import PhonemeFrequencyPractice from './PhonemeFrequencyPractice';
 import BottomNavigation from '@/components/BottomNavigation';
 import Tutorials from './Tutorials';
 import GameLibrary from './GameLibrary';
@@ -48,7 +47,7 @@ const Index = () => {
   const [needsAssessment, setNeedsAssessment] = useState(false);
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
   const [studentLevel, setStudentLevel] = useState(1);
-  const [currentView, setCurrentView] = useState<'main' | 'curriculum' | 'exercise' | 'game' | 'viseme' | 'phoneme-frequency'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'curriculum' | 'exercise' | 'game' | 'viseme'>('main');
   const [currentGameType, setCurrentGameType] = useState<string>('candle-blow');
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
 
@@ -96,17 +95,11 @@ const Index = () => {
       setCurrentView('viseme');
     };
     
-    const handlePhonemeFrequencyPractice = () => {
-      setCurrentView('phoneme-frequency');
-    };
-    
     window.addEventListener('startCandleGame', handleCandleGame);
     window.addEventListener('startVisemePractice', handleVisemePractice);
-    window.addEventListener('startPhonemeFrequencyPractice', handlePhonemeFrequencyPractice);
     return () => {
       window.removeEventListener('startCandleGame', handleCandleGame);
       window.removeEventListener('startVisemePractice', handleVisemePractice);
-      window.removeEventListener('startPhonemeFrequencyPractice', handlePhonemeFrequencyPractice);
     };
   }, []);
 
@@ -309,10 +302,6 @@ const Index = () => {
       onBack={() => setCurrentView('main')}
       onComplete={(score) => setCurrentView('main')}
     />;
-  }
-
-  if (currentView === 'phoneme-frequency') {
-    return <PhonemeFrequencyPractice />;
   }
 
   // Child interface (original app functionality)

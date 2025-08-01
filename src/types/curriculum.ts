@@ -8,7 +8,7 @@ export interface PhonemeData {
 
 export interface Exercise {
   id: string;
-  type: 'phoneme' | 'word' | 'sentence' | 'conversation' | 'game' | 'breathing';
+  type: 'phoneme' | 'word' | 'sentence' | 'conversation' | 'game' | 'breathing' | 'frequency-analysis';
   title: string;
   instruction: string;
   content: string | string[];
