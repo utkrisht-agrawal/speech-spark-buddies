@@ -6,11 +6,17 @@ import { Camera, CameraOff } from 'lucide-react';
 interface CameraWindowProps {
   isActive?: boolean;
   className?: string;
+  /** Current phoneme user should match */
+  targetPhoneme?: string;
+  /** Callback with the current lip match score */
+  onLipScore?: (score: number) => void;
 }
 
-export const CameraWindow: React.FC<CameraWindowProps> = ({ 
-  isActive = false, 
-  className = "w-100 h-100" 
+export const CameraWindow: React.FC<CameraWindowProps> = ({
+  isActive = false,
+  className = "w-100 h-100",
+  targetPhoneme,
+  onLipScore
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,6 +27,90 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   const [error, setError] = useState<string>('');
   const [lipColor, setLipColor] = useState('#FF0000');
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
+  const [referenceFeatures, setReferenceFeatures] = useState<number[]>([]);
+
+  // MediaPipe lip landmark indices
+  const LEFT_MOUTH = 61;
+  const RIGHT_MOUTH = 291;
+  const UPPER_LIP_INNER = 13;
+  const LOWER_LIP_INNER = 14;
+  const UPPER_LIP_TOP = 0;
+  const LOWER_LIP_BOTTOM = 17;
+
+  const dist = (a: number[], b: number[]) => {
+    return Math.hypot(a[0] - b[0], a[1] - b[1]);
+  };
+
+  const extractLipFeatures = (landmarks: any[]): number[] => {
+    const points = landmarks.map((lm: any) => [lm.x, lm.y]);
+    const mouthWidth = dist(points[LEFT_MOUTH], points[RIGHT_MOUTH]);
+    const mouthHeight = dist(points[UPPER_LIP_INNER], points[LOWER_LIP_INNER]);
+    const topLipThickness = dist(points[UPPER_LIP_TOP], points[UPPER_LIP_INNER]);
+    const bottomLipThickness = dist(points[LOWER_LIP_BOTTOM], points[LOWER_LIP_INNER]);
+    const lipCurvature = dist(points[UPPER_LIP_TOP], points[LOWER_LIP_BOTTOM]);
+
+    return [
+      1.0,
+      mouthHeight / mouthWidth,
+      topLipThickness / mouthWidth,
+      bottomLipThickness / mouthWidth,
+      lipCurvature / mouthWidth
+    ];
+  };
+
+  const computeScore = (features: number[], ref: number[]): number => {
+    if (ref.length === 0) return 0;
+    let sum = 0;
+    for (let i = 1; i < Math.min(features.length, ref.length); i++) {
+      const expected = ref[i];
+      const diff = Math.abs(features[i] - expected);
+      const ratio = Math.max(0, 1 - diff / expected);
+      sum += ratio;
+    }
+    return (sum / 4) * 100;
+  };
+
+  const phonemeFileMap: Record<string, string> = {
+    'AA': 'phoneme_o.json',
+    'AO': 'phoneme_o.json',
+    'OW': 'phoneme_o.json',
+    'OY': 'phoneme_o.json',
+    'EH': 'phoneme_e.json',
+    'IY': 'phoneme_e.json',
+    'AH': 'phoneme_u.json',
+    'AH0': 'phoneme_u.json',
+    'ER': 'phoneme_u.json',
+    'UH': 'phoneme_u.json',
+    'UW': 'phoneme_u.json',
+    'F': 'phoneme_f_v.json',
+    'V': 'phoneme_f_v.json',
+    'L': 'phoneme_l.json',
+    'W': 'phoneme_w_q.json',
+    'CH': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'JH': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'D': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'G': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'K': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'N': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'R': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'S': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'Y': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'Z': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'NG': 'phoneme_c_d_g_k_n_r_s_y_z.json',
+    'ZH': 'phoneme_c_d_g_k_n_r_s_y_z.json'
+  };
+
+  useEffect(() => {
+    if (!targetPhoneme) return;
+    const base = targetPhoneme.replace(/\d+$/, '').toUpperCase();
+    const file = phonemeFileMap[base] || 'phoneme_rest.json';
+    fetch(`/viseme_data/${file}`)
+      .then(res => res.json())
+      .then(data => {
+        setReferenceFeatures(data);
+      })
+      .catch(() => setReferenceFeatures([]));
+  }, [targetPhoneme]);
 
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -157,18 +247,23 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
-        
+
+        const features = extractLipFeatures(landmarks);
+        const score = computeScore(features, referenceFeatures);
+        onLipScore?.(Math.round(score));
+
+        const currentColor = score >= 65 ? '#00FF00' : '#FF0000';
+        setLipColor(currentColor);
+
         // Draw lip connections using MediaPipe's FACEMESH_LIPS
         if ((window as any).drawConnectors && (window as any).FACEMESH_LIPS) {
-          (window as any).drawConnectors(canvasCtx, landmarks, (window as any).FACEMESH_LIPS, { 
-            color: lipColor, 
-            lineWidth: 2 
+          (window as any).drawConnectors(canvasCtx, landmarks, (window as any).FACEMESH_LIPS, {
+            color: currentColor,
+            lineWidth: 2
           });
-          console.log('Face detected and lips drawn with MediaPipe');
         } else {
           // Fallback: Draw basic lip landmarks manually
-          drawLipLandmarks(canvasCtx, landmarks);
-          console.log('Face detected and lips drawn manually');
+          drawLipLandmarks(canvasCtx, landmarks, currentColor);
         }
       } else {
         console.log('No face detected');
@@ -198,7 +293,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   };
 
   // Fallback function to draw lip landmarks manually
-  const drawLipLandmarks = (ctx: CanvasRenderingContext2D, landmarks: any[]) => {
+  const drawLipLandmarks = (ctx: CanvasRenderingContext2D, landmarks: any[], color: string) => {
     // MediaPipe lip landmark indices for outer lip contour
     const outerLipIndices = [
       61, 146, 91, 181, 84, 17, 314, 405, 320, 307, 375, 321, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95
@@ -209,7 +304,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311, 312, 13, 82, 81, 80, 78
     ];
 
-    ctx.strokeStyle = lipColor;
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
 
     // Draw outer lip

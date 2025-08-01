@@ -15,9 +15,9 @@ from g2p_en import G2p
 import warnings
 warnings.filterwarnings("ignore")
 
-# Downloads (once)
-nltk.download('averaged_perceptron_tagger')
-nltk.download('averaged_perceptron_tagger_eng')
+# # Downloads (once)
+# nltk.download('averaged_perceptron_tagger')
+# nltk.download('averaged_perceptron_tagger_eng')
 
 # ---- Config ----
 ffmpeg_path = "C:/Users/m3n1ak/Downloads/Softwares/ffmpeg-7.1.1-essentials_build/ffmpeg/bin/ffmpeg.exe"
@@ -32,7 +32,7 @@ g2p = G2p()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8025", "http://127.0.0.1:8025", "https://preview--speech-spark-buddies.lovable.app/", "https://preview--speech-spark-buddies.lovable.app", "http://localhost:3000", "https://lovable.dev/projects/167b285d-7cb5-42d5-b852-85dce51e6b49"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
