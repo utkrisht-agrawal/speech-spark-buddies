@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -37,6 +38,41 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastColorTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForColor = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const colorWord = targetItems[currentItem].color;
+      const result = await scoreSpeech(audioBlob, colorWord, 'word');
+      if (result.similarityScore >= 75) {
+        colorItem();
+      }
+    } catch (err) {
+      console.error('Color check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const startListening = async () => {
     try {
@@ -93,7 +129,7 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
       setColorDetected(detected);
 
       if (detected && Date.now() - lastColorTime.current > 2000) {
-        colorItem();
+        checkForColor();
         lastColorTime.current = Date.now();
       }
 
@@ -291,9 +327,9 @@ const ColorItRightGame: React.FC<ColorItRightGameProps> = ({
                 </Button>
               )}
               
-              <Button 
+              <Button
                 variant="outline"
-                onClick={() => colorItem()}
+                onClick={() => checkForColor()}
                 disabled={currentlyColoring}
               >
                 <Palette className="w-4 h-4 mr-2" />

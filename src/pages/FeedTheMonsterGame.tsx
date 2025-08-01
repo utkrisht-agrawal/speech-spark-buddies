@@ -57,7 +57,7 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
     try {
       const audioBlob = await recordAudioSample();
       const result = await scoreSpeech(audioBlob, targetPhoneme, 'phoneme');
-      if (result.visemeScore >= 80 || result.similarityScore >= 80) {
+      if (result.similarityScore >= 75) {
         feedMonster();
       }
     } catch (err) {
