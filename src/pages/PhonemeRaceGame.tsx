@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Zap } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface PhonemeRaceGameProps {
   targetPhonemes?: string[];
@@ -11,10 +12,10 @@ interface PhonemeRaceGameProps {
   onBack?: () => void;
 }
 
-const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({ 
-  targetPhonemes = ['f', 'v', 's', 'z'],
+const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
+  targetPhonemes = ['r'],
   onComplete,
-  onBack 
+  onBack
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [currentPhoneme, setCurrentPhoneme] = useState(0);
@@ -32,6 +33,40 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
   const animationFrameRef = useRef<number | null>(null);
   const lastAdvanceTime = useRef(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForPhoneme = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const result = await scoreSpeech(audioBlob, getCurrentPhoneme(), 'phoneme');
+      if (result.visemeScore >= 80 || result.similarityScore >= 80) {
+        advancePlayer();
+      }
+    } catch (err) {
+      console.error('Phoneme check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const raceLength = 100; // Race progress from 0 to 100
 
@@ -103,8 +138,8 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
       setAudioLevel(level);
 
       // Advance in race if sound is strong enough
-      if (level > 30 && Date.now() - lastAdvanceTime.current > 300) {
-        advancePlayer();
+      if (level > 25 && Date.now() - lastAdvanceTime.current > 300) {
+        checkForPhoneme();
         lastAdvanceTime.current = Date.now();
       }
 
@@ -115,7 +150,7 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
   };
 
   const advancePlayer = () => {
-    const advancement = Math.random() * 3 + 2; // Random advancement 2-5%
+    const advancement = (Math.random() * 3 + 2) * 1.2; // Random advancement 2-5%, boosted by 20%
     const newPosition = Math.min(playerPosition + advancement, raceLength);
     setPlayerPosition(newPosition);
     
@@ -238,11 +273,14 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
               <div className="absolute top-0 right-4 w-2 h-full bg-gradient-to-b from-black via-white to-black" />
               
               {/* Player */}
-              <div 
+              <div
                 className="absolute top-1/2 transform -translate-y-1/2 transition-all duration-300"
                 style={{ left: `${Math.min(playerPosition, 95)}%` }}
               >
-                <div className={`text-3xl ${audioLevel > 45 ? 'animate-bounce' : ''}`}>
+                <div
+                  className={`text-3xl ${audioLevel > 45 ? 'animate-bounce' : ''}`}
+                  style={{ transform: 'scaleX(-1)' }}
+                >
                   🏃‍♂️
                 </div>
               </div>

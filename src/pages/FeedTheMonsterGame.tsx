@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
 import { CameraWindow } from '@/components/CameraWindow';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface FeedTheMonsterGameProps {
   targetPhoneme?: string;
@@ -31,6 +32,40 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastFeedTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForPhoneme = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const result = await scoreSpeech(audioBlob, targetPhoneme, 'phoneme');
+      if (result.visemeScore >= 80 || result.similarityScore >= 80) {
+        feedMonster();
+      }
+    } catch (err) {
+      console.error('Phoneme check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const startListening = async () => {
     try {
@@ -83,8 +118,8 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
       setAudioLevel(level);
 
       // Feed monster if sound is strong enough
-      if (level > 30 && Date.now() - lastFeedTime.current > 1000 && monsterHunger > 0) {
-        feedMonster();
+      if (level > 25 && Date.now() - lastFeedTime.current > 1000 && monsterHunger > 0) {
+        checkForPhoneme();
         lastFeedTime.current = Date.now();
       }
 
