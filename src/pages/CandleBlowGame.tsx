@@ -47,7 +47,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const animationFrameRef = useRef<number | null>(null);
   
   // Timing control
-  const lastExtinguishTime = useRef(Date.now() + 3000); // Start with 3 second delay
+  const lastExtinguishTime = useRef(Date.now() + 3000); // Debounce between blows
 
   const maxAttempts = 10;
   const totalCandles = candlesLit.length;
@@ -117,7 +117,14 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
       microphoneRef.current.connect(analyserRef.current);
 
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+
       setIsListening(true);
+      // Reset debounce timer so first candle doesn't auto-extinguish
+      lastExtinguishTime.current = Date.now() + 3000;
       monitorAudioLevel();
       console.log('Audio monitoring started');
     } catch (error) {
@@ -157,7 +164,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setBlowStrength(strength);
 
       // Check if blow is strong enough
-      if (strength > 50) {
+      if (strength > 80) {
+
         const now = Date.now();
         const candleIdx = currentCandleRef.current;
         console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', candleIdx, 'Time since last:', now - lastExtinguishTime.current);
@@ -222,7 +230,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setBlowStrength(strength);
       
       setTimeout(() => {
-        if (strength > 60) {
+        if (strength > 80) {
           extinguishCandle();
         }
         setBlowStrength(0);
@@ -245,7 +253,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
     setGameComplete(false);
     setBlowStrength(0);
     setMicrophoneError(null);
-    lastExtinguishTime.current = Date.now(); // Reset timing to prevent immediate trigger
+    lastExtinguishTime.current = Date.now() + 3000; // Wait before first blow
     stopListening();
   };
 
@@ -322,8 +330,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
               className="h-4 mb-2"
             />
             <p className="text-sm text-center text-gray-600">
-              {blowStrength > 50 ? '🌬️ Perfect blow!' : 
-               blowStrength > 25 ? '💨 Good, blow harder!' : 
+              {blowStrength > 80 ? '🌬️ Perfect blow!' :
+               blowStrength > 40 ? '💨 Good, blow harder!' :
                '🤏 Blow stronger!'}
             </p>
             {microphoneError && (
