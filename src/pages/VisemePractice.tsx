@@ -12,14 +12,23 @@ import { AdvancedSpeechRecognition, SpeechRecognitionResult } from '@/utils/spee
 import { comparePhonemes, getPhonemeStyles, PhonemeMatch } from '@/utils/phonemeComparison';
 
 interface VisemePracticeProps {
+  /** Optional list of practice items. Defaults to a few example words */
+  items?: string[];
+  /** Optional custom title for the practice session */
+  title?: string;
   onBack?: () => void;
   onComplete?: (score: number) => void;
 }
 
-// Words to practice
-const practiceWordList = ["HELLO", "APPLE", "MOTHER", "FISH", "BOOK", "WATER"];
+// Default words to practice
+const defaultPracticeList = ["HELLO", "APPLE", "MOTHER", "FISH", "BOOK", "WATER"];
 
-const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) => {
+const VisemePractice: React.FC<VisemePracticeProps> = ({
+  items,
+  title = 'Viseme Practice',
+  onBack,
+  onComplete
+}) => {
   const [practiceWords, setPracticeWords] = useState<{ word: string; phonemes: string[] }[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -44,12 +53,13 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
   const { speak, stop, isSpeaking } = useTextToSpeech();
 
+  const practiceList = (items && items.length > 0 ? items : defaultPracticeList).map(w => w.toUpperCase());
   const currentWord = practiceWords[currentWordIndex];
 
   useEffect(() => {
     const fetchPhonemes = async () => {
       const words = await Promise.all(
-        practiceWordList.map(async (word) => {
+        practiceList.map(async (word) => {
           try {
             const formData = new FormData();
             formData.append('text', word);
@@ -269,7 +279,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           <Card className="p-8 text-center bg-white border-2 border-green-200">
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="text-2xl font-bold text-green-800 mb-2">
-              Viseme Practice Complete!
+              {title} Complete!
             </h2>
             <p className="text-gray-600 mb-6">
               Great job practicing lip movements!
@@ -339,9 +349,9 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           </div>
           
           <div className="text-center">
-            <h1 className="text-lg font-bold text-gray-800">Viseme Practice</h1>
+            <h1 className="text-lg font-bold text-gray-800">{title}</h1>
             <p className="text-xs text-gray-600">
-              Word {currentWordIndex + 1} of {practiceWords.length}
+              Item {currentWordIndex + 1} of {practiceWords.length}
             </p>
           </div>
 
