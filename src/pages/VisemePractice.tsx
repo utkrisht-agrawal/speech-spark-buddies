@@ -300,355 +300,233 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-2 flex flex-col overflow-hidden">
-      {/* Compact Header */}
-      <div className="flex items-center justify-between mb-3 px-2">
-        <Button
-          onClick={onBack}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1 h-8"
-        >
-          <ArrowLeft className="w-3 h-3" />
-          Back
-        </Button>
-        
-        <div className="text-center">
-          <h1 className="text-lg font-bold text-gray-800">Viseme Practice</h1>
-          <p className="text-xs text-gray-600">
-            Word {currentWordIndex + 1} of {practiceWords.length}
-          </p>
-        </div>
+    <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+      {/* Header */}
+      <div className="w-full bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            
+            <div className="text-2xl">🐟</div>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="text-xs">LPL</Button>
+              <Button variant="outline" size="sm" className="text-xs">SM</Button>
+            </div>
+          </div>
+          
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-gray-800">Viseme Practice</h1>
+            <p className="text-sm text-gray-600">
+              Word {currentWordIndex + 1} of {practiceWords.length}
+            </p>
+          </div>
 
-        <div className="flex items-center gap-1 text-sm">
-          <Star className="w-3 h-3 text-yellow-500" />
-          <span className="font-semibold text-xs">{score}</span>
+          <div className="flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            <span className="font-semibold">{score}</span>
+          </div>
         </div>
       </div>
 
-      {/* Main Content - No scroll */}
-      <div className="flex-1 max-w-full mx-auto overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full">
+      {/* Main Content Area */}
+      <div className="w-full px-6 py-6">
+        {/* Top Section: Word + Phonemes */}
+        <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <h2 className="text-3xl font-bold text-gray-800">{currentWord.word}</h2>
+            <Button
+              onClick={() => speak(currentWord.word)}
+              disabled={isSpeaking}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Volume2 className="w-4 h-4" />
+              {isSpeaking ? 'Playing...' : 'Hear Word'}
+            </Button>
+          </div>
           
-          {/* Main Practice Card - 2/3 width */}
-          <div className="lg:col-span-2 h-full">
-            <Card className="p-4 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-2 border-purple-200 h-full flex flex-col">
+          <div className="flex items-center gap-2 flex-wrap">
+            {currentWord.phonemes.map((phoneme, index) => {
+              const phoneMatch = phonemeMatches[index];
+              const isSelected = index === currentPhonemeIndex;
               
-              {/* Compact Header with Word Navigation */}
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-purple-200">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-800">
-                    {currentWord.word}
-                  </h2>
-                  <p className="text-xs text-gray-600">
-                    {currentWordIndex + 1} / {practiceWords.length}
-                  </p>
-                </div>
-                
-                <div className="flex gap-1">
+              let buttonClass = "min-w-[60px] h-10 border-2 shadow-sm transition-all duration-200";
+              
+              if (isSelected) {
+                buttonClass += " bg-purple-600 text-white border-purple-600";
+              } else if (phoneMatch) {
+                buttonClass += " " + getPhonemeStyles(phoneMatch.color);
+              } else {
+                buttonClass += " bg-white text-gray-700 border-gray-300 hover:bg-purple-50";
+              }
+              
+              return (
+                <div key={index} className="flex flex-col items-center gap-1">
                   <Button
-                    onClick={handlePreviousWord}
+                    onClick={() => setCurrentPhonemeIndex(index)}
                     variant="outline"
-                    size="sm"
-                    disabled={currentWordIndex === 0}
-                    className="h-8 px-2 text-xs"
+                    className={buttonClass}
                   >
-                    ← Prev
+                    {phoneme}
                   </Button>
-                  <Button
-                    onClick={handleNextWord}
-                    variant="outline"
-                    size="sm"
-                    disabled={currentWordIndex === practiceWords.length - 1}
-                    className="h-8 px-2 text-xs"
-                  >
-                    Next →
-                  </Button>
-                </div>
-              </div>
-
-              {/* Phoneme Division */}
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-2">Phonemes</h3>
-                <div className="flex gap-1 mb-3 flex-wrap">
-                  {currentWord.phonemes.map((phoneme, index) => {
-                    // Get phoneme match for highlighting if available
-                    const phoneMatch = phonemeMatches[index];
-                    const isSelected = index === currentPhonemeIndex;
-                    
-                    let buttonClass = "min-w-[50px] h-7 text-xs border-2 shadow-sm transition-all duration-200";
-                    
-                    if (isSelected) {
-                      buttonClass += " bg-purple-600 text-white border-purple-600";
-                    } else if (phoneMatch) {
-                      buttonClass += " " + getPhonemeStyles(phoneMatch.color);
-                    } else {
-                      buttonClass += " bg-white text-gray-700 border-gray-300 hover:bg-purple-50";
-                    }
-                    
-                    return (
-                      <Button
-                        key={index}
-                        onClick={() => setCurrentPhonemeIndex(index)}
-                        variant="outline"
-                        size="sm"
-                        className={buttonClass}
-                      >
-                        {phoneme}
-                      </Button>
-                    );
-                  })}
-                </div>
-                
-                {/* Phoneme Match Legend */}
-                {phonemeMatches.length > 0 && (
-                  <div className="text-xs text-gray-600 mb-2">
-                    <div className="flex gap-4 items-center">
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-green-100 border border-green-400 rounded"></div>
-                        <span>Exact match</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-orange-100 border border-orange-400 rounded"></div>
-                        <span>Stress mismatch</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 bg-red-100 border border-red-400 rounded"></div>
-                        <span>Wrong phoneme</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Lip Animation Guide - Flexible height */}
-              <div className="bg-white rounded-xl p-4 border border-gray-200 flex-1 flex">
-                {/* Left Side - Controls */}
-                <div className="flex flex-col gap-2 pr-4 border-r border-gray-200 min-w-[140px]">
-                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
-                    Controls
-                  </h3>
-                  
-                  {/* Audio Controls */}
-                  <Button
-                    onClick={() => speak(currentWord.word)}
-                    disabled={isSpeaking}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white h-8 text-xs justify-start"
-                  >
-                    <Volume2 className="w-3 h-3 mr-1" />
-                    {isSpeaking ? 'Playing...' : 'Hear Word'}
-                  </Button>
-                  
                   <Button
                     onClick={() => {
-                      const utterance = new SpeechSynthesisUtterance(currentWord.phonemes[currentPhonemeIndex]);
+                      const utterance = new SpeechSynthesisUtterance(phoneme);
                       utterance.rate = 0.6;
                       speechSynthesis.speak(utterance);
                     }}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="bg-white h-8 text-xs justify-start"
+                    className="text-xs h-6 px-2"
                   >
-                    🔊 Hear Phoneme
+                    🔊
                   </Button>
-                  
-                  {/* Speed Control */}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-gray-600">Speed:</span>
-                    <select 
-                      className="text-xs border rounded px-2 py-1 bg-white"
-                      onChange={(e) => setAnimationSpeed(Number(e.target.value))}
-                      value={animationSpeed}
-                    >
-                      <option value={1200}>Slow</option>
-                      <option value={800}>Normal</option>
-                      <option value={500}>Fast</option>
-                    </select>
-                  </div>
-                  
-                  {/* Navigation Controls */}
-                  <div className="flex gap-1">
-                    <Button
-                      onClick={() => setCurrentPhonemeIndex(Math.max(0, currentPhonemeIndex - 1))}
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPhonemeIndex === 0}
-                      className="h-7 px-2 text-xs flex-1"
-                    >
-                      ← Prev
-                    </Button>
-                    <Button
-                      onClick={() => setCurrentPhonemeIndex(Math.min(currentWord.phonemes.length - 1, currentPhonemeIndex + 1))}
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPhonemeIndex === currentWord.phonemes.length - 1}
-                      className="h-7 px-2 text-xs flex-1"
-                    >
-                      Next →
-                    </Button>
-                  </div>
-                  
-                  {/* Test Controls */}
-                  <div className="pt-2 border-t border-gray-200">
-                    <Button
-                      onClick={testPhoneme}
-                      variant="default"
-                      size="sm"
-                      className="w-full h-8 text-xs mb-2 bg-blue-600 hover:bg-blue-700"
-                      disabled={isRecording}
-                    >
-                      {isRecording ? <MicOff className="w-3 h-3 mr-1" /> : <Mic className="w-3 h-3 mr-1" />}
-                      Test Phoneme
-                    </Button>
-                    
-                    <Button
-                      onClick={testWord}
-                      variant="default"
-                      size="sm"
-                      className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
-                      disabled={isRecording || isLooping}
-                    >
-                      {isLooping ? <Square className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
-                      Test Word
-                    </Button>
-                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Middle Section: Control Panel + Lip Animation + Camera */}
+        <div className="grid grid-cols-12 gap-6 mb-6" style={{height: '400px'}}>
+          {/* Control Panel */}
+          <div className="col-span-3">
+            <Card className="p-4 h-full">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Test Phoneme</h3>
+              
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={testPhoneme}
+                  disabled={isAnimating || isProcessing}
+                  className="w-full"
+                >
+                  {isAnimating ? 'Testing...' : '1. Test Current Phoneme'}
+                </Button>
+                
+                <Button
+                  onClick={testWord}
+                  disabled={isAnimating || isProcessing}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isLooping ? 'Testing Word...' : '2. Test Word'}
+                </Button>
+                
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  {isRecording ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm">Recording...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm text-gray-600">Ready to record</span>
+                    </div>
+                  )}
                 </div>
                 
-                {/* Right Side - Animation */}
-                <div className="flex-1 flex flex-col pl-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-800">
-                      Lip Animation Guide
-                    </h3>
-                    <div className="text-xs text-gray-600">
-                      Current: <span className="font-semibold text-purple-600">
-                        {currentWord.phonemes[currentPhonemeIndex]}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-center flex-1 bg-gray-50 rounded-lg p-3">
-                    <AnimatedLips
-                      phoneme={currentWord.phonemes[currentPhonemeIndex]}
-                      isAnimating={isAnimating}
-                      className="transform scale-75"
-                    />
-                  </div>
-                </div>
+                {lastRecordedAudio && (
+                  <Button
+                    onClick={() => {
+                      const audioUrl = URL.createObjectURL(lastRecordedAudio);
+                      const audio = new Audio(audioUrl);
+                      audio.play();
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Volume2 className="w-4 h-4 mr-2" />
+                    4. Listen Recorded Sound
+                  </Button>
+                )}
               </div>
             </Card>
           </div>
 
-          {/* Practice & Analysis Card - 1/3 width */}
-          <div className="lg:col-span-1 h-full">
-            <Card className="p-4 bg-white border-2 border-green-200 h-full flex flex-col">
-              <h3 className="text-sm font-semibold text-gray-800 mb-3">
-                Practice & Analysis
-              </h3>
-              
-              {/* Camera Widget */}
-              <div className="mb-4 flex-1">
-                <CameraWindow
-                  isActive={isCameraActive}
-                  className="h-32 sm:h-40 lg:h-48 rounded-lg w-full"
-                />
-              </div>
-              
-              {/* Sound Waveform */}
-              <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <h4 className="text-xs font-semibold text-gray-700 mb-2">Sound Waveform</h4>
-                <div className="h-12 bg-gradient-to-r from-green-200 to-blue-200 rounded flex items-center justify-center">
-                  <div className="flex items-end gap-0.5 h-10">
-                    {audioData.length > 0 ? (
-                      audioData.map((height, i) => (
-                        <div
-                          key={i}
-                          className="bg-green-500 w-1 rounded-t transition-all duration-100"
-                          style={{ height: `${Math.max(10, height)}%` }}
-                        />
-                      ))
-                    ) : (
-                      [...Array(15)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="bg-gray-400 w-1 rounded-t"
-                          style={{ height: '20%' }}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1 text-center">
-                  {isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Ready to record'}
-                </p>
-                {recognitionResult && (
-                  <p className="text-xs text-blue-600 mt-1 text-center">
-                    Heard: "{recognitionResult}"
-                  </p>
-                )}
-              </div>
-              
-              {/* Audio Playback */}
-              <div className="mb-4">
-                <AudioPlayback 
-                  audioBlob={lastRecordedAudio} 
-                  label="Last Recording" 
-                />
-              </div>
-              
-              {/* Compact Scoring Section */}
-              <div className="space-y-2">
-                <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
-                  <h4 className="text-xs font-semibold text-blue-800 mb-1">Lip Shape Match</h4>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-blue-200 rounded-full h-1.5">
-                      <div 
-                        className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
-                        style={{ width: `${lipScore}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold text-blue-600">{lipScore}%</span>
-                  </div>
-                </div>
-                
-                <div className="bg-green-50 rounded-lg p-2 border border-green-200">
-                  <h4 className="text-xs font-semibold text-green-800 mb-1">Sound Match</h4>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-green-200 rounded-full h-1.5">
-                      <div 
-                        className="bg-green-600 h-1.5 rounded-full transition-all duration-500"
-                        style={{ width: `${soundScore}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold text-green-600">{soundScore}%</span>
-                  </div>
-                </div>
-                
-                <div className="bg-purple-50 rounded-lg p-2 border border-purple-200">
-                  <h4 className="text-xs font-semibold text-purple-800 mb-1">Overall Score</h4>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-purple-600">{score}</div>
-                    <div className="text-xs text-purple-700">Points</div>
-                  </div>
-                </div>
-              </div>
+          {/* Lip Animation Guide */}
+          <div className="col-span-5">
+            <Card className="p-4 h-full flex flex-col items-center justify-center">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Lip Animation Guide</h3>
+              <AnimatedLips
+                phoneme={currentWord.phonemes[currentPhonemeIndex]}
+                isAnimating={isAnimating}
+                className="flex-1"
+              />
+            </Card>
+          </div>
+
+          {/* Camera Feed */}
+          <div className="col-span-4">
+            <Card className="p-4 h-full">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Camera Feed</h3>
+              <CameraWindow 
+                isActive={isCameraActive}
+                className="w-full h-full rounded-lg"
+              />
             </Card>
           </div>
         </div>
 
-        {/* Compact Instructions */}
-        <div className="mt-3">
-          <Card className="p-3 bg-blue-50 border border-blue-200">
-            <h4 className="text-sm font-semibold text-blue-800 mb-1">
-              💡 Tips
-            </h4>
-            <div className="text-xs text-blue-700 grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div>• Watch viseme guide</div>
-              <div>• Copy lip shapes</div>
-              <div>• Check with camera</div>
-              <div>• Practice slowly</div>
+        {/* Bottom Section: Waveform Comparison + Scoring */}
+        <div className="grid grid-cols-2 gap-6">
+          {/* Waveform Comparison */}
+          <Card className="p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Waveform Comparison</h3>
+            
+            {/* Audio visualization */}
+            <div className="bg-gray-50 rounded-lg p-4 h-32 flex items-center justify-center">
+              {audioData.length > 0 ? (
+                <div className="flex items-end space-x-1 h-16">
+                  {audioData.map((amplitude, index) => (
+                    <div
+                      key={index}
+                      className="bg-blue-500 w-2 transition-all duration-200"
+                      style={{ height: `${amplitude}%` }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-500 text-sm">No audio data</div>
+              )}
+            </div>
+            
+            {recognitionResult && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm text-gray-600">Recognized:</div>
+                <div className="font-semibold">{recognitionResult}</div>
+              </div>
+            )}
+          </Card>
+
+          {/* Scoring */}
+          <Card className="p-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Score</h3>
+            
+            <div className="space-y-4">
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span className="text-sm font-medium">Lip Match:</span>
+                <span className="text-lg font-bold text-green-600">{lipScore}%</span>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <span className="text-sm font-medium">Sound Match:</span>
+                <span className="text-lg font-bold text-blue-600">{soundScore}%</span>
+              </div>
+              
+              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                <span className="text-sm font-medium">Total Points:</span>
+                <span className="text-xl font-bold text-purple-600">{score}</span>
+              </div>
             </div>
           </Card>
         </div>
