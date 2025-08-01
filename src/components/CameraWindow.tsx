@@ -181,7 +181,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         }
 
         // Evaluate match against target phoneme
-        if (targetPhoneme && visemeData) {
+        if (targetPhoneme && visemeData && targetPhoneme.replace) {
           const normalized = targetPhoneme.replace(/\d+$/, '');
           const img = phonemeImageMap[normalized];
           const key = img ? img.replace(/^\//, '') : '';

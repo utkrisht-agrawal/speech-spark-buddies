@@ -350,10 +350,10 @@ const PhonemeFrequencyPractice = () => {
           selectedPhoneme && referenceDictionary.current[selectedPhoneme]
             ? referenceDictionary.current[selectedPhoneme]
             : Array(2048).fill(0),
-          dataArray
+          Array.from(dataArray)
         );
 
-        animationFrameRef.current = setTimeout(updateFrequency, 200);
+        animationFrameRef.current = window.setTimeout(updateFrequency, 200);
       };
       
       updateFrequency();
@@ -500,7 +500,7 @@ const PhonemeFrequencyPractice = () => {
       setReferenceSpectrum([...realTimeFrequency]);
       
       // Force re-render of reference spectrum
-      drawReferenceSpectrum();
+      // Note: drawReferenceSpectrum is replaced by useEffect that calls drawCombinedSoundWaveform
       
       toast({
         title: "Reference Set and Saved",
@@ -521,7 +521,7 @@ const PhonemeFrequencyPractice = () => {
       referenceDictionary.current[selectedPhoneme] = [...referenceSpectrum];
       
       // Force re-render of reference spectrum
-      drawReferenceSpectrum();
+      // Note: drawReferenceSpectrum is replaced by useEffect that calls drawCombinedSoundWaveform
       
       toast({
         title: "Reference Saved",

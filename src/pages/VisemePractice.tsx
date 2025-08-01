@@ -63,9 +63,12 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
           try {
             const formData = new FormData();
             formData.append('text', word);
-            const res = await fetch('http://localhost:8001/phonemeSequence', {
+            const res = await fetch('https://dcfculdkghduqwtkjebu.functions.supabase.co/phoneme-analysis', {
               method: 'POST',
-              body: formData
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ text: word })
             });
             if (!res.ok) throw new Error('Failed request');
             const data = await res.json();
