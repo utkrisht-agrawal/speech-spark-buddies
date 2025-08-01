@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Volume2, RotateCcw, Trophy, Target } from 'lucide-react';
+import { Volume2, RotateCcw, Trophy } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface PopTheBalloonGameProps {
   targetPhoneme?: string;
@@ -26,7 +27,6 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
   })));
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [currentTarget, setCurrentTarget] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
   
@@ -35,6 +35,40 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastPopTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForPhoneme = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const result = await scoreSpeech(audioBlob, targetPhoneme, 'phoneme');
+      if (result.visemeScore >= 80 || result.similarityScore >= 80) {
+        popBalloon();
+      }
+    } catch (err) {
+      console.error('Phoneme check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const startListening = async () => {
     try {
@@ -86,9 +120,9 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
       
       setAudioLevel(level);
 
-      // Pop balloon if sound is strong enough
-      if (level > 30 && Date.now() - lastPopTime.current > 500) {
-        popBalloon();
+      // Check phoneme if sound is strong enough
+      if (level > 30 && Date.now() - lastPopTime.current > 1000) {
+        checkForPhoneme();
         lastPopTime.current = Date.now();
       }
 
@@ -102,8 +136,8 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
     const availableBalloons = balloons.filter(b => !b.popped);
     if (availableBalloons.length === 0) return;
 
-    const targetBalloon = availableBalloons[currentTarget % availableBalloons.length];
-    setBalloons(prev => prev.map(b => 
+    const targetBalloon = availableBalloons[0];
+    setBalloons(prev => prev.map(b =>
       b.id === targetBalloon.id ? { ...b, popped: true } : b
     ));
 
@@ -114,8 +148,6 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
       setGameComplete(true);
       stopListening();
       onComplete?.(newScore);
-    } else {
-      setCurrentTarget(prev => (prev + 1) % availableBalloons.length);
     }
   };
 
@@ -128,7 +160,6 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
       color: ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan'][i % 8]
     })));
     setScore(0);
-    setCurrentTarget(0);
     setGameComplete(false);
     setAudioLevel(0);
     stopListening();
@@ -137,6 +168,8 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
   useEffect(() => {
     return () => stopListening();
   }, [stopListening]);
+
+  const nextTargetId = balloons.find(b => !b.popped)?.id;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
@@ -202,7 +235,7 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
                 >
                   {!balloon.popped && (
                     <div className={`relative ${
-                      currentTarget === balloons.filter(b => !b.popped).indexOf(balloon) 
+                      balloon.id === nextTargetId
                         ? 'animate-bounce ring-4 ring-yellow-300' : ''
                     }`}>
                       <div 
