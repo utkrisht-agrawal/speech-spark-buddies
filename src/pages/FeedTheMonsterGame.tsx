@@ -239,9 +239,8 @@ const FeedTheMonsterGame: React.FC<FeedTheMonsterGameProps> = ({
                 'Press start to feed the hungry monster!'
               }
             />
-            <CameraWindow
+            <CameraWindow 
               isActive={isListening}
-              targetPhoneme={targetPhoneme}
               className="w-80 h-60"
             />
           </div>

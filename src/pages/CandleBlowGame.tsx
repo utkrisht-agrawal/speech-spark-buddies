@@ -409,9 +409,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
                 'Press start to begin!'
               }
             />
-            <CameraWindow
+            <CameraWindow 
               isActive={isListening}
-              targetPhoneme={targetPhoneme}
               className="w-80 h-60"
             />
           </div>

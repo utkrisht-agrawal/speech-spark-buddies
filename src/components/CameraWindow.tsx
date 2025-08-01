@@ -2,18 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Camera, CameraOff } from 'lucide-react';
-import { phonemeImageMap } from './AnimatedLips';
 
 interface CameraWindowProps {
   isActive?: boolean;
   className?: string;
-  targetPhoneme?: string;
 }
 
-export const CameraWindow: React.FC<CameraWindowProps> = ({
-  isActive = false,
-  className = "w-100 h-100",
-  targetPhoneme
+export const CameraWindow: React.FC<CameraWindowProps> = ({ 
+  isActive = false, 
+  className = "w-100 h-100" 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,14 +21,6 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   const [error, setError] = useState<string>('');
   const [lipColor, setLipColor] = useState('#FF0000');
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
-  const [visemeData, setVisemeData] = useState<any | null>(null);
-
-  useEffect(() => {
-    fetch('/viseme_landmarks.json')
-      .then(res => res.json())
-      .then(data => setVisemeData(data))
-      .catch(err => console.error('Failed to load viseme landmarks', err));
-  }, []);
 
   const loadScript = (src: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -168,45 +157,18 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
       
       if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
-
+        
         // Draw lip connections using MediaPipe's FACEMESH_LIPS
         if ((window as any).drawConnectors && (window as any).FACEMESH_LIPS) {
-          (window as any).drawConnectors(canvasCtx, landmarks, (window as any).FACEMESH_LIPS, {
-            color: lipColor,
-            lineWidth: 2
+          (window as any).drawConnectors(canvasCtx, landmarks, (window as any).FACEMESH_LIPS, { 
+            color: lipColor, 
+            lineWidth: 2 
           });
+          console.log('Face detected and lips drawn with MediaPipe');
         } else {
           // Fallback: Draw basic lip landmarks manually
           drawLipLandmarks(canvasCtx, landmarks);
-        }
-
-        // Evaluate match against target phoneme
-        if (targetPhoneme && visemeData && targetPhoneme.replace) {
-          const normalized = targetPhoneme.replace(/\d+$/, '');
-          const img = phonemeImageMap[normalized];
-          const key = img ? img.replace(/^\//, '') : '';
-          const target = visemeData.landmarks?.[key];
-          const indices: number[] = visemeData.indices || [];
-          if (target && indices.length > 0) {
-            const xs = indices.map((i: number) => landmarks[i].x);
-            const ys = indices.map((i: number) => landmarks[i].y);
-            const minX = Math.min(...xs);
-            const maxX = Math.max(...xs);
-            const minY = Math.min(...ys);
-            const maxY = Math.max(...ys);
-            const norm = indices.map((i: number) => [
-              (landmarks[i].x - minX) / (maxX - minX + 1e-6),
-              (landmarks[i].y - minY) / (maxY - minY + 1e-6)
-            ]);
-            let dist = 0;
-            for (let j = 0; j < target.length; j++) {
-              const dx = norm[j][0] - target[j][0];
-              const dy = norm[j][1] - target[j][1];
-              dist += Math.sqrt(dx * dx + dy * dy);
-            }
-            const avg = dist / target.length;
-            setLipColor(avg < 0.15 ? '#00FF00' : '#FF0000');
-          }
+          console.log('Face detected and lips drawn manually');
         }
       } else {
         console.log('No face detected');
