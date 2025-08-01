@@ -388,7 +388,11 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
               let buttonClass = "min-w-[48px] h-8 border-2 shadow-sm transition-all duration-200";
               
               if (isSelected) {
-                buttonClass += " " + getPhonemeStyles(phoneMatch.color) + " border-purple-600";
+                if(phoneMatch){
+                  buttonClass += " " + getPhonemeStyles(phoneMatch.color) + " border-purple-600";
+                } else {
+                  buttonClass +=  " border-purple-600";
+                }
                 // buttonClass += " bg-transparent text-black border-purple-600";
               } else if (phoneMatch) {
                 buttonClass += " " + getPhonemeStyles(phoneMatch.color);
