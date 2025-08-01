@@ -42,7 +42,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
   const [animationSpeed, setAnimationSpeed] = useState(800);
   const [isRecording, setIsRecording] = useState(false);
   const [audioData, setAudioData] = useState<number[]>([]);
-  const [lipScore, setLipScore] = useState(75);
+  const [lipScore, setLipScore] = useState(0);
   const [soundScore, setSoundScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<string>("");
@@ -188,10 +188,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
   const testPhoneme = () => {
     setIsAnimating(true);
     startRecording();
-    // Simulate lip analysis
     setTimeout(() => {
-      const newLipScore = Math.floor(Math.random() * 30) + 70;
-      setLipScore(newLipScore);
       setIsAnimating(false);
     }, 3000);
   };
@@ -242,9 +239,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
             console.log('📊 Phoneme comparison:', matches);
           }
           
-          // Simulate lip score for the complete word
-          const avgLipScore = Math.floor(Math.random() * 30) + 70;
-          setLipScore(avgLipScore);
+
           
           console.log(`🎯 Target: "${currentWord.word}", Got: "${result.transcription}", Score: ${result.similarityScore}%`);
         } catch (error) {
@@ -505,9 +500,11 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
             <Card className="p-2 h-full min-h-[162px] flex flex-col">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">Camera Feed</h3>
               <div className="flex-1 min-h-0 overflow-hidden rounded-lg">
-                <CameraWindow 
+                <CameraWindow
                   isActive={isCameraActive}
                   className="w-full h-full rounded-lg object-cover"
+                  targetPhoneme={currentWord.phonemes[currentPhonemeIndex]}
+                  onLipScore={setLipScore}
                 />
               </div>
             </Card>
