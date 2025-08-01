@@ -65,7 +65,9 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
   const [currentImage, setCurrentImage] = useState(phonemeImages['REST']);
 
   useEffect(() => {
-    const targetImage = phonemeImages[phoneme as keyof typeof phonemeImages] || phonemeImages['REST'];
+    // Remove trailing digits (stress markers like AH0, AH1, AH2 → AH)
+    const normalizedPhoneme = phoneme.replace(/\d+$/, '');
+    const targetImage = phonemeImages[normalizedPhoneme] || phonemeImages['REST'];
     setCurrentImage(targetImage);
   }, [phoneme]);
 
