@@ -252,7 +252,7 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
         const score = computeScore(features, referenceFeatures);
         onLipScore?.(Math.round(score));
 
-        const currentColor = score >= 80 ? '#00FF00' : '#FF0000';
+        const currentColor = score >= 65 ? '#00FF00' : '#FF0000';
         setLipColor(currentColor);
 
         // Draw lip connections using MediaPipe's FACEMESH_LIPS
