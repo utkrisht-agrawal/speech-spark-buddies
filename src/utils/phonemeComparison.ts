@@ -6,8 +6,8 @@ export interface PhonemeMatch {
 
 export function comparePhonemes(spokenPhonemes: string, targetPhonemes: string): PhonemeMatch[] {
   // Split phonemes by space and filter out empty strings
-  const spoken = spokenPhonemes.replaceAll('   ', ' <space> ').split(' ').filter(p => p.trim() !== '');
-  const target = targetPhonemes.replaceAll('   ', ' <space> ').split(' ').filter(p => p.trim() !== '');
+  const spoken = spokenPhonemes.replace(/   /g, ' <space> ').split(' ').filter(p => p.trim() !== '');
+  const target = targetPhonemes.replace(/   /g, ' <space> ').split(' ').filter(p => p.trim() !== '');
   
   const results: PhonemeMatch[] = [];
   

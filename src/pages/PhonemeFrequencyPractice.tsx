@@ -350,10 +350,10 @@ const PhonemeFrequencyPractice = () => {
           selectedPhoneme && referenceDictionary.current[selectedPhoneme]
             ? referenceDictionary.current[selectedPhoneme]
             : Array(2048).fill(0),
-          dataArray
+          Array.from(dataArray)
         );
 
-        animationFrameRef.current = setTimeout(updateFrequency, 200);
+        animationFrameRef.current = window.setTimeout(updateFrequency, 200);
       };
       
       updateFrequency();
@@ -499,9 +499,6 @@ const PhonemeFrequencyPractice = () => {
       // Also update the referenceSpectrum state to trigger re-render
       setReferenceSpectrum([...realTimeFrequency]);
       
-      // Force re-render of reference spectrum
-      drawReferenceSpectrum();
-      
       toast({
         title: "Reference Set and Saved",
         description: `Live sound has been set and saved as the reference for phoneme: ${selectedPhoneme}`,
@@ -519,9 +516,6 @@ const PhonemeFrequencyPractice = () => {
   const saveReferenceToDictionary = () => {
     if (selectedPhoneme && referenceSpectrum.length > 0) {
       referenceDictionary.current[selectedPhoneme] = [...referenceSpectrum];
-      
-      // Force re-render of reference spectrum
-      drawReferenceSpectrum();
       
       toast({
         title: "Reference Saved",

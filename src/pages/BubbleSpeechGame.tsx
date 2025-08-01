@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, MessageCircle } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface BubbleSpeechGameProps {
   targetSentences?: string[];
@@ -22,21 +22,16 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
   onComplete,
   onBack 
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [currentSentence, setCurrentSentence] = useState(0);
   const [bubbles, setBubbles] = useState<{id: number, word: string, popped: boolean, x: number, y: number}[]>([]);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [speechDetected, setSpeechDetected] = useState(false);
   const [sentencesCompleted, setSentencesCompleted] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastSpeechTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
     createBubbles();
@@ -54,69 +49,60 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
     setBubbles(newBubbles);
   };
 
-  const startListening = async () => {
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
-      monitorAudio();
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 3 seconds
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-    setIsListening(false);
-    setAudioLevel(0);
-    setSpeechDetected(false);
-  }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const result = await scoreSpeech(audioBlob, targetSentences[currentSentence], 'sentence');
       
-      setAudioLevel(level);
-      
-      const detected = level > 30;
-      setSpeechDetected(detected);
-
-      if (detected && Date.now() - lastSpeechTime.current > 1000) {
+      if (result.similarityScore >= 90) {
         popBubble();
-        lastSpeechTime.current = Date.now();
+      } else {
+        setMicrophoneError(`Score: ${Math.round(result.similarityScore)}% - Try again!`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
+    }
   };
 
   const popBubble = () => {
@@ -139,7 +125,6 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
       setTimeout(() => {
         if (newCompleted >= targetSentences.length) {
           setGameComplete(true);
-          stopListening();
           onComplete?.(newScore);
         } else {
           setCurrentSentence(prev => prev + 1);
@@ -153,15 +138,21 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
     setScore(0);
     setSentencesCompleted(0);
     setGameComplete(false);
-    setAudioLevel(0);
-    setSpeechDetected(false);
     createBubbles();
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50 p-4">
@@ -189,13 +180,6 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
               <Progress value={(sentencesCompleted / targetSentences.length) * 100} className="h-6" />
             </div>
             
-            <div className="mb-4">
-              <Progress value={audioLevel} className="h-4" />
-            </div>
-            
-            <p className="text-sm text-center text-gray-600">
-              {speechDetected ? '🫧 Popping bubbles!' : '🎤 Speak to pop bubbles!'}
-            </p>
             {microphoneError && (
               <p className="text-sm text-center text-red-600 mt-2">
                 {microphoneError}
@@ -203,18 +187,6 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
             )}
           </CardContent>
         </Card>
-
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All sentences spoken!' :
-              isListening ? `Say: "${targetSentences[currentSentence]}"` :
-              'Press start to begin popping bubbles!'
-            }
-          />
-        </div>
 
         {/* Bubble Area */}
         {!gameComplete && (
@@ -258,14 +230,15 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Speaking
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
             </>
