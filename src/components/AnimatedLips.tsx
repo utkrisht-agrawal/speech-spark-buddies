@@ -72,15 +72,11 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
   }, [phoneme]);
 
   return (
-    <div className={`flex flex-col items-center justify-center ${className}`}>
-      <div className="relative">
-        <img 
-          src={currentImage}
-          alt={`Mouth position for phoneme ${phoneme}`}
-          className="w-80 h-60 object-contain rounded-lg shadow-lg"
-        />
-      </div>
-    </div>
+    <img 
+      src={currentImage}
+      alt={`Mouth position for phoneme ${phoneme}`}
+      className={`object-contain rounded-lg shadow-lg ${className}`}
+    />
   );
 };
 
