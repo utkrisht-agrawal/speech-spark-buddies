@@ -165,6 +165,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
       // Check if blow is strong enough
       if (strength > 80) {
+
         const now = Date.now();
         const candleIdx = currentCandleRef.current;
         console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', candleIdx, 'Time since last:', now - lastExtinguishTime.current);
