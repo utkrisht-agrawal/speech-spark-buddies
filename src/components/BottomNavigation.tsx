@@ -19,6 +19,7 @@ const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => 
     { id: 'home', label: 'Home', icon: <Home className="w-6 h-6" /> },
     { id: 'practice', label: 'Practice', icon: <Target className="w-6 h-6" /> },
     { id: 'library', label: 'Library', icon: <BookOpen className="w-6 h-6" /> },
+    { id: 'games', label: 'Games', icon: <BarChart3 className="w-6 h-6" /> },
     { id: 'leaderboard', label: 'Leaderboard', icon: <Trophy className="w-6 h-6" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="w-6 h-6" /> },
   ];

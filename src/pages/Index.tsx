@@ -35,6 +35,7 @@ import SpeakYourComicStripGame from './SpeakYourComicStripGame';
 import VisemePractice from './VisemePractice';
 import PhonemeFrequencyPractice from './PhonemeFrequencyPractice';
 import BottomNavigation from '@/components/BottomNavigation';
+import GameLibrary from './GameLibrary';
 import { Exercise } from '@/types/curriculum';
 
 const Index = () => {
@@ -367,6 +368,11 @@ const Index = () => {
         />;
       case 'library':
         return <WordLibrary />;
+      case 'games':
+        return <GameLibrary onPlayGame={(gameId) => {
+          setCurrentGameType(gameId);
+          setCurrentView('game');
+        }} />;
       case 'leaderboard':
         return <Leaderboard />;
       case 'settings':
