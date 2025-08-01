@@ -413,17 +413,17 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         </div>
 
         {/* Middle Section: Control Panel + Lip Animation + Camera */}
-        <div className="grid grid-cols-12 gap-4 flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
           {/* Control Panel */}
-          <div className="col-span-3">
-            <Card className="p-4 h-full">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Control Panel</h3>
+          <div className="lg:col-span-3">
+            <Card className="p-4 h-full min-h-[300px]">
+              <h3 className="text-base lg:text-lg font-semibold text-gray-800 mb-4">Control Panel</h3>
               
               <div className="flex flex-col gap-3">
                 <Button
                   onClick={testPhoneme}
                   disabled={isAnimating || isProcessing}
-                  className="w-full"
+                  className="w-full text-sm"
                 >
                   {isAnimating ? 'Testing...' : '1. Test Current Phoneme'}
                 </Button>
@@ -432,7 +432,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                   onClick={testWord}
                   disabled={isAnimating || isProcessing}
                   variant="outline"
-                  className="w-full"
+                  className="w-full text-sm"
                 >
                   {isLooping ? 'Testing Word...' : '2. Test Word'}
                 </Button>
@@ -470,18 +470,18 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           </div>
 
           {/* Lip Animation Guide */}
-          <div className="col-span-5">
-            <Card className="p-4 h-full">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Lip Animation Guide</h3>
-              <div className="flex gap-4 h-full">
-                <div className="text-2xl font-bold text-purple-600 flex items-center">
+          <div className="lg:col-span-5">
+            <Card className="p-4 h-full min-h-[300px]">
+              <h3 className="text-base lg:text-lg font-semibold text-gray-800 mb-4">Lip Animation Guide</h3>
+              <div className="flex flex-col lg:flex-row gap-4 h-full">
+                <div className="text-xl lg:text-2xl font-bold text-purple-600 flex items-center justify-center lg:justify-start">
                   {currentWord.phonemes[currentPhonemeIndex]}
                 </div>
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center min-h-[200px]">
                   <AnimatedLips
                     phoneme={currentWord.phonemes[currentPhonemeIndex]}
                     isAnimating={isAnimating}
-                    className="w-full h-full max-w-md"
+                    className="w-full h-full max-w-xs lg:max-w-md"
                   />
                 </div>
               </div>
@@ -489,10 +489,10 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           </div>
 
           {/* Camera Feed */}
-          <div className="col-span-4">
-            <Card className="p-4 h-full flex flex-col">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Camera Feed</h3>
-              <div className="flex-1 min-h-0">
+          <div className="lg:col-span-4">
+            <Card className="p-4 h-full min-h-[300px] flex flex-col">
+              <h3 className="text-base lg:text-lg font-semibold text-gray-800 mb-4">Camera Feed</h3>
+              <div className="flex-1 min-h-0 overflow-hidden rounded-lg">
                 <CameraWindow 
                   isActive={isCameraActive}
                   className="w-full h-full rounded-lg object-cover"
@@ -503,25 +503,25 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         </div>
 
         {/* Bottom Section: Waveform Comparison + Scoring */}
-        <div className="grid grid-cols-2 gap-4 h-40 flex-shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[200px] max-h-[240px] flex-shrink-0">
           {/* Waveform Comparison */}
-          <Card className="p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Waveform Comparison</h3>
+          <Card className="p-3 md:p-4 flex flex-col">
+            <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-2 md:mb-3">Waveform Comparison</h3>
             
             {/* Audio visualization */}
-            <div className="bg-gray-50 rounded-lg p-3 h-20 flex items-center justify-center">
+            <div className="bg-gray-50 rounded-lg p-2 md:p-3 flex-1 flex items-center justify-center min-h-[60px]">
               {audioData.length > 0 ? (
-                <div className="flex items-end space-x-1 h-12">
+                <div className="flex items-end space-x-1 h-8 md:h-12">
                   {audioData.map((amplitude, index) => (
                     <div
                       key={index}
-                      className="bg-blue-500 w-2 transition-all duration-200"
+                      className="bg-blue-500 w-1.5 md:w-2 transition-all duration-200"
                       style={{ height: `${amplitude}%` }}
                     />
                   ))}
                 </div>
               ) : (
-                <div className="text-gray-500 text-sm">No audio data</div>
+                <div className="text-gray-500 text-xs md:text-sm">No audio data</div>
               )}
             </div>
             
@@ -534,23 +534,23 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           </Card>
 
           {/* Scoring */}
-          <Card className="p-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Score</h3>
+          <Card className="p-3 md:p-4 flex flex-col">
+            <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-2 md:mb-3">Score</h3>
             
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1">
               <div className="flex justify-between items-center p-2 bg-green-50 rounded-lg">
-                <span className="text-sm font-medium">Lip Match:</span>
-                <span className="text-lg font-bold text-green-600">{lipScore}%</span>
+                <span className="text-xs md:text-sm font-medium">Lip Match:</span>
+                <span className="text-base md:text-lg font-bold text-green-600">{lipScore}%</span>
               </div>
               
               <div className="flex justify-between items-center p-2 bg-blue-50 rounded-lg">
-                <span className="text-sm font-medium">Sound Match:</span>
-                <span className="text-lg font-bold text-blue-600">{soundScore}%</span>
+                <span className="text-xs md:text-sm font-medium">Sound Match:</span>
+                <span className="text-base md:text-lg font-bold text-blue-600">{soundScore}%</span>
               </div>
               
               <div className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
-                <span className="text-sm font-medium">Total Points:</span>
-                <span className="text-xl font-bold text-purple-600">{score}</span>
+                <span className="text-xs md:text-sm font-medium">Total Points:</span>
+                <span className="text-lg md:text-xl font-bold text-purple-600">{score}</span>
               </div>
             </div>
           </Card>
