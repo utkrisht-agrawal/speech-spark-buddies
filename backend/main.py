@@ -57,7 +57,7 @@ def transcribe_with_whisper(wav_path, target):
     ratio = SequenceMatcher(None, target.lower(), transcript).ratio()
     return int(ratio * 100), transcript, transcript, target
 
-def transcribe_with_wav2vec(wav_path, target, mode="phoneme"):
+def transcribe_with_wav2vec(wav_path, target):
     waveform, sample_rate = sf.read(wav_path)
     if waveform.ndim > 1:
         waveform = waveform.mean(axis=1)  # Convert stereo to mono
@@ -72,14 +72,11 @@ def transcribe_with_wav2vec(wav_path, target, mode="phoneme"):
 
     transcript = wav2vec_processor.batch_decode(predicted_ids)[0].lower().strip()
 
-    if mode == "word":
-        spoken_phonemes = text_to_phonemes(transcript)
-        target_phonemes = text_to_phonemes(target)
-        ratio = SequenceMatcher(None, target_phonemes, spoken_phonemes).ratio()
-        return int(ratio * 100), transcript, spoken_phonemes, target_phonemes
-    else:  # phoneme mode
-        ratio = SequenceMatcher(None, target.lower(), transcript).ratio()
-        return int(ratio * 100), transcript, transcript, target
+    spoken_phonemes = text_to_phonemes(transcript)
+    target_phonemes = text_to_phonemes(target)
+
+    ratio = SequenceMatcher(None, target_phonemes, spoken_phonemes).ratio()
+    return int(ratio * 100), transcript, spoken_phonemes, target_phonemes
 
 @app.post("/score")
 async def score(
@@ -97,7 +94,7 @@ async def score(
         if mode == "sentence":
             score, transcript, spoken, target_proc = transcribe_with_whisper(wav_path, target_phoneme)
         else:
-            score, transcript, spoken, target_proc = transcribe_with_wav2vec(wav_path, target_phoneme, mode)
+            score, transcript, spoken, target_proc = transcribe_with_wav2vec(wav_path, target_phoneme)
     finally:
         os.remove(tmp_path)
         os.remove(wav_path)

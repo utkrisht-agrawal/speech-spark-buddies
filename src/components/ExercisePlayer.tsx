@@ -70,7 +70,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
     }
   }, [scores]);
 
-  const startRecording = async (mode: 'phoneme' | 'word' | 'sentence') => {
+  const startRecording = async () => {
     try {
       setIsRecording(true);
       setIsProcessing(true);
@@ -106,7 +106,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
           console.log(`🎯 Processing target: "${target}"`);
           
           try {
-            const result = await speechRecognition.recognizeSpeech(audioBlob, target, mode);
+            const result = await speechRecognition.recognizeSpeech(audioBlob, target);
             console.log(`🗣️ Backend result:`, result);
             
             setSoundMatch(result.similarityScore);
@@ -441,7 +441,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                   {/* Test Controls */}
                   <div className="pt-2 border-t border-gray-200 mt-auto">
                     <Button
-                      onClick={() => startRecording('phoneme')}
+                      onClick={startRecording}
                       variant="default"
                       size="sm"
                       className="w-full h-8 text-xs mb-2 bg-blue-600 hover:bg-blue-700"
@@ -452,13 +452,13 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                     </Button>
                     
                     <Button
-                      onClick={() => startRecording(exercise.type === 'sentence' ? 'sentence' : 'word')}
+                      onClick={startRecording}
                       variant="default"
                       size="sm"
                       className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
                       disabled={isRecording || isProcessing}
                     >
-                      {isRecording ? 'Recording...' : exercise.type === 'sentence' ? 'Test Sentence' : 'Test Word'}
+                      {isRecording ? 'Recording...' : 'Test Word'}
                     </Button>
 
                     {hasRecorded && showScore && (
