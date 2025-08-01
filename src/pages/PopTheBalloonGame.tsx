@@ -205,18 +205,6 @@ const PopTheBalloonGame: React.FC<PopTheBalloonGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All balloons popped!' :
-              isListening ? `Say "/${targetPhoneme}/" to pop the balloons!` :
-              'Press start to begin popping balloons!'
-            }
-          />
-        </div>
-
         {/* Game Area */}
         <Card className="mb-6 bg-gradient-to-b from-blue-100 to-blue-200">
           <CardContent className="p-8 relative h-96">

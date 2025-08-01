@@ -90,7 +90,7 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
 
   const processRecordedAudio = async (audioBlob: Blob) => {
     try {
-      const result = await scoreSpeech(audioBlob, targetSentences[currentSentence], 'sentence');
+      const result = await scoreSpeech(audioBlob, targetSentences[currentSentence], 'word');
       
       if (result.similarityScore >= 90) {
         popBubble();
