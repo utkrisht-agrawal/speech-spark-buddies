@@ -118,7 +118,9 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
         current_level: child.current_level || 1,
         total_xp: child.total_xp || 0,
         streak_days: child.streak_days || 0,
-        last_active_date: child.last_active_date
+        last_active_date: child.last_active_date,
+        therapist_name: 'No therapist assigned',
+        therapist_id: undefined
       })) || [];
 
       // Fetch therapist assignments for each child
@@ -130,27 +132,48 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
           .eq('is_active', true);
 
         console.log('Therapist assignments:', therapistAssignments, therapistError);
+        console.log('Child IDs for therapist lookup:', childIds);
 
-        if (!therapistError && therapistAssignments) {
-          // Get therapist profiles
-          const therapistIds = therapistAssignments.map(t => t.therapist_id);
-          const { data: therapistProfiles } = await supabase
-            .from('profiles')
-            .select('user_id, username, full_name')
-            .in('user_id', therapistIds);
+        if (!therapistError && therapistAssignments && therapistAssignments.length > 0) {
+          // Get unique therapist IDs
+          const therapistIds = [...new Set(therapistAssignments.map(t => t.therapist_id).filter(Boolean))];
+          console.log('Therapist IDs to fetch:', therapistIds);
 
-          console.log('Therapist profiles:', therapistProfiles);
+          if (therapistIds.length > 0) {
+            const { data: therapistProfiles, error: therapistProfileError } = await supabase
+              .from('profiles')
+              .select('user_id, username, full_name')
+              .in('user_id', therapistIds);
 
-          // Add therapist info to children data
-          childrenData = childrenData.map(child => {
-            const therapistAssignment = therapistAssignments.find(t => t.student_id === child.user_id);
-            const therapist = therapistProfiles?.find(t => t.user_id === therapistAssignment?.therapist_id);
-            return {
-              ...child,
-              therapist_name: therapist?.full_name || therapist?.username || 'No therapist assigned',
-              therapist_id: therapist?.user_id
-            };
-          });
+            console.log('Therapist profiles:', therapistProfiles, therapistProfileError);
+
+            // Add therapist info to children data
+            childrenData = childrenData.map(child => {
+              console.log(`Processing child: ${child.username} (${child.user_id})`);
+              
+              const therapistAssignment = therapistAssignments.find(t => t.student_id === child.user_id);
+              console.log(`Therapist assignment for ${child.username}:`, therapistAssignment);
+              
+              if (therapistAssignment) {
+                const therapist = therapistProfiles?.find(t => t.user_id === therapistAssignment.therapist_id);
+                console.log(`Therapist profile for ${child.username}:`, therapist);
+                
+                return {
+                  ...child,
+                  therapist_name: therapist?.full_name || therapist?.username || 'No therapist assigned',
+                  therapist_id: therapist?.user_id
+                };
+              } else {
+                return {
+                  ...child,
+                  therapist_name: 'No therapist assigned',
+                  therapist_id: undefined
+                };
+              }
+            });
+          }
+        } else {
+          console.log('No therapist assignments found or error occurred');
         }
 
         // Fetch detailed progress for each child
@@ -219,6 +242,7 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
 
       setChildren(childrenData);
       console.log('Successfully loaded parent dashboard data');
+      console.log('Final children data with therapists:', childrenData);
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
