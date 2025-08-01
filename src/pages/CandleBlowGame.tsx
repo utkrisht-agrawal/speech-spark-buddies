@@ -39,12 +39,57 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   useEffect(() => {
     candlesLitRef.current = candlesLit;
   }, [candlesLit]);
-  
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const noiseBaselineRef = useRef(0);
+  const calibratedRef = useRef(false);
+
+  const calibrateBaseline = (): Promise<void> => {
+    return new Promise(resolve => {
+      if (!analyserRef.current) {
+        resolve();
+        return;
+      }
+
+      calibratedRef.current = false;
+      noiseBaselineRef.current = 0;
+
+      const bufferLength = analyserRef.current.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const breathRange = Math.floor(bufferLength * 0.1);
+      let samples = 0;
+      let total = 0;
+
+      const sample = () => {
+        if (!analyserRef.current) {
+          resolve();
+          return;
+        }
+
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < breathRange; i++) {
+          sum += dataArray[i];
+        }
+        total += sum / breathRange;
+        samples++;
+        if (samples < 30) {
+          requestAnimationFrame(sample);
+        } else {
+          noiseBaselineRef.current = total / samples;
+          calibratedRef.current = true;
+          console.log('📈 Noise baseline:', noiseBaselineRef.current.toFixed(1));
+          resolve();
+        }
+      };
+
+      sample();
+    });
+  };
   
   // Timing control
   const lastExtinguishTime = useRef(Date.now() + 3000); // Debounce between blows
@@ -74,6 +119,9 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       audioContextRef.current = null;
       console.log('Closed audio context');
     }
+
+    calibratedRef.current = false;
+    noiseBaselineRef.current = 0;
     
     setIsListening(false);
     setBlowStrength(0);
@@ -93,10 +141,10 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setMicrophoneError(null);
       console.log('Requesting microphone access...');
       
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
+          echoCancellation: true,
+          noiseSuppression: true,
           autoGainControl: false
         }
       });
@@ -125,6 +173,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setIsListening(true);
       // Reset debounce timer so first candle doesn't auto-extinguish
       lastExtinguishTime.current = Date.now() + 3000;
+      calibratedRef.current = false;
+      await calibrateBaseline();
       monitorAudioLevel();
       console.log('Audio monitoring started');
     } catch (error) {
@@ -149,23 +199,28 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
         return;
       }
 
+      if (!calibratedRef.current) {
+        animationFrameRef.current = requestAnimationFrame(checkLevel);
+        return;
+      }
+
       analyserRef.current.getByteFrequencyData(dataArray);
-      
+
       // Focus on lower frequencies for breath detection (0-500Hz range)
       const breathRange = Math.floor(bufferLength * 0.1);
       let sum = 0;
       for (let i = 0; i < breathRange; i++) {
         sum += dataArray[i];
       }
-      
+
       const average = sum / breathRange;
-      const strength = Math.min((average / 30) * 100, 100);
+      const relative = Math.max(average - noiseBaselineRef.current, 0);
+      const strength = Math.min((relative / 30) * 100, 100);
       
       setBlowStrength(strength);
 
       // Check if blow is strong enough
       if (strength > 80) {
-
         const now = Date.now();
         const candleIdx = currentCandleRef.current;
         console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', candleIdx, 'Time since last:', now - lastExtinguishTime.current);
