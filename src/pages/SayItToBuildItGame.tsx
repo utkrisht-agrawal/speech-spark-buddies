@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Volume2, RotateCcw, Trophy, Home } from 'lucide-react';
+import { Volume2, RotateCcw, Trophy } from 'lucide-react';
 import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface SayItToBuildItGameProps {
   targetWords?: string[];
@@ -31,8 +32,48 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastBuildTime = useRef(0);
+  const isCheckingRef = useRef(false);
 
   const blocksNeeded = 5;
+
+  const getCurrentWord = () => targetWords[currentWord];
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForWord = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const result = await scoreSpeech(audioBlob, getCurrentWord(), 'word');
+      const spoken = result.transcription.toLowerCase();
+      if (
+        result.similarityScore >= 80 ||
+        spoken.includes(getCurrentWord().toLowerCase())
+      ) {
+        addBuildingBlock();
+      }
+    } catch (err) {
+      console.error('Word check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const startListening = async () => {
     try {
@@ -89,9 +130,9 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       const detected = level > 25;
       setWordDetected(detected);
 
-      // Add building block if word detected
+      // Check spoken word if sound level is high
       if (detected && Date.now() - lastBuildTime.current > 1500) {
-        addBuildingBlock();
+        checkForWord();
         lastBuildTime.current = Date.now();
       }
 
@@ -135,8 +176,6 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
     stopListening();
   };
 
-  const getCurrentWord = () => targetWords[currentWord];
-  
   const getBlockColor = (index: number) => {
     const colors = ['bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400'];
     return colors[index % colors.length];
