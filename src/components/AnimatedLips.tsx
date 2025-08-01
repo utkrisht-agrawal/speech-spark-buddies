@@ -7,7 +7,7 @@ interface AnimatedLipsProps {
 }
 
 // Map phonemes to realistic mouth images
-const phonemeImages: { [key: string]: string } = {
+export const phonemeImageMap: { [key: string]: string } = {
   // Rest/closed position
   'REST': '/mouth_shapes/phoneme_rest1.png',
 
@@ -62,12 +62,12 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
   className = "" 
 }) => {
   console.log(phoneme);
-  const [currentImage, setCurrentImage] = useState(phonemeImages['REST']);
+  const [currentImage, setCurrentImage] = useState(phonemeImageMap['REST']);
 
   useEffect(() => {
     // Remove trailing digits (stress markers like AH0, AH1, AH2 → AH)
     const normalizedPhoneme = phoneme.replace(/\d+$/, '');
-    const targetImage = phonemeImages[normalizedPhoneme] || phonemeImages['REST'];
+    const targetImage = phonemeImageMap[normalizedPhoneme] || phonemeImageMap['REST'];
     setCurrentImage(targetImage);
   }, [phoneme]);
 
