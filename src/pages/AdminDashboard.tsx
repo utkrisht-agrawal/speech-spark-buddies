@@ -174,13 +174,22 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
         return;
       }
 
-      const { error } = await supabase
+      console.log('About to insert therapist assignment:', {
+        student_id: selectedStudent,
+        therapist_id: selectedTherapist,
+        assigned_by: profile?.user_id
+      });
+
+      const { data: insertData, error } = await supabase
         .from('student_therapist_assignments')
         .insert({
           student_id: selectedStudent,
           therapist_id: selectedTherapist,
           assigned_by: profile?.user_id
-        });
+        })
+        .select('*');
+
+      console.log('Insert therapist assignment result:', { data: insertData, error });
 
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
