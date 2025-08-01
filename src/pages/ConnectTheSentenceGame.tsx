@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Link } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface ConnectTheSentenceGameProps {
   sentencePairs?: { first: string; connector: string; second: string; complete: string }[];
@@ -47,85 +47,74 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
   onComplete,
   onBack 
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [currentPair, setCurrentPair] = useState(0);
   const [connectionStage, setConnectionStage] = useState<'first' | 'connector' | 'second' | 'complete'>('first');
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [speechDetected, setSpeechDetected] = useState(false);
   const [connectionsCompleted, setConnectionsCompleted] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastSpeechTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
-  const startListening = async () => {
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
-      monitorAudio();
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 3 seconds
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-    setIsListening(false);
-    setAudioLevel(0);
-    setSpeechDetected(false);
-  }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const currentText = getCurrentText();
+      if (!currentText) return;
       
-      setAudioLevel(level);
+      const result = await scoreSpeech(audioBlob, currentText, 'sentence');
       
-      const detected = level > 30;
-      setSpeechDetected(detected);
-
-      if (detected && Date.now() - lastSpeechTime.current > 2000) {
+      if (result.similarityScore >= 80) {
         advanceStage();
-        lastSpeechTime.current = Date.now();
+      } else {
+        setMicrophoneError(`Say "${currentText}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
+    }
   };
 
   const advanceStage = () => {
@@ -145,7 +134,6 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
       setTimeout(() => {
         if (newCompleted >= sentencePairs.length) {
           setGameComplete(true);
-          stopListening();
           onComplete?.(newScore);
         } else {
           setCurrentPair(prev => prev + 1);
@@ -161,9 +149,11 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
     setScore(0);
     setConnectionsCompleted(0);
     setGameComplete(false);
-    setAudioLevel(0);
-    setSpeechDetected(false);
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   const getCurrentText = () => {
@@ -188,8 +178,12 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
   };
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
@@ -217,12 +211,12 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
               <Progress value={(connectionsCompleted / sentencePairs.length) * 100} className="h-6" />
             </div>
             
-            <div className="mb-4">
-              <Progress value={audioLevel} className="h-4" />
-            </div>
             
             <p className="text-sm text-center text-gray-600">
               Stage: {getStageDescription()}
+            </p>
+            <p className="text-sm text-center text-blue-600 mt-2">
+              Say: "<span className="font-bold text-blue-800">{getCurrentText()}</span>"
             </p>
             {microphoneError && (
               <p className="text-sm text-center text-red-600 mt-2">
@@ -232,17 +226,6 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All sentences connected!' :
-              isListening ? `${getStageDescription()}: "${getCurrentText()}"` :
-              'Press start to begin connecting sentences!'
-            }
-          />
-        </div>
 
         {/* Connection Visualization */}
         {!gameComplete && (
@@ -331,24 +314,17 @@ const ConnectTheSentenceGame: React.FC<ConnectTheSentenceGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Connecting
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
-              
-              <Button 
-                variant="outline"
-                onClick={advanceStage}
-              >
-                <Link className="w-4 h-4 mr-2" />
-                Next Stage
-              </Button>
             </>
           ) : (
             <div className="text-center space-y-4">

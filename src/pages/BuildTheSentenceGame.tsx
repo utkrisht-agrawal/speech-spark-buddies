@@ -86,7 +86,7 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
       
       const result = await scoreSpeech(audioBlob, currentWord, 'word');
       
-      if (result.similarityScore >= 90) {
+      if (result.similarityScore >= 80) {
         addCurrentWord();
       } else {
         setMicrophoneError(`Say "${currentWord}" - Score: ${Math.round(result.similarityScore)}%`);

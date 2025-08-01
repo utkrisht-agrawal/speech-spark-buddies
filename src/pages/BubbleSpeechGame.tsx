@@ -97,7 +97,7 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
       
       const result = await scoreSpeech(audioBlob, currentWord, 'word');
       
-      if (result.similarityScore >= 90) {
+      if (result.similarityScore >= 80) {
         popCurrentBubble();
       } else {
         setMicrophoneError(`Say "${currentWord}" - Score: ${Math.round(result.similarityScore)}%`);
