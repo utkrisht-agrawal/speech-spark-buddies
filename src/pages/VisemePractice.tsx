@@ -63,12 +63,9 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
           try {
             const formData = new FormData();
             formData.append('text', word);
-            const res = await fetch('https://dcfculdkghduqwtkjebu.functions.supabase.co/phoneme-analysis', {
+            const res = await fetch('http://localhost:8001/phonemeSequence', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ text: word })
+              body: formData
             });
             if (!res.ok) throw new Error('Failed request');
             const data = await res.json();
@@ -508,9 +505,8 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
             <Card className="p-2 h-full min-h-[162px] flex flex-col">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">Camera Feed</h3>
               <div className="flex-1 min-h-0 overflow-hidden rounded-lg">
-                <CameraWindow
+                <CameraWindow 
                   isActive={isCameraActive}
-                  targetPhoneme={currentWord.phonemes[currentPhonemeIndex]}
                   className="w-full h-full rounded-lg object-cover"
                 />
               </div>
