@@ -69,68 +69,97 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
   const loadData = async () => {
     try {
       const { data: userData } = await supabase.auth.getUser();
+      console.log('Loading parent dashboard for user:', userData.user?.id);
       
-      // Fetch children assigned to this parent with therapist info
+      // First, fetch children assigned to this parent
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('student_parent_assignments')
-        .select(`
-          student_id,
-          student:student_id(
-            id,
-            user_id,
-            username,
-            full_name,
-            current_level,
-            total_xp,
-            streak_days,
-            last_active_date
-          )
-        `)
+        .select('student_id')
         .eq('parent_id', userData.user?.id)
         .eq('is_active', true);
 
-      if (assignmentError) throw assignmentError;
+      console.log('Parent assignments:', assignmentData, assignmentError);
 
-      let childrenData = assignmentData?.map(assignment => ({
-        id: (assignment.student as any).id,
-        user_id: (assignment.student as any).user_id,
-        username: (assignment.student as any).username,
-        full_name: (assignment.student as any).full_name || (assignment.student as any).username,
-        current_level: (assignment.student as any).current_level || 1,
-        total_xp: (assignment.student as any).total_xp || 0,
-        streak_days: (assignment.student as any).streak_days || 0,
-        last_active_date: (assignment.student as any).last_active_date
+      if (assignmentError) {
+        console.error('Assignment error:', assignmentError);
+        throw assignmentError;
+      }
+
+      if (!assignmentData || assignmentData.length === 0) {
+        console.log('No children assigned to this parent');
+        setChildren([]);
+        setProgressDetails([]);
+        setActivities([]);
+        setLeaderboard([]);
+        return;
+      }
+
+      const childIds = assignmentData.map(assignment => assignment.student_id);
+      console.log('Child IDs:', childIds);
+
+      // Fetch children profile data
+      const { data: childrenProfiles, error: childrenError } = await supabase
+        .from('profiles')
+        .select('id, user_id, username, full_name, current_level, total_xp, streak_days, last_active_date')
+        .in('user_id', childIds);
+
+      console.log('Children profiles:', childrenProfiles, childrenError);
+
+      if (childrenError) {
+        console.error('Children profiles error:', childrenError);
+        throw childrenError;
+      }
+
+      let childrenData = childrenProfiles?.map(child => ({
+        id: child.id,
+        user_id: child.user_id,
+        username: child.username,
+        full_name: child.full_name || child.username,
+        current_level: child.current_level || 1,
+        total_xp: child.total_xp || 0,
+        streak_days: child.streak_days || 0,
+        last_active_date: child.last_active_date
       })) || [];
 
       // Fetch therapist assignments for each child
       if (childrenData.length > 0) {
-        const childIds = childrenData.map(child => child.user_id);
-        
-        const { data: therapistData } = await supabase
+        const { data: therapistAssignments, error: therapistError } = await supabase
           .from('student_therapist_assignments')
-          .select(`
-            student_id,
-            therapist:therapist_id(username, full_name)
-          `)
+          .select('student_id, therapist_id')
           .in('student_id', childIds)
           .eq('is_active', true);
 
-        // Add therapist info to children data
-        childrenData = childrenData.map(child => {
-          const therapistAssignment = therapistData?.find(t => t.student_id === child.user_id);
-          const therapist = therapistAssignment?.therapist as any;
-          return {
-            ...child,
-            therapist_name: therapist?.full_name || therapist?.username || 'No therapist assigned',
-            therapist_id: therapist?.id
-          };
-        });
+        console.log('Therapist assignments:', therapistAssignments, therapistError);
+
+        if (!therapistError && therapistAssignments) {
+          // Get therapist profiles
+          const therapistIds = therapistAssignments.map(t => t.therapist_id);
+          const { data: therapistProfiles } = await supabase
+            .from('profiles')
+            .select('user_id, username, full_name')
+            .in('user_id', therapistIds);
+
+          console.log('Therapist profiles:', therapistProfiles);
+
+          // Add therapist info to children data
+          childrenData = childrenData.map(child => {
+            const therapistAssignment = therapistAssignments.find(t => t.student_id === child.user_id);
+            const therapist = therapistProfiles?.find(t => t.user_id === therapistAssignment?.therapist_id);
+            return {
+              ...child,
+              therapist_name: therapist?.full_name || therapist?.username || 'No therapist assigned',
+              therapist_id: therapist?.user_id
+            };
+          });
+        }
 
         // Fetch detailed progress for each child
-        const { data: levelProgressData } = await supabase
+        const { data: levelProgressData, error: levelProgressError } = await supabase
           .from('level_progress')
           .select('*')
           .in('user_id', childIds);
+
+        console.log('Level progress data:', levelProgressData, levelProgressError);
 
         const progressDetails = childrenData.map(child => {
           const levelProgress = levelProgressData?.find(lp => lp.user_id === child.user_id && lp.level_id === child.current_level);
@@ -150,53 +179,51 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
         // Fetch recent activities for assigned children
         const { data: progressData, error: progressError } = await supabase
           .from('user_progress')
-          .select(`
-            id,
-            user_id,
-            exercise_type,
-            score,
-            completed_at,
-            xp_earned,
-            user:user_id(username, full_name)
-          `)
+          .select('id, user_id, exercise_type, score, completed_at, xp_earned')
           .in('user_id', childIds)
           .order('completed_at', { ascending: false })
           .limit(20);
 
-        if (progressError) throw progressError;
+        console.log('User progress data:', progressData, progressError);
 
-        const formattedActivities = progressData?.map(activity => ({
-          id: activity.id,
-          child_name: (activity.user as any)?.full_name || (activity.user as any)?.username || 'Unknown',
-          exercise_type: activity.exercise_type,
-          score: activity.score,
-          completed_at: activity.completed_at,
-          xp_earned: activity.xp_earned
-        })) || [];
+        if (!progressError && progressData) {
+          const formattedActivities = progressData.map(activity => {
+            const child = childrenData.find(c => c.user_id === activity.user_id);
+            return {
+              id: activity.id,
+              child_name: child?.full_name || child?.username || 'Unknown',
+              exercise_type: activity.exercise_type,
+              score: activity.score,
+              completed_at: activity.completed_at,
+              xp_earned: activity.xp_earned
+            };
+          });
 
-        setActivities(formattedActivities);
+          setActivities(formattedActivities);
+        }
 
         // Fetch leaderboard data for children
-        const { data: leaderboardData } = await supabase
-          .from('profiles')
-          .select('user_id, username, full_name, total_xp, current_level')
-          .in('user_id', childIds)
-          .order('total_xp', { ascending: false });
-
-        const leaderboardWithRanks = leaderboardData?.map((entry, index) => ({
-          ...entry,
-          rank: index + 1
-        })) || [];
+        const leaderboardWithRanks = childrenData
+          .sort((a, b) => b.total_xp - a.total_xp)
+          .map((entry, index) => ({
+            user_id: entry.user_id,
+            username: entry.username,
+            full_name: entry.full_name,
+            total_xp: entry.total_xp,
+            current_level: entry.current_level,
+            rank: index + 1
+          }));
 
         setLeaderboard(leaderboardWithRanks);
       }
 
       setChildren(childrenData);
+      console.log('Successfully loaded parent dashboard data');
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
         title: "Error",
-        description: "Failed to load dashboard data",
+        description: `Failed to load dashboard data: ${error.message}`,
         variant: "destructive"
       });
     } finally {
