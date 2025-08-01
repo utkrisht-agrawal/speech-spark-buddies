@@ -35,6 +35,7 @@ import SpeakYourComicStripGame from './SpeakYourComicStripGame';
 import VisemePractice from './VisemePractice';
 import PhonemeFrequencyPractice from './PhonemeFrequencyPractice';
 import BottomNavigation from '@/components/BottomNavigation';
+import Tutorials from './Tutorials';
 import GameLibrary from './GameLibrary';
 import { Exercise } from '@/types/curriculum';
 
@@ -373,6 +374,8 @@ const Index = () => {
           setCurrentGameType(gameId);
           setCurrentView('game');
         }} />;
+      case 'tutorials':
+        return <Tutorials onBack={() => setActiveTab('home')} />;
       case 'leaderboard':
         return <Leaderboard />;
       case 'settings':

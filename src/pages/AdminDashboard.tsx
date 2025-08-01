@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, UserPlus, BookOpen, BarChart3, Trophy, Settings } from 'lucide-react';
 import Leaderboard from './Leaderboard';
 import LevelConfigAdmin from '@/components/LevelConfigAdmin';
+import TutorialManager from '@/components/TutorialManager';
 
 interface Profile {
   id: string;
@@ -32,7 +33,7 @@ interface Assignment {
 const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
   const { profile } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'leaderboard' | 'levels'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'leaderboard' | 'levels' | 'tutorials'>('overview');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [therapistAssignments, setTherapistAssignments] = useState<Assignment[]>([]);
   const [parentAssignments, setParentAssignments] = useState<Assignment[]>([]);
@@ -361,11 +362,20 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
             <Settings className="w-4 h-4" />
             <span>Level Config</span>
           </button>
+          <button
+            onClick={() => setActiveTab('tutorials')}
+            className={`px-4 py-2 font-medium flex items-center space-x-2 ${activeTab === 'tutorials' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-600'}`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Tutorials</span>
+          </button>
         </div>
 
         {activeTab === 'leaderboard' && <Leaderboard />}
         
         {activeTab === 'levels' && <LevelConfigAdmin />}
+        
+        {activeTab === 'tutorials' && <TutorialManager />}
         
         {activeTab === 'overview' && (
           <>
