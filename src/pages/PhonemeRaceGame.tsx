@@ -58,7 +58,7 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
     try {
       const audioBlob = await recordAudioSample();
       const result = await scoreSpeech(audioBlob, getCurrentPhoneme(), 'phoneme');
-      if (result.visemeScore >= 80 || result.similarityScore >= 80) {
+      if (result.similarityScore >= 75) {
         advancePlayer();
       }
     } catch (err) {

@@ -63,7 +63,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       const result = await scoreSpeech(audioBlob, getCurrentWord(), 'word');
       const spoken = result.transcription.toLowerCase();
       if (
-        result.similarityScore >= 80 &&
+        result.similarityScore >= 75 &&
         spoken.includes(getCurrentWord().toLowerCase())
       ) {
         addBuildingBlock();

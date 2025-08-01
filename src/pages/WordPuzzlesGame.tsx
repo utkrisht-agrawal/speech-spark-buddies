@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -38,6 +39,24 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastAttemptTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
 
   const startListening = async () => {
     try {
@@ -106,18 +125,24 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
     checkAudio();
   };
 
-  const processWordAttempt = () => {
+  const processWordAttempt = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
     setAttempts(prev => prev + 1);
-    
-    // Simulate word recognition (in real app, this would use speech recognition)
-    const success = Math.random() > 0.3; // 70% success rate
-    
-    if (success) {
-      solvePuzzle();
-    } else {
-      // Show encouragement for wrong attempts
-      setShowCorrect(false);
-      setTimeout(() => setShowCorrect(true), 500);
+    try {
+      const audioBlob = await recordAudioSample();
+      const word = getCurrentPuzzle().word;
+      const result = await scoreSpeech(audioBlob, word, 'word');
+      if (result.similarityScore >= 75) {
+        solvePuzzle();
+      } else {
+        setShowCorrect(false);
+        setTimeout(() => setShowCorrect(true), 500);
+      }
+    } catch (err) {
+      console.error('Word attempt failed', err);
+    } finally {
+      isCheckingRef.current = false;
     }
   };
 

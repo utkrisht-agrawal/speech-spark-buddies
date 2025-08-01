@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -37,6 +38,42 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastWordTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForWord = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const targetWords = targetSentences[currentSentence].split(' ');
+      const nextWord = targetWords[wordsBuilt.length];
+      const result = await scoreSpeech(audioBlob, nextWord, 'word');
+      if (result.similarityScore >= 75) {
+        addWord();
+      }
+    } catch (err) {
+      console.error('Word check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const startListening = async () => {
     try {
@@ -93,7 +130,7 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
       setWordDetected(detected);
 
       if (detected && Date.now() - lastWordTime.current > 1500) {
-        addWord();
+        checkForWord();
         lastWordTime.current = Date.now();
       }
 
@@ -299,9 +336,9 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
                 </Button>
               )}
               
-              <Button 
+              <Button
                 variant="outline"
-                onClick={() => addWord()}
+                onClick={() => checkForWord()}
                 disabled={!getNextWord()}
               >
                 <Plus className="w-4 h-4 mr-2" />

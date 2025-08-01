@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -37,6 +38,46 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastSpeechTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const getCurrentBubbleWord = () => {
+    const available = bubbles.find(b => !b.popped);
+    return available ? available.word : '';
+  };
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForWord = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const bubbleWord = getCurrentBubbleWord();
+      const result = await scoreSpeech(audioBlob, bubbleWord, 'word');
+      if (result.similarityScore >= 75) {
+        popBubble();
+      }
+    } catch (err) {
+      console.error('Bubble word check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   useEffect(() => {
     createBubbles();
@@ -109,7 +150,7 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
       setSpeechDetected(detected);
 
       if (detected && Date.now() - lastSpeechTime.current > 1000) {
-        popBubble();
+        checkForWord();
         lastSpeechTime.current = Date.now();
       }
 

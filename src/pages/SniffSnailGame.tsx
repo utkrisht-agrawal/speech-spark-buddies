@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -31,6 +32,41 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastMoveTime = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!streamRef.current) {
+        reject(new Error('No audio stream'));
+        return;
+      }
+      const recorder = new MediaRecorder(streamRef.current);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: 'audio/webm' }));
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), duration);
+    });
+  };
+
+  const checkForPhoneme = async () => {
+    if (isCheckingRef.current) return;
+    isCheckingRef.current = true;
+    try {
+      const audioBlob = await recordAudioSample();
+      const phoneme = getCurrentPhoneme();
+      const result = await scoreSpeech(audioBlob, phoneme, 'phoneme');
+      if (result.similarityScore >= 75) {
+        moveSnail();
+      }
+    } catch (err) {
+      console.error('Phoneme check failed', err);
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   const gardenLength = 100;
   const flowersNeeded = 5;
@@ -101,7 +137,7 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
 
       // Move snail if nasal sound detected
       if (isNasal && Date.now() - lastMoveTime.current > 500) {
-        moveSnail();
+        checkForPhoneme();
         lastMoveTime.current = Date.now();
       }
 
