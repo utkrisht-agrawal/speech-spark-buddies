@@ -150,7 +150,7 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
   };
 
   const advancePlayer = () => {
-    const advancement = Math.random() * 3 + 2; // Random advancement 2-5%
+    const advancement = (Math.random() * 3 + 2) * 1.2; // Random advancement 2-5%, boosted by 20%
     const newPosition = Math.min(playerPosition + advancement, raceLength);
     setPlayerPosition(newPosition);
     
@@ -273,11 +273,14 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
               <div className="absolute top-0 right-4 w-2 h-full bg-gradient-to-b from-black via-white to-black" />
               
               {/* Player */}
-              <div 
+              <div
                 className="absolute top-1/2 transform -translate-y-1/2 transition-all duration-300"
                 style={{ left: `${Math.min(playerPosition, 95)}%` }}
               >
-                <div className={`text-3xl ${audioLevel > 45 ? 'animate-bounce' : ''}`}>
+                <div
+                  className={`text-3xl ${audioLevel > 45 ? 'animate-bounce' : ''}`}
+                  style={{ transform: 'scaleX(-1)' }}
+                >
                   🏃‍♂️
                 </div>
               </div>
