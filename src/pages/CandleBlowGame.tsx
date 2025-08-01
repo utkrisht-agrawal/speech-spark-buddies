@@ -33,16 +33,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   
-  // Use refs to avoid stale closure issues
-  const currentCandleRef = useRef(currentCandle);
-  const candlesLitRef = useRef(candlesLit);
-  const lastExtinguishTime = useRef(Date.now()); // Initialize with current time to prevent immediate trigger
-  
-  // Update refs when state changes
-  useEffect(() => {
-    currentCandleRef.current = currentCandle;
-    candlesLitRef.current = candlesLit;
-  }, [currentCandle, candlesLit]);
+  // Timing control
+  const lastExtinguishTime = useRef(Date.now() + 3000); // Start with 3 second delay
 
   const maxAttempts = 10;
   const totalCandles = candlesLit.length;
@@ -131,23 +123,13 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
     const bufferLength = analyserRef.current.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    console.log('📊 Starting audio level monitoring, buffer length:', bufferLength);
 
     const checkLevel = () => {
-      // Check if we still have the necessary objects (don't rely on state)
       if (!analyserRef.current || !streamRef.current) {
-        console.log('❌ Analyser or stream lost, stopping monitoring');
         return;
       }
 
       analyserRef.current.getByteFrequencyData(dataArray);
-      
-      // Check overall audio level first
-      let totalSum = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        totalSum += dataArray[i];
-      }
-      const overallAverage = totalSum / bufferLength;
       
       // Focus on lower frequencies for breath detection (0-500Hz range)
       const breathRange = Math.floor(bufferLength * 0.1);
@@ -159,55 +141,60 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       const average = sum / breathRange;
       const strength = Math.min((average / 30) * 100, 100);
       
-      // Only log when there's actual audio input
-      if (overallAverage > 0.1 || average > 0.1) {
-        console.log('🎵 Overall audio:', overallAverage.toFixed(1), 'Breath range:', average.toFixed(1), 'Strength:', strength.toFixed(1));
-      }
-      
       setBlowStrength(strength);
 
-      // Check if blow is strong enough to extinguish candle using refs to avoid stale closure
-      const currentCandleIndex = currentCandleRef.current;
-      const currentCandlesLit = candlesLitRef.current;
-      const now = Date.now();
-      
-      // Lower threshold and better debouncing
-      if (strength > 50 && currentCandlesLit[currentCandleIndex] && (now - lastExtinguishTime.current) > 2000) {
-        console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1), 'Current candle:', currentCandleIndex, 'Candle lit:', currentCandlesLit[currentCandleIndex]);
-        lastExtinguishTime.current = now;
-        extinguishCandle();
+      // Check if blow is strong enough - use current state directly instead of refs
+      if (strength > 50) {
+        const now = Date.now();
+        console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', currentCandle, 'Time since last:', now - lastExtinguishTime.current);
+        
+        // Check current candle state and timing
+        if (candlesLit[currentCandle] && (now - lastExtinguishTime.current) > 2000) {
+          console.log('🎯 Extinguishing candle!');
+          lastExtinguishTime.current = now;
+          extinguishCandle();
+        } else if (!candlesLit[currentCandle]) {
+          console.log('⚠️ Current candle already extinguished');
+        } else {
+          console.log('⏰ Too soon since last extinguish');
+        }
       }
 
-      // Continue monitoring (removed isListening check that was causing issues)
       animationFrameRef.current = requestAnimationFrame(checkLevel);
     };
 
-    checkLevel();
+    // Add small delay before starting to prevent immediate trigger
+    setTimeout(() => {
+      checkLevel();
+    }, 1000);
   };
 
   const extinguishCandle = () => {
     console.log('🔥 Extinguishing candle', currentCandle, 'of', totalCandles);
-    const newCandlesLit = [...candlesLit];
-    newCandlesLit[currentCandle] = false;
-    setCandlesLit(newCandlesLit);
     
-    const newScore = score + 20;
-    setScore(newScore);
+    // Update candles state
+    setCandlesLit(prevCandles => {
+      const newCandles = [...prevCandles];
+      newCandles[currentCandle] = false;
+      return newCandles;
+    });
     
+    // Update score
+    setScore(prevScore => prevScore + 20);
+    
+    // Move to next candle or complete game
     if (currentCandle < totalCandles - 1) {
-      const nextCandle = currentCandle + 1;
-      console.log('🎯 Moving to next candle:', nextCandle);
-      setCurrentCandle(nextCandle);
-      // Reset the debounce timer for the next candle with a small delay
       setTimeout(() => {
-        lastExtinguishTime.current = Date.now() - 1500; // Allow triggering after 500ms
-      }, 100);
+        const nextCandle = currentCandle + 1;
+        console.log('🎯 Moving to next candle:', nextCandle);
+        setCurrentCandle(nextCandle);
+        // Reset timing for next candle
+        lastExtinguishTime.current = Date.now() - 1000; // Allow next trigger after 1 second
+      }, 500);
     } else {
-      // All candles extinguished - stay in game to show completion screen
       console.log('🎉 All candles extinguished! Game complete!');
       setGameComplete(true);
       stopListening();
-      // Don't call onComplete immediately - let user choose to restart or go back
     }
   };
 
