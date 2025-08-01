@@ -354,7 +354,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 px-6 py-4 flex flex-col gap-4 overflow-hidden">
+      <div className="flex-1 px-6 py-4 flex flex-col gap-4">
         {/* Top Section: Word + Phonemes */}
         <div className="flex-shrink-0">
           <div className="flex items-center gap-4 mb-3">
