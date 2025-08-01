@@ -315,7 +315,6 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
               Back
             </Button>
             
-            <div className="text-2xl">🐟</div>
             
             <div className="flex gap-2">
               <Button 
