@@ -127,20 +127,39 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
       if (childrenData.length > 0) {
         console.log('About to fetch therapist assignments for child IDs:', childIds);
         
+        // First, let's check ALL therapist assignments to see what exists
+        const { data: allTherapistAssignments, error: allTherapistError } = await supabase
+          .from('student_therapist_assignments')
+          .select('*');
+        
+        console.log('ALL therapist assignments in database:', allTherapistAssignments, allTherapistError);
+        
+        // Now check specifically for our children
         const { data: therapistAssignments, error: therapistError } = await supabase
           .from('student_therapist_assignments')
-          .select('student_id, therapist_id')
+          .select('student_id, therapist_id, is_active')
+          .in('student_id', childIds);
+
+        console.log('Therapist assignments for our children (without is_active filter):', therapistAssignments, therapistError);
+        
+        // Also check with is_active filter
+        const { data: activeTherapistAssignments, error: activeTherapistError } = await supabase
+          .from('student_therapist_assignments')
+          .select('student_id, therapist_id, is_active')
           .in('student_id', childIds)
           .eq('is_active', true);
 
-        console.log('Therapist assignments raw response:', { data: therapistAssignments, error: therapistError });
+        console.log('Active therapist assignments for our children:', activeTherapistAssignments, activeTherapistError);
         console.log('Child IDs for therapist lookup:', childIds);
-        console.log('Number of therapist assignments found:', therapistAssignments?.length || 0);
+        console.log('Number of total assignments found:', therapistAssignments?.length || 0);
+        console.log('Number of active assignments found:', activeTherapistAssignments?.length || 0);
 
-        if (!therapistError && therapistAssignments && therapistAssignments.length > 0) {
-          // Get unique therapist IDs
-          const therapistIds = [...new Set(therapistAssignments.map(t => t.therapist_id).filter(Boolean))];
+        if (!activeTherapistError && activeTherapistAssignments && activeTherapistAssignments.length > 0) {
+          // Use active assignments for processing
+          const assignmentsToUse = activeTherapistAssignments;
+          const therapistIds = [...new Set(assignmentsToUse.map(t => t.therapist_id).filter(Boolean))];
           console.log('Therapist IDs to fetch:', therapistIds);
+          console.log('Assignments being used:', assignmentsToUse);
 
           if (therapistIds.length > 0) {
             const { data: therapistProfiles, error: therapistProfileError } = await supabase
@@ -154,7 +173,7 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
             childrenData = childrenData.map(child => {
               console.log(`Processing child: ${child.username} (${child.user_id})`);
               
-              const therapistAssignment = therapistAssignments.find(t => t.student_id === child.user_id);
+              const therapistAssignment = assignmentsToUse.find(t => t.student_id === child.user_id);
               console.log(`Therapist assignment for ${child.username}:`, therapistAssignment);
               
               if (therapistAssignment) {
