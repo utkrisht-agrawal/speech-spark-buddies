@@ -115,6 +115,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
 
   const handleNextWord = () => {
     if (currentWordIndex < practiceWords.length - 1) {
+      setPhonemeMatches([]);
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
       setIsComplete(true);
@@ -148,8 +149,14 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
           const target = currentWord.phonemes[currentPhonemeIndex];
           console.log(`🎯 Processing phoneme: "${target}"`);
           
-          const result = await speechRecognition.recognizeSpeech(audioBlob, target);
+          const result = await speechRecognition.recognizeSpeech(audioBlob, target);  
           console.log(`🗣️ Backend result:`, result);
+          // Process phoneme analysis if available
+          if (result.phonemeAnalysis && result.phonemeAnalysis.spokenPhoneme && result.phonemeAnalysis.targetPhoneme) {
+            const matches = comparePhonemes(result.phonemeAnalysis.spokenPhoneme, result.phonemeAnalysis.targetPhoneme);
+            setPhonemeMatches(matches);
+            console.log('📊 Phoneme comparison:', matches);
+          }
           
           setSoundScore(result.similarityScore);
           setRecognitionResult(result.transcription);
@@ -436,7 +443,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
                   disabled={isAnimating || isProcessing}
                   className="w-full text-xs h-8"
                 >
-                  {isAnimating ? 'Testing...' : '1. Test Current Phoneme'}
+                  {isAnimating ? 'Testing...' : 'Test Current Phoneme'}
                 </Button>
                 
                 <Button
@@ -445,19 +452,19 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
                   variant="outline"
                   className="w-full text-xs h-8"
                 >
-                  {isLooping ? 'Testing Word...' : '2. Test Word'}
+                  {isLooping ? 'Testing Word...' : 'Test Word/Sentence'}
                 </Button>
                 
-                <div className="flex items-center justify-center gap-2 p-2 bg-gray-50 rounded-lg flex-1 min-h-[40px]">
+                <div className="flex justify-center gap-2 p-2 bg-gray-50 rounded-lg flex-1 min-h-[40px]">
                   {isRecording ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2">
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs">3. Recording...</span>
+                      <span className="text-xs">Recording...</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex gap-2">
                       <Mic className="w-3 h-3 text-gray-400" />
-                      <span className="text-xs text-gray-600">3. Ready</span>
+                      <span className="text-xs text-gray-600"></span>
                     </div>
                   )}
                 </div>
