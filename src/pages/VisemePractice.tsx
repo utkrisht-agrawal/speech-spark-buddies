@@ -472,18 +472,14 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
           <div className="lg:col-span-5">
             <Card className="p-4 h-full min-h-[300px] flex flex-col">
               <h3 className="text-base lg:text-lg font-semibold text-gray-800 mb-4">Lip Animation Guide</h3>
-              <div className="flex gap-4 items-center mb-4">
-                <div className="text-xl lg:text-2xl font-bold text-purple-600">
-                  {currentWord.phonemes[currentPhonemeIndex]}
-                </div>
+              <div className="text-xl lg:text-2xl font-bold text-purple-600 mb-4">
+                {currentWord.phonemes[currentPhonemeIndex]}
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <AnimatedLips
-                  phoneme={currentWord.phonemes[currentPhonemeIndex]}
-                  isAnimating={isAnimating}
-                  className="w-full h-full"
-                />
-              </div>
+              <AnimatedLips
+                phoneme={currentWord.phonemes[currentPhonemeIndex]}
+                isAnimating={isAnimating}
+                className="flex-1 w-full"
+              />
             </Card>
           </div>
 
