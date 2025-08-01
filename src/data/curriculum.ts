@@ -34,14 +34,14 @@ export const CURRICULUM_LEVELS: Level[] = [
       },
       {
         id: 'l1e2',
-        type: 'breathing',
-        title: 'Feather Blow Practice',
-        instruction: 'Blow the feather while saying "P" sounds',
-        content: 'Blow air control exercise with /p/ and /b/ sounds',
-        targetPhonemes: ['p', 'b'],
+        type: 'phoneme',
+        title: 'Consonants Sound Practice',
+        instruction: 'Practice saying consonant sounds clearly',
+        content: ['b', 'p', 'm', 't', 'd', 'n'],
+        targetPhonemes: ['b', 'p', 'm', 't', 'd', 'n'],
         difficulty: 1,
         points: 15,
-        requiredAccuracy: 80
+        requiredAccuracy: 70
       }
     ],
     dailyChallenges: [
