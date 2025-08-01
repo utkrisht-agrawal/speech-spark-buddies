@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, Mic, Volume2, RotateCcw, Star } from 'lucide-react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface StorySpinnerGameProps {
   onComplete: (score: number) => void;
@@ -23,40 +24,109 @@ const StorySpinnerGame: React.FC<StorySpinnerGameProps> = ({ onComplete, onBack 
     action: ''
   });
   const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [gameProgress, setGameProgress] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [storyStep, setStoryStep] = useState(0);
   const [isGameComplete, setIsGameComplete] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const lastSpeechTime = useRef(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
-    const setupAudio = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioContextRef.current = new AudioContext();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        const source = audioContextRef.current.createMediaStreamSource(stream);
-        source.connect(analyserRef.current);
-        analyserRef.current.fftSize = 256;
-      } catch (error) {
-        console.error('Error setting up audio:', error);
-      }
-    };
-
-    setupAudio();
     spinStory();
-
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
   }, []);
+
+  const startRecording = async () => {
+    try {
+      setMicrophoneError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 5 seconds for storytelling (longer for creative expression)
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 5000);
+    } catch (error) {
+      setMicrophoneError('Microphone access denied');
+      setIsRecording(false);
+    }
+  };
+
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const storyPrompt = getStoryPrompt();
+      
+      // For storytelling, we use a more lenient approach since it's creative content
+      const result = await scoreSpeech(audioBlob, storyPrompt, 'sentence');
+      
+      // More lenient scoring for creative storytelling (60% threshold)
+      if (result.similarityScore >= 60) {
+        const newScore = score + 20;
+        setScore(newScore);
+        
+        if (storyStep < 3) {
+          setStoryStep(prev => prev + 1);
+          setFeedback(`Great storytelling! +20 points. Continue: ${getStoryPrompt()}`);
+        } else {
+          setGameProgress(prev => prev + 1);
+          if (gameProgress >= 4) {
+            setIsGameComplete(true);
+            setTimeout(() => onComplete(newScore), 2000);
+          } else {
+            setFeedback('Amazing story! +20 points. Spinning new story...');
+            setTimeout(spinStory, 2000);
+          }
+        }
+      } else {
+        setMicrophoneError(`Tell your story about: "${storyPrompt}" - Try being more creative!`);
+        setTimeout(() => setMicrophoneError(null), 3000);
+      }
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      // For storytelling, we're more forgiving and give points for effort
+      const newScore = score + 10;
+      setScore(newScore);
+      setFeedback('Great effort! +10 points. Keep telling your story!');
+      
+      if (storyStep < 3) {
+        setStoryStep(prev => prev + 1);
+      } else {
+        setGameProgress(prev => prev + 1);
+        if (gameProgress >= 4) {
+          setIsGameComplete(true);
+          setTimeout(() => onComplete(newScore), 2000);
+        } else {
+          setTimeout(spinStory, 2000);
+        }
+      }
+    }
+  };
 
   const spinStory = () => {
     setIsSpinning(true);
@@ -76,14 +146,6 @@ const StorySpinnerGame: React.FC<StorySpinnerGameProps> = ({ onComplete, onBack 
     }, 2000);
   };
 
-  const getAudioLevel = () => {
-    if (!analyserRef.current) return 0;
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-    return (average / 255) * 100;
-  };
-
   const getStoryPrompt = () => {
     const prompts = [
       `Tell a story about a ${currentStory.character}`,
@@ -94,41 +156,19 @@ const StorySpinnerGame: React.FC<StorySpinnerGameProps> = ({ onComplete, onBack 
     return prompts[storyStep] || prompts[0];
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const level = getAudioLevel();
-      setLevel(level);
-      
-      // Story telling detection
-      if (level > 25 && Date.now() - lastSpeechTime.current > 3000 && !isSpinning) {
-        lastSpeechTime.current = Date.now();
-        const newScore = score + 20;
-        setScore(newScore);
-        
-        if (storyStep < 3) {
-          setStoryStep(prev => prev + 1);
-          setFeedback(`Great storytelling! +20 points. Continue: ${getStoryPrompt()}`);
-        } else {
-          setGameProgress(prev => prev + 1);
-          if (gameProgress >= 4) {
-            setIsGameComplete(true);
-            setTimeout(() => onComplete(newScore), 2000);
-          } else {
-            setFeedback('Amazing story! +20 points. Spinning new story...');
-            setTimeout(spinStory, 2000);
-          }
-        }
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [score, gameProgress, storyStep, isSpinning, currentStory, onComplete]);
-
   const speakStoryPrompt = () => {
     const utterance = new SpeechSynthesisUtterance(getStoryPrompt());
     utterance.rate = 0.8;
     speechSynthesis.speak(utterance);
   };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   if (isGameComplete) {
     return (
@@ -224,27 +264,29 @@ const StorySpinnerGame: React.FC<StorySpinnerGameProps> = ({ onComplete, onBack 
               </Button>
             </div>
             
-            <div className="relative w-32 h-32 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-full border-4 border-gray-300"></div>
-              <div 
-                className="absolute inset-2 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 transition-all duration-300"
-                style={{
-                  transform: `scale(${Math.max(0.3, level / 100)})`,
-                  opacity: Math.max(0.3, level / 100)
-                }}
-              ></div>
-              <Star className="absolute inset-0 m-auto w-8 h-8 text-white z-10" />
+            
+            <div className="mb-6">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
+                  <Mic className="w-4 h-4 mr-2" />
+                  Start Recording
+                </Button>
+              ) : (
+                <Button disabled className="bg-gray-400 text-white">
+                  <Mic className="w-4 h-4 mr-2" />
+                  Recording... (5s)
+                </Button>
+              )}
             </div>
             
+            {microphoneError && (
+              <p className="text-sm text-red-600 mb-4">
+                {microphoneError}
+              </p>
+            )}
+            
             <div className="text-center">
-              <div className="text-sm text-gray-600 mb-2">Story Level</div>
-              <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-                <div 
-                  className="bg-gradient-to-r from-yellow-400 to-orange-400 h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min(100, level)}%` }}
-                ></div>
-              </div>
-              <p className="text-sm text-gray-600">{feedback}</p>
+              <p className="text-sm text-gray-600 mb-4">{feedback}</p>
             </div>
 
             {/* Story Progress */}
