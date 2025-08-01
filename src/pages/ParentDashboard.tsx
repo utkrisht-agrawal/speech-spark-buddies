@@ -125,14 +125,17 @@ const ParentDashboard = ({ parentData, onLogout }: ParentDashboardProps) => {
 
       // Fetch therapist assignments for each child
       if (childrenData.length > 0) {
+        console.log('About to fetch therapist assignments for child IDs:', childIds);
+        
         const { data: therapistAssignments, error: therapistError } = await supabase
           .from('student_therapist_assignments')
           .select('student_id, therapist_id')
           .in('student_id', childIds)
           .eq('is_active', true);
 
-        console.log('Therapist assignments:', therapistAssignments, therapistError);
+        console.log('Therapist assignments raw response:', { data: therapistAssignments, error: therapistError });
         console.log('Child IDs for therapist lookup:', childIds);
+        console.log('Number of therapist assignments found:', therapistAssignments?.length || 0);
 
         if (!therapistError && therapistAssignments && therapistAssignments.length > 0) {
           // Get unique therapist IDs
