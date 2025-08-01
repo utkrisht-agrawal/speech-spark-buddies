@@ -60,12 +60,12 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
       setRaceStarted(true);
       startTimer();
       
-      // Record for 1 second for phonemes
+      // Record for 3 seconds for phonemes
       setTimeout(() => {
         if (recorder && recorder.state === 'recording') {
           recorder.stop();
         }
-      }, 1000);
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
       setIsRecording(false);

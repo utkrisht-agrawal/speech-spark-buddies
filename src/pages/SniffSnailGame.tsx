@@ -58,12 +58,12 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
       recorder.start();
       setIsRecording(true);
       
-      // Record for 2 seconds for nasal sounds
+      // Record for 3 seconds for nasal sounds
       setTimeout(() => {
         if (recorder && recorder.state === 'recording') {
           recorder.stop();
         }
-      }, 2000);
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
       setIsRecording(false);
@@ -95,9 +95,11 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
     const newPosition = Math.min(snailPosition + movement, gardenLength);
     setSnailPosition(newPosition);
     
-    // Check for flower collection
-    const nearbyFlower = flowerPositions.find(pos => 
-      Math.abs(newPosition - pos) < 8 && pos > snailPosition
+    // Check for flower collection - collect flowers that haven't been collected yet
+    // and are within range of the snail's new position
+    const uncollectedFlowers = flowerPositions.slice(flowersCollected);
+    const nearbyFlower = uncollectedFlowers.find(pos => 
+      newPosition >= pos - 3 && newPosition <= pos + 3
     );
     
     if (nearbyFlower) {
@@ -209,7 +211,7 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
                   style={{ left: `${pos}%` }}
                 >
                   <div className="text-4xl">
-                    {index < flowersCollected ? '✅' : '🌸'}
+                    {flowersCollected > index ? '✅' : '🌸'}
                   </div>
                 </div>
               ))}
