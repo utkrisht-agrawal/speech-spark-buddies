@@ -36,7 +36,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   // Use refs to avoid stale closure issues
   const currentCandleRef = useRef(currentCandle);
   const candlesLitRef = useRef(candlesLit);
-  const lastExtinguishTime = useRef(0);
+  const lastExtinguishTime = useRef(Date.now()); // Initialize with current time to prevent immediate trigger
   
   // Update refs when state changes
   useEffect(() => {
@@ -171,7 +171,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       const currentCandlesLit = candlesLitRef.current;
       const now = Date.now();
       
-      if (strength > 70 && currentCandlesLit[currentCandleIndex] && (now - lastExtinguishTime.current) > 1000) {
+      // Lower threshold and better debouncing
+      if (strength > 50 && currentCandlesLit[currentCandleIndex] && (now - lastExtinguishTime.current) > 2000) {
         console.log('🎯 Strong blow detected! Strength:', strength.toFixed(1), 'Current candle:', currentCandleIndex, 'Candle lit:', currentCandlesLit[currentCandleIndex]);
         lastExtinguishTime.current = now;
         extinguishCandle();
@@ -197,8 +198,10 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       const nextCandle = currentCandle + 1;
       console.log('🎯 Moving to next candle:', nextCandle);
       setCurrentCandle(nextCandle);
-      // Reset the debounce timer for the next candle
-      lastExtinguishTime.current = 0;
+      // Reset the debounce timer for the next candle with a small delay
+      setTimeout(() => {
+        lastExtinguishTime.current = Date.now() - 1500; // Allow triggering after 500ms
+      }, 100);
     } else {
       // All candles extinguished - stay in game to show completion screen
       console.log('🎉 All candles extinguished! Game complete!');
@@ -237,6 +240,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
     setGameComplete(false);
     setBlowStrength(0);
     setMicrophoneError(null);
+    lastExtinguishTime.current = Date.now(); // Reset timing to prevent immediate trigger
     stopListening();
   };
 
