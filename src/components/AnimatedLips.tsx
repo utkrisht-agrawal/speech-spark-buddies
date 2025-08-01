@@ -80,14 +80,6 @@ const AnimatedLips: React.FC<AnimatedLipsProps> = ({
           className="w-80 h-60 object-contain rounded-lg shadow-lg"
         />
       </div>
-      
-      {/* Phoneme info */}
-      <div className="mt-4 text-center">
-        <div className="text-3xl font-bold text-primary mb-1">{phoneme}</div>
-        <div className="text-sm text-muted-foreground">
-          {isAnimating ? '🗣️ Speaking...' : '👄 Ready'}
-        </div>
-      </div>
     </div>
   );
 };
