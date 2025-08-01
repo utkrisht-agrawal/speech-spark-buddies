@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Plus } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface BuildTheSentenceGameProps {
   targetSentences?: string[];
@@ -22,141 +22,147 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
   onComplete,
   onBack 
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [currentSentence, setCurrentSentence] = useState(0);
   const [wordsBuilt, setWordsBuilt] = useState<string[]>([]);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [wordDetected, setWordDetected] = useState(false);
   const [sentencesBuilt, setSentencesBuilt] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastWordTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
-  const startListening = async () => {
+  useEffect(() => {
+    setCurrentWordIndex(0);
+    setWordsBuilt([]);
+  }, [currentSentence]);
+
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
-      monitorAudio();
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 3 seconds
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-    setIsListening(false);
-    setAudioLevel(0);
-    setWordDetected(false);
-  }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const targetWords = targetSentences[currentSentence].split(' ');
+      const currentWord = targetWords[currentWordIndex];
+      if (!currentWord) return;
       
-      setAudioLevel(level);
+      const result = await scoreSpeech(audioBlob, currentWord, 'word');
       
-      const detected = level > 30;
-      setWordDetected(detected);
-
-      if (detected && Date.now() - lastWordTime.current > 1500) {
-        addWord();
-        lastWordTime.current = Date.now();
+      if (result.similarityScore >= 90) {
+        addCurrentWord();
+      } else {
+        setMicrophoneError(`Say "${currentWord}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
+    }
   };
 
-  const addWord = () => {
+  const addCurrentWord = () => {
     const targetWords = targetSentences[currentSentence].split(' ');
+    const currentWord = targetWords[currentWordIndex];
+    const newWordsBuilt = [...wordsBuilt, currentWord];
+    setWordsBuilt(newWordsBuilt);
     
-    if (wordsBuilt.length < targetWords.length) {
-      const nextWord = targetWords[wordsBuilt.length];
-      const newWordsBuilt = [...wordsBuilt, nextWord];
-      setWordsBuilt(newWordsBuilt);
-      
-      const newScore = score + 20;
-      setScore(newScore);
+    const newScore = score + 20;
+    setScore(newScore);
 
-      if (newWordsBuilt.length >= targetWords.length) {
-        // Sentence complete
-        setTimeout(() => {
-          const newSentencesBuilt = sentencesBuilt + 1;
-          setSentencesBuilt(newSentencesBuilt);
-          
-          if (newSentencesBuilt >= targetSentences.length) {
-            setGameComplete(true);
-            stopListening();
-            onComplete?.(newScore + 50); // Bonus for completion
-          } else {
-            nextSentence();
-          }
-        }, 2000);
-      }
+    // Move to next word
+    const nextWordIndex = currentWordIndex + 1;
+    
+    if (nextWordIndex >= targetWords.length) {
+      // All words in sentence completed
+      const newSentencesBuilt = sentencesBuilt + 1;
+      setSentencesBuilt(newSentencesBuilt);
+      
+      setTimeout(() => {
+        if (newSentencesBuilt >= targetSentences.length) {
+          setGameComplete(true);
+          onComplete?.(newScore + 50); // Bonus for completion
+        } else {
+          nextSentence();
+        }
+      }, 1500);
+    } else {
+      // Move to next word
+      setCurrentWordIndex(nextWordIndex);
     }
   };
 
   const nextSentence = () => {
     setCurrentSentence(prev => prev + 1);
+    setCurrentWordIndex(0);
     setWordsBuilt([]);
   };
 
   const resetGame = () => {
     setCurrentSentence(0);
+    setCurrentWordIndex(0);
     setWordsBuilt([]);
     setScore(0);
     setSentencesBuilt(0);
     setGameComplete(false);
-    setAudioLevel(0);
-    setWordDetected(false);
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   const getCurrentTargetWords = () => targetSentences[currentSentence].split(' ');
   const getNextWord = () => {
     const targetWords = getCurrentTargetWords();
-    return wordsBuilt.length < targetWords.length ? targetWords[wordsBuilt.length] : null;
+    return currentWordIndex < targetWords.length ? targetWords[currentWordIndex] : null;
   };
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4">
@@ -184,20 +190,15 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
               <Progress value={(sentencesBuilt / targetSentences.length) * 100} className="h-6" />
             </div>
             
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Voice Level</span>
-                <span className={`text-sm font-bold ${wordDetected ? 'text-green-600' : 'text-gray-400'}`}>
-                  {wordDetected ? '📝 Adding word!' : '👂 Listening...'}
-                </span>
-              </div>
-              <Progress value={audioLevel} className="h-4" />
-            </div>
-            
             <div className="text-center">
               <p className="text-lg text-blue-700">
                 Progress: {wordsBuilt.length}/{getCurrentTargetWords().length} words
               </p>
+              {getNextWord() && (
+                <p className="text-sm text-blue-600 mt-2">
+                  Say: "<span className="font-bold text-blue-800">{getNextWord()}</span>"
+                </p>
+              )}
             </div>
             
             {microphoneError && (
@@ -208,18 +209,6 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : wordsBuilt.length === getCurrentTargetWords().length ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All sentences built!' :
-              wordsBuilt.length === getCurrentTargetWords().length ? '✅ Sentence complete!' :
-              isListening ? `Say "${getNextWord()}" to continue building!` :
-              'Press start to begin building sentences!'
-            }
-          />
-        </div>
 
         {/* Sentence Building Area */}
         {!gameComplete && (
@@ -288,25 +277,17 @@ const BuildTheSentenceGame: React.FC<BuildTheSentenceGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Building
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
-              
-              <Button 
-                variant="outline"
-                onClick={() => addWord()}
-                disabled={!getNextWord()}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Word
-              </Button>
             </>
           ) : (
             <div className="text-center space-y-4">
