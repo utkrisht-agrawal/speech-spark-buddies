@@ -365,7 +365,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 px-4 py-2 flex flex-col gap-2 min-h-0 overflow-hidden">
         {/* Top Section: Word + Phonemes */}
-        <div className="flex-shrink-0 h-16 flex flex-col justify-center py-2">
+        <div className="flex-shrink-0 h-20 flex flex-col justify-center py-2">
           <div className="flex items-center gap-2 mb-0.5">
             <h2 className="text-lg lg:text-xl font-bold text-gray-800">{currentWord.word}</h2>
             <Button
@@ -388,11 +388,12 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
               let buttonClass = "min-w-[48px] h-8 border-2 shadow-sm transition-all duration-200";
               
               if (isSelected) {
-                buttonClass += " bg-purple-600 text-white border-purple-600";
+                buttonClass += " " + getPhonemeStyles(phoneMatch.color) + " border-purple-600";
+                // buttonClass += " bg-transparent text-black border-purple-600";
               } else if (phoneMatch) {
                 buttonClass += " " + getPhonemeStyles(phoneMatch.color);
               } else {
-                buttonClass += " bg-white text-gray-700 border-gray-300 hover:bg-purple-50";
+                buttonClass += " bg-white text-gray-700 border-gray-300 ";
               }
               
               return (
