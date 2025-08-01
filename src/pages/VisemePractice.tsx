@@ -355,9 +355,9 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       {/* Main Content Area */}
       <div className="flex-1 px-4 py-2 flex flex-col gap-2 min-h-0 overflow-hidden">
         {/* Top Section: Word + Phonemes */}
-        <div className="flex-shrink-0 h-14 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-xl lg:text-2xl font-bold text-gray-800">{currentWord.word}</h2>
+        <div className="flex-shrink-0 h-11 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h2 className="text-lg lg:text-xl font-bold text-gray-800">{currentWord.word}</h2>
             <Button
               onClick={() => speak(currentWord.word)}
               disabled={isSpeaking}
@@ -370,12 +370,12 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
             </Button>
           </div>
           
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 flex-wrap">
             {currentWord.phonemes.map((phoneme, index) => {
               const phoneMatch = phonemeMatches[index];
               const isSelected = index === currentPhonemeIndex;
               
-              let buttonClass = "min-w-[60px] h-10 border-2 shadow-sm transition-all duration-200";
+              let buttonClass = "min-w-[48px] h-8 border-2 shadow-sm transition-all duration-200";
               
               if (isSelected) {
                 buttonClass += " bg-purple-600 text-white border-purple-600";
@@ -386,7 +386,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
               }
               
               return (
-                <div key={index} className="flex flex-col items-center gap-1">
+                <div key={index} className="flex flex-col items-center gap-0.5">
                   <Button
                     onClick={() => setCurrentPhonemeIndex(index)}
                     variant="outline"
@@ -402,7 +402,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
                     }}
                     variant="ghost"
                     size="sm"
-                    className="text-xs h-6 px-2"
+                    className="text-xs h-5 px-1"
                   >
                     🔊
                   </Button>
