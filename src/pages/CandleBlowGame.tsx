@@ -26,6 +26,19 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const [attempts, setAttempts] = useState(0);
   const [currentCandle, setCurrentCandle] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
+
+  // Refs to keep latest state inside animation callbacks
+  const currentCandleRef = useRef(currentCandle);
+  const candlesLitRef = useRef(candlesLit);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    currentCandleRef.current = currentCandle;
+  }, [currentCandle]);
+
+  useEffect(() => {
+    candlesLitRef.current = candlesLit;
+  }, [candlesLit]);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -143,17 +156,18 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       
       setBlowStrength(strength);
 
-      // Check if blow is strong enough - use current state directly instead of refs
+      // Check if blow is strong enough
       if (strength > 50) {
         const now = Date.now();
-        console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', currentCandle, 'Time since last:', now - lastExtinguishTime.current);
-        
-        // Check current candle state and timing
-        if (candlesLit[currentCandle] && (now - lastExtinguishTime.current) > 2000) {
+        const candleIdx = currentCandleRef.current;
+        console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', candleIdx, 'Time since last:', now - lastExtinguishTime.current);
+
+        // Check current candle state and timing using refs to avoid stale state
+        if (candlesLitRef.current[candleIdx] && (now - lastExtinguishTime.current) > 2000) {
           console.log('🎯 Extinguishing candle!');
           lastExtinguishTime.current = now;
           extinguishCandle();
-        } else if (!candlesLit[currentCandle]) {
+        } else if (!candlesLitRef.current[candleIdx]) {
           console.log('⚠️ Current candle already extinguished');
         } else {
           console.log('⏰ Too soon since last extinguish');
@@ -170,24 +184,26 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const extinguishCandle = () => {
-    console.log('🔥 Extinguishing candle', currentCandle, 'of', totalCandles);
-    
+    console.log('🔥 Extinguishing candle', currentCandleRef.current, 'of', totalCandles);
+
     // Update candles state
     setCandlesLit(prevCandles => {
       const newCandles = [...prevCandles];
-      newCandles[currentCandle] = false;
+      newCandles[currentCandleRef.current] = false;
       return newCandles;
     });
+    candlesLitRef.current[currentCandleRef.current] = false;
     
     // Update score
     setScore(prevScore => prevScore + 20);
     
     // Move to next candle or complete game
-    if (currentCandle < totalCandles - 1) {
+    if (currentCandleRef.current < totalCandles - 1) {
       setTimeout(() => {
-        const nextCandle = currentCandle + 1;
+        const nextCandle = currentCandleRef.current + 1;
         console.log('🎯 Moving to next candle:', nextCandle);
         setCurrentCandle(nextCandle);
+        currentCandleRef.current = nextCandle;
         // Reset timing for next candle
         lastExtinguishTime.current = Date.now() - 1000; // Allow next trigger after 1 second
       }, 500);
@@ -199,7 +215,7 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const handleManualBlow = () => {
-    if (candlesLit[currentCandle]) {
+    if (candlesLitRef.current[currentCandleRef.current]) {
       setAttempts(prev => prev + 1);
       // Simulate blow strength
       const strength = Math.random() * 100;
@@ -221,9 +237,11 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
   const resetGame = () => {
     setCandlesLit([true, true, true, true, true]);
+    candlesLitRef.current = [true, true, true, true, true];
     setScore(0);
     setAttempts(0);
     setCurrentCandle(0);
+    currentCandleRef.current = 0;
     setGameComplete(false);
     setBlowStrength(0);
     setMicrophoneError(null);
