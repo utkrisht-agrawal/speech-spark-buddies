@@ -355,7 +355,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       {/* Main Content Area */}
       <div className="flex-1 px-4 py-2 flex flex-col gap-2 min-h-0 overflow-hidden">
         {/* Top Section: Word + Phonemes */}
-        <div className="flex-shrink-0 h-11 flex flex-col justify-center">
+        <div className="flex-shrink-0 h-16 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-0.5">
             <h2 className="text-lg lg:text-xl font-bold text-gray-800">{currentWord.word}</h2>
             <Button
