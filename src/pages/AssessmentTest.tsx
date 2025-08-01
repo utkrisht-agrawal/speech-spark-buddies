@@ -127,6 +127,11 @@ const AssessmentTest: React.FC<AssessmentTestProps> = ({ onComplete }) => {
 
   const playPronunciation = () => {
     // Mock pronunciation playback
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(question.expectedResponse);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
     console.log(`Playing pronunciation for: ${question.expectedResponse}`);
   };
 
@@ -211,20 +216,6 @@ const AssessmentTest: React.FC<AssessmentTestProps> = ({ onComplete }) => {
                   <p className="text-green-800 font-semibold mb-2">
                     Score: {Math.round(responses[question.id])}%
                   </p>
-                  <div className="flex justify-center space-x-2">
-                    {[...Array(5)].map((_, i) => (
-                      <span
-                        key={i}
-                        className={`text-2xl ${
-                          i < Math.ceil(responses[question.id] / 20)
-                            ? 'text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      >
-                        ⭐
-                      </span>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             )}

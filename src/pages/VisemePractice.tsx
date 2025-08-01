@@ -512,40 +512,13 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
         </div>
 
         {/* Bottom Section: Waveform Comparison + Scoring */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-28 flex-shrink-0">
+        <div className=" gap-2 h-28 flex-shrink-0">
           {/* h-24 → h-28 (about 17% increase, closest tailwind step) */}
           {/* Waveform Comparison */}
-          <Card className="p-2 flex flex-col h-full">
-            <h3 className="text-sm font-semibold text-gray-800 mb-1">Waveform Comparison</h3>
-            
-            {/* Audio visualization */}
-            <div className="bg-gray-50 rounded-lg p-2 flex-1 flex items-center justify-center min-h-[48px]">
-              {/* min-h-[40px] → min-h-[48px] (20% increase, closest tailwind step) */}
-              {audioData.length > 0 ? (
-                <div className="flex items-end space-x-1 h-6">
-                  {audioData.map((amplitude, index) => (
-                    <div
-                      key={index}
-                      className="bg-blue-500 w-1 transition-all duration-200"
-                      style={{ height: `${amplitude}%` }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-500 text-xs">No audio data</div>
-              )}
-            </div>
-            
-            {recognitionResult && (
-              <div className="mt-1 p-1 bg-blue-50 rounded text-xs">
-                <span className="text-gray-600">Recognized: </span>
-                <span className="font-semibold">{recognitionResult}</span>
-              </div>
-            )}
-          </Card>
+         
 
           {/* Scoring */}
-          <Card className="p-2 flex flex-col h-full">
+          <Card className="p-2 flex flex-col h-full w-full">
             <h3 className="text-sm font-semibold text-gray-800 mb-1">Score</h3>
             
             <div className="grid grid-cols-3 gap-1 flex-1">

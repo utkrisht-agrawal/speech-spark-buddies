@@ -20,7 +20,11 @@ warnings.filterwarnings("ignore")
 # nltk.download('averaged_perceptron_tagger_eng')
 
 # ---- Config ----
-ffmpeg_path = "C:/Users/m3n1ak/Downloads/Softwares/ffmpeg-7.1.1-essentials_build/ffmpeg/bin/ffmpeg.exe"
+if os.getlogin() == "m3n7r1":
+    ffmpeg_path = "C:/Users/m3n7r1/Documents/Hackathon Siemens/tools/ffmpeg-7.1.1-full_build/bin/ffmpeg.exe"
+else:
+    ffmpeg_path = "C:/Users/m3n1ak/Downloads/Softwares/ffmpeg-7.1.1-essentials_build/ffmpeg/bin/ffmpeg.exe"
+
 os.environ["PATH"] += os.pathsep + os.path.dirname(ffmpeg_path)
 
 # ---- App Setup ----
@@ -53,7 +57,10 @@ def text_to_phonemes(text: str) -> str:
 def transcribe_with_whisper(wav_path, target):
     result = whisper_model.transcribe(wav_path, language="en")
     transcript = result["text"].strip().lower()
-
+    target = target.strip().lower()
+    for sym in ['.',',', '?', '!', ':', ';']:
+        transcript = transcript.replace(sym, '')
+        # target = target.replace(sym, '')
     ratio = SequenceMatcher(None, target.lower(), transcript).ratio()
     return int(ratio * 100), transcript, transcript, target
 
@@ -71,9 +78,11 @@ def transcribe_with_wav2vec(wav_path, target):
     predicted_ids = torch.argmax(logits, dim=-1)
 
     transcript = wav2vec_processor.batch_decode(predicted_ids)[0].lower().strip()
-
     spoken_phonemes = text_to_phonemes(transcript)
+
     target_phonemes = text_to_phonemes(target)
+    if target in g2p.phonemes:
+        target_phonemes = target
 
     ratio = SequenceMatcher(None, target_phonemes, spoken_phonemes).ratio()
     return int(ratio * 100), transcript, spoken_phonemes, target_phonemes
@@ -101,6 +110,7 @@ async def score(
     
     print("spken_phoneme:", spoken)
     print("target_phoneme:", target_proc)
+    print("mode",mode)
 
     return {
         "score": score,
