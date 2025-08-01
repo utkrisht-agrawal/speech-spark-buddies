@@ -26,15 +26,73 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   const [attempts, setAttempts] = useState(0);
   const [currentCandle, setCurrentCandle] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
-  
+
+  // Refs to keep latest state inside animation callbacks
+  const currentCandleRef = useRef(currentCandle);
+  const candlesLitRef = useRef(candlesLit);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    currentCandleRef.current = currentCandle;
+  }, [currentCandle]);
+
+  useEffect(() => {
+    candlesLitRef.current = candlesLit;
+  }, [candlesLit]);
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const noiseBaselineRef = useRef(0);
+  const calibratedRef = useRef(false);
+
+  const calibrateBaseline = (): Promise<void> => {
+    return new Promise(resolve => {
+      if (!analyserRef.current) {
+        resolve();
+        return;
+      }
+
+      calibratedRef.current = false;
+      noiseBaselineRef.current = 0;
+
+      const bufferLength = analyserRef.current.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      const breathRange = Math.floor(bufferLength * 0.1);
+      let samples = 0;
+      let total = 0;
+
+      const sample = () => {
+        if (!analyserRef.current) {
+          resolve();
+          return;
+        }
+
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < breathRange; i++) {
+          sum += dataArray[i];
+        }
+        total += sum / breathRange;
+        samples++;
+        if (samples < 30) {
+          requestAnimationFrame(sample);
+        } else {
+          noiseBaselineRef.current = total / samples;
+          calibratedRef.current = true;
+          console.log('📈 Noise baseline:', noiseBaselineRef.current.toFixed(1));
+          resolve();
+        }
+      };
+
+      sample();
+    });
+  };
   
   // Timing control
-  const lastExtinguishTime = useRef(Date.now() + 3000); // Start with 3 second delay
+  const lastExtinguishTime = useRef(Date.now() + 3000); // Debounce between blows
 
   const maxAttempts = 10;
   const totalCandles = candlesLit.length;
@@ -61,6 +119,9 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       audioContextRef.current = null;
       console.log('Closed audio context');
     }
+
+    calibratedRef.current = false;
+    noiseBaselineRef.current = 0;
     
     setIsListening(false);
     setBlowStrength(0);
@@ -80,10 +141,10 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
       setMicrophoneError(null);
       console.log('Requesting microphone access...');
       
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
+          echoCancellation: true,
+          noiseSuppression: true,
           autoGainControl: false
         }
       });
@@ -104,7 +165,16 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
       microphoneRef.current.connect(analyserRef.current);
 
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+
       setIsListening(true);
+      // Reset debounce timer so first candle doesn't auto-extinguish
+      lastExtinguishTime.current = Date.now() + 3000;
+      calibratedRef.current = false;
+      await calibrateBaseline();
       monitorAudioLevel();
       console.log('Audio monitoring started');
     } catch (error) {
@@ -129,31 +199,38 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
         return;
       }
 
+      if (!calibratedRef.current) {
+        animationFrameRef.current = requestAnimationFrame(checkLevel);
+        return;
+      }
+
       analyserRef.current.getByteFrequencyData(dataArray);
-      
+
       // Focus on lower frequencies for breath detection (0-500Hz range)
       const breathRange = Math.floor(bufferLength * 0.1);
       let sum = 0;
       for (let i = 0; i < breathRange; i++) {
         sum += dataArray[i];
       }
-      
+
       const average = sum / breathRange;
-      const strength = Math.min((average / 30) * 100, 100);
+      const relative = Math.max(average - noiseBaselineRef.current, 0);
+      const strength = Math.min((relative / 30) * 100, 100);
       
       setBlowStrength(strength);
 
-      // Check if blow is strong enough - use current state directly instead of refs
-      if (strength > 50) {
+      // Check if blow is strong enough
+      if (strength > 80) {
         const now = Date.now();
-        console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', currentCandle, 'Time since last:', now - lastExtinguishTime.current);
-        
-        // Check current candle state and timing
-        if (candlesLit[currentCandle] && (now - lastExtinguishTime.current) > 2000) {
+        const candleIdx = currentCandleRef.current;
+        console.log('💨 Blow detected - Strength:', strength.toFixed(1), 'Current candle:', candleIdx, 'Time since last:', now - lastExtinguishTime.current);
+
+        // Check current candle state and timing using refs to avoid stale state
+        if (candlesLitRef.current[candleIdx] && (now - lastExtinguishTime.current) > 2000) {
           console.log('🎯 Extinguishing candle!');
           lastExtinguishTime.current = now;
           extinguishCandle();
-        } else if (!candlesLit[currentCandle]) {
+        } else if (!candlesLitRef.current[candleIdx]) {
           console.log('⚠️ Current candle already extinguished');
         } else {
           console.log('⏰ Too soon since last extinguish');
@@ -170,24 +247,26 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const extinguishCandle = () => {
-    console.log('🔥 Extinguishing candle', currentCandle, 'of', totalCandles);
-    
+    console.log('🔥 Extinguishing candle', currentCandleRef.current, 'of', totalCandles);
+
     // Update candles state
     setCandlesLit(prevCandles => {
       const newCandles = [...prevCandles];
-      newCandles[currentCandle] = false;
+      newCandles[currentCandleRef.current] = false;
       return newCandles;
     });
+    candlesLitRef.current[currentCandleRef.current] = false;
     
     // Update score
     setScore(prevScore => prevScore + 20);
     
     // Move to next candle or complete game
-    if (currentCandle < totalCandles - 1) {
+    if (currentCandleRef.current < totalCandles - 1) {
       setTimeout(() => {
-        const nextCandle = currentCandle + 1;
+        const nextCandle = currentCandleRef.current + 1;
         console.log('🎯 Moving to next candle:', nextCandle);
         setCurrentCandle(nextCandle);
+        currentCandleRef.current = nextCandle;
         // Reset timing for next candle
         lastExtinguishTime.current = Date.now() - 1000; // Allow next trigger after 1 second
       }, 500);
@@ -199,14 +278,14 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
   };
 
   const handleManualBlow = () => {
-    if (candlesLit[currentCandle]) {
+    if (candlesLitRef.current[currentCandleRef.current]) {
       setAttempts(prev => prev + 1);
       // Simulate blow strength
       const strength = Math.random() * 100;
       setBlowStrength(strength);
       
       setTimeout(() => {
-        if (strength > 60) {
+        if (strength > 80) {
           extinguishCandle();
         }
         setBlowStrength(0);
@@ -221,13 +300,15 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
 
   const resetGame = () => {
     setCandlesLit([true, true, true, true, true]);
+    candlesLitRef.current = [true, true, true, true, true];
     setScore(0);
     setAttempts(0);
     setCurrentCandle(0);
+    currentCandleRef.current = 0;
     setGameComplete(false);
     setBlowStrength(0);
     setMicrophoneError(null);
-    lastExtinguishTime.current = Date.now(); // Reset timing to prevent immediate trigger
+    lastExtinguishTime.current = Date.now() + 3000; // Wait before first blow
     stopListening();
   };
 
@@ -304,8 +385,8 @@ const CandleBlowGame: React.FC<CandleBlowGameProps> = ({
               className="h-4 mb-2"
             />
             <p className="text-sm text-center text-gray-600">
-              {blowStrength > 50 ? '🌬️ Perfect blow!' : 
-               blowStrength > 25 ? '💨 Good, blow harder!' : 
+              {blowStrength > 80 ? '🌬️ Perfect blow!' :
+               blowStrength > 40 ? '💨 Good, blow harder!' :
                '🤏 Blow stronger!'}
             </p>
             {microphoneError && (
