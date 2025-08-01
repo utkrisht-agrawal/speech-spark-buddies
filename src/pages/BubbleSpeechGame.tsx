@@ -25,6 +25,7 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [currentSentence, setCurrentSentence] = useState(0);
   const [bubbles, setBubbles] = useState<{id: number, word: string, popped: boolean, x: number, y: number}[]>([]);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
   const [sentencesCompleted, setSentencesCompleted] = useState(0);
@@ -35,6 +36,7 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
 
   useEffect(() => {
     createBubbles();
+    setCurrentWordIndex(0);
   }, [currentSentence]);
 
   const createBubbles = () => {
@@ -90,12 +92,15 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
 
   const processRecordedAudio = async (audioBlob: Blob) => {
     try {
-      const result = await scoreSpeech(audioBlob, targetSentences[currentSentence], 'word');
+      const currentWord = bubbles[currentWordIndex]?.word;
+      if (!currentWord) return;
+      
+      const result = await scoreSpeech(audioBlob, currentWord, 'word');
       
       if (result.similarityScore >= 90) {
-        popBubble();
+        popCurrentBubble();
       } else {
-        setMicrophoneError(`Score: ${Math.round(result.similarityScore)}% - Try again!`);
+        setMicrophoneError(`Say "${currentWord}" - Score: ${Math.round(result.similarityScore)}%`);
         setTimeout(() => setMicrophoneError(null), 2000);
       }
     } catch (error) {
@@ -105,20 +110,20 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
     }
   };
 
-  const popBubble = () => {
-    const availableBubbles = bubbles.filter(b => !b.popped);
-    if (availableBubbles.length === 0) return;
-
-    const bubbleToPop = availableBubbles[0];
+  const popCurrentBubble = () => {
+    // Pop the current word bubble
     setBubbles(prev => prev.map(b => 
-      b.id === bubbleToPop.id ? { ...b, popped: true } : b
+      b.id === currentWordIndex ? { ...b, popped: true } : b
     ));
 
     const newScore = score + 30;
     setScore(newScore);
 
-    if (availableBubbles.length === 1) {
-      // All bubbles popped
+    // Move to next word
+    const nextWordIndex = currentWordIndex + 1;
+    
+    if (nextWordIndex >= bubbles.length) {
+      // All words in sentence completed
       const newCompleted = sentencesCompleted + 1;
       setSentencesCompleted(newCompleted);
       
@@ -130,11 +135,15 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
           setCurrentSentence(prev => prev + 1);
         }
       }, 1500);
+    } else {
+      // Move to next word
+      setCurrentWordIndex(nextWordIndex);
     }
   };
 
   const resetGame = () => {
     setCurrentSentence(0);
+    setCurrentWordIndex(0);
     setScore(0);
     setSentencesCompleted(0);
     setGameComplete(false);
@@ -196,6 +205,9 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
                 <h3 className="text-xl font-bold text-cyan-800">
                   Sentence {currentSentence + 1}: "{targetSentences[currentSentence]}"
                 </h3>
+                <p className="text-sm text-cyan-600 mt-2">
+                  Say: "<span className="font-bold text-cyan-800">{bubbles[currentWordIndex]?.word}</span>"
+                </p>
               </div>
               
               <div className="relative h-64 overflow-hidden">
@@ -211,14 +223,18 @@ const BubbleSpeechGame: React.FC<BubbleSpeechGameProps> = ({
                       animation: bubble.popped ? 'none' : 'float 3s ease-in-out infinite'
                     }}
                   >
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-to-br from-cyan-200 to-blue-300 rounded-full border-2 border-cyan-400 shadow-lg flex items-center justify-center">
-                        <span className="text-sm font-bold text-cyan-800">
-                          {bubble.word}
-                        </span>
-                      </div>
-                      <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-white rounded-full opacity-60" />
-                    </div>
+                     <div className="relative">
+                       <div className={`w-20 h-20 rounded-full border-2 shadow-lg flex items-center justify-center transition-all duration-300 ${
+                         bubble.id === currentWordIndex && !bubble.popped
+                           ? 'bg-gradient-to-br from-yellow-200 to-orange-300 border-yellow-400 scale-110' 
+                           : 'bg-gradient-to-br from-cyan-200 to-blue-300 border-cyan-400'
+                       }`}>
+                         <span className="text-sm font-bold text-cyan-800">
+                           {bubble.word}
+                         </span>
+                       </div>
+                       <div className="absolute top-1/4 left-1/4 w-4 h-4 bg-white rounded-full opacity-60" />
+                     </div>
                   </div>
                 ))}
               </div>
