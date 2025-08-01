@@ -32,6 +32,12 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Section - Statistics */}
           <div className="space-y-6">
+            {/* Header */}
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">Your Progress</h1>
+              <p className="text-gray-600">Complete challenges to build your skills</p>
+            </div>
+
             {/* XP Progress */}
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
               <div className="flex items-center space-x-3 mb-4">
