@@ -581,8 +581,9 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                 
                 {/* Live Video Feed */}
                 <div className="mb-4">
-                  <CameraWindow 
+                  <CameraWindow
                     isActive={isRecording}
+                    targetPhoneme={exercise.type === 'phoneme' ? currentItem.character : undefined}
                     className="w-full h-32 rounded-lg"
                   />
                   <div className="text-xs text-center text-gray-600 mt-1">
