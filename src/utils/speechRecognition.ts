@@ -121,7 +121,11 @@ export class AdvancedSpeechRecognition {
     });
   }
 
-  async recognizeSpeech(audioBlob: Blob, targetText?: string): Promise<SpeechRecognitionResult> {
+  async recognizeSpeech(
+    audioBlob: Blob,
+    targetText?: string,
+    mode: 'phoneme' | 'word' | 'sentence' = 'phoneme'
+  ): Promise<SpeechRecognitionResult> {
     try {
       console.log('Converting audio for FastAPI backend processing...');
       
@@ -129,7 +133,7 @@ export class AdvancedSpeechRecognition {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
       formData.append('target_phoneme', targetText || '');
-      formData.append('mode', 'phoneme');
+      formData.append('mode', mode);
       
       console.log('Sending audio to FastAPI speech recognition service...');
       
@@ -222,14 +226,14 @@ export async function initializeSpeechModels(): Promise<void> {
 }
 
 export async function scoreSpeech(
-  audioBlob: Blob, 
-  target: string, 
+  audioBlob: Blob,
+  target: string,
   mode: 'phoneme' | 'word' | 'sentence' = 'phoneme'
 ): Promise<SpeechRecognitionResult> {
   console.log(`🎯 scoreSpeech called with mode: ${mode}, target: "${target}"`);
-  
+
   const recognition = new AdvancedSpeechRecognition();
-  const result = await recognition.recognizeSpeech(audioBlob, target);
+  const result = await recognition.recognizeSpeech(audioBlob, target, mode);
   
   return {
     transcription: result.transcription,

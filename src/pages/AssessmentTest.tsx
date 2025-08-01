@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Mic, Play, SkipForward } from 'lucide-react';
+import { Play, SkipForward } from 'lucide-react';
 import { ASSESSMENT_QUESTIONS } from '@/data/curriculum';
 import AvatarGuide from '@/components/AvatarGuide';
 import RecordButton from '@/components/RecordButton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 
 interface AssessmentTestProps {
   onComplete: (assignedLevel: number) => void;
@@ -18,21 +19,59 @@ const AssessmentTest: React.FC<AssessmentTestProps> = ({ onComplete }) => {
   const [responses, setResponses] = useState<Record<string, number>>({});
   const [isRecording, setIsRecording] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [speechRecognition] = useState(() => new AdvancedSpeechRecognition());
 
   const question = ASSESSMENT_QUESTIONS[currentQuestion];
   const progress = ((currentQuestion + 1) / ASSESSMENT_QUESTIONS.length) * 100;
 
-  const handleRecord = () => {
-    setIsRecording(!isRecording);
-    
-    // Simulate speech recognition and scoring
-    setTimeout(() => {
+  const handleRecord = async () => {
+    if (!isRecording) {
+      setIsRecording(true);
+      await speechRecognition.startRecording();
+
+      let duration = 2000;
+      if (question.type === 'word') {
+        duration = 3000;
+      } else if (question.type === 'sentence') {
+        duration = question.expectedResponse.split(' ').length * 2000;
+      }
+
+      setTimeout(async () => {
+        if (speechRecognition.isRecording()) {
+          const audioBlob = await speechRecognition.stopRecording();
+          const mode = question.type === 'sentence' ? 'sentence' : question.type;
+          try {
+            const result = await speechRecognition.recognizeSpeech(
+              audioBlob,
+              question.expectedResponse,
+              mode
+            );
+            setResponses(prev => ({ ...prev, [question.id]: result.similarityScore }));
+          } catch (e) {
+            console.error('Scoring failed', e);
+            setResponses(prev => ({ ...prev, [question.id]: 0 }));
+          }
+          setIsRecording(false);
+          setShowResult(true);
+        }
+      }, duration);
+    } else {
+      const audioBlob = await speechRecognition.stopRecording();
+      const mode = question.type === 'sentence' ? 'sentence' : question.type;
+      try {
+        const result = await speechRecognition.recognizeSpeech(
+          audioBlob,
+          question.expectedResponse,
+          mode
+        );
+        setResponses(prev => ({ ...prev, [question.id]: result.similarityScore }));
+      } catch (e) {
+        console.error('Scoring failed', e);
+        setResponses(prev => ({ ...prev, [question.id]: 0 }));
+      }
       setIsRecording(false);
-      // Mock scoring based on difficulty
-      const score = Math.random() * 40 + 60; // 60-100 range
-      setResponses(prev => ({ ...prev, [question.id]: score }));
       setShowResult(true);
-    }, 2000);
+    }
   };
 
   const handleNext = async () => {
@@ -40,15 +79,30 @@ const AssessmentTest: React.FC<AssessmentTestProps> = ({ onComplete }) => {
     if (currentQuestion < ASSESSMENT_QUESTIONS.length - 1) {
       setCurrentQuestion(prev => prev + 1);
     } else {
-      // Calculate level based on responses
-      const averageScore = Object.values(responses).reduce((a, b) => a + b, 0) / Object.values(responses).length;
-      const assignedLevel = Math.min(8, Math.max(1, Math.ceil(averageScore / 12.5)));
+      // Determine level based on specific scores
+      const p1 = responses['a1'] || 0;
+      const p2 = responses['a2'] || 0;
+      const w1 = responses['a3'] || 0;
+      const w2 = responses['a4'] || 0;
+      const s1 = responses['a5'] || 0;
+
+      let assignedLevel = 1;
+
+      if (p1 >= 90 && p2 >= 90) {
+        assignedLevel = 3;
+        if (w1 >= 90 && w2 >= 90) {
+          assignedLevel = 6;
+          if (s1 >= 90) {
+            assignedLevel = 8;
+          }
+        }
+      }
       
       try {
-        // Update the user's profile to mark assessment as completed
+        // Update the user's profile to mark assessment as completed and set level
         const { error } = await supabase
           .from('profiles')
-          .update({ assessment_completed: true })
+          .update({ assessment_completed: true, current_level: assignedLevel })
           .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
 
         if (error) {
