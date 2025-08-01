@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Puzzle } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface WordPuzzlesGameProps {
   targetWords?: { word: string; image: string }[];
@@ -22,102 +22,76 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
   onComplete,
   onBack 
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [currentPuzzle, setCurrentPuzzle] = useState(0);
   const [puzzlesSolved, setPuzzlesSolved] = useState(0);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [wordAttempted, setWordAttempted] = useState(false);
   const [showCorrect, setShowCorrect] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastAttemptTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
-  const startListening = async () => {
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
-      monitorAudio();
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 3 seconds
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-    setIsListening(false);
-    setAudioLevel(0);
-    setWordAttempted(false);
-  }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const currentWord = getCurrentPuzzle().word;
+      if (!currentWord) return;
       
-      setAudioLevel(level);
+      setAttempts(prev => prev + 1);
       
-      // Detect word attempt
-      const attempted = level > 25;
-      setWordAttempted(attempted);
-
-      // Process word attempt
-      if (attempted && Date.now() - lastAttemptTime.current > 2000) {
-        processWordAttempt();
-        lastAttemptTime.current = Date.now();
+      const result = await scoreSpeech(audioBlob, currentWord, 'word');
+      
+      if (result.similarityScore >= 80) {
+        solvePuzzle();
+      } else {
+        setMicrophoneError(`Say "${currentWord}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
-  };
-
-  const processWordAttempt = () => {
-    setAttempts(prev => prev + 1);
-    
-    // Simulate word recognition (in real app, this would use speech recognition)
-    const success = Math.random() > 0.3; // 70% success rate
-    
-    if (success) {
-      solvePuzzle();
-    } else {
-      // Show encouragement for wrong attempts
-      setShowCorrect(false);
-      setTimeout(() => setShowCorrect(true), 500);
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
     }
   };
 
@@ -134,7 +108,6 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
     setTimeout(() => {
       if (newPuzzlesSolved >= targetWords.length) {
         setGameComplete(true);
-        stopListening();
         onComplete?.(newScore);
       } else {
         setCurrentPuzzle(prev => prev + 1);
@@ -149,10 +122,12 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
     setScore(0);
     setAttempts(0);
     setGameComplete(false);
-    setAudioLevel(0);
-    setWordAttempted(false);
     setShowCorrect(false);
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   const getCurrentPuzzle = () => targetWords[currentPuzzle];
@@ -173,8 +148,12 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
   };
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 p-4">
@@ -202,19 +181,15 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
               <Progress value={(puzzlesSolved / targetWords.length) * 100} className="h-6" />
             </div>
             
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Voice Level</span>
-                <span className={`text-sm font-bold ${wordAttempted ? 'text-green-600' : 'text-gray-400'}`}>
-                  {wordAttempted ? '🎤 Speaking!' : '👂 Listening...'}
-                </span>
-              </div>
-              <Progress value={audioLevel} className="h-4" />
-            </div>
             
-            <p className="text-sm text-center text-gray-600">
-              Attempts on this puzzle: {attempts}
-            </p>
+            <div className="text-center">
+              <p className="text-lg text-purple-700">
+                Attempts on this puzzle: {attempts}
+              </p>
+              <p className="text-sm text-purple-600 mt-2">
+                Say: "<span className="font-bold text-purple-800">{getCurrentPuzzle().word}</span>"
+              </p>
+            </div>
             {microphoneError && (
               <p className="text-sm text-center text-red-600 mt-2">
                 {microphoneError}
@@ -223,18 +198,6 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : showCorrect ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All puzzles solved!' :
-              showCorrect ? '✅ Correct! Well done!' :
-              isListening ? `What do you see in the picture?` :
-              'Press start to begin solving puzzles!'
-            }
-          />
-        </div>
 
         {/* Puzzle Area */}
         {!gameComplete && (
@@ -298,14 +261,15 @@ const WordPuzzlesGame: React.FC<WordPuzzlesGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Solving
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
               

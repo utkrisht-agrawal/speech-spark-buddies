@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Wind } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface SniffSnailGameProps {
   targetPhonemes?: string[];
@@ -16,99 +16,78 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
   onComplete,
   onBack 
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [snailPosition, setSnailPosition] = useState(0);
   const [flowersCollected, setFlowersCollected] = useState(0);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [nasalDetected, setNasalDetected] = useState(false);
   const [currentPhoneme, setCurrentPhoneme] = useState(0);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastMoveTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
   const gardenLength = 100;
   const flowersNeeded = 5;
   const flowerPositions = [20, 40, 60, 80, 100];
 
-  const startListening = async () => {
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 2048;
-      analyserRef.current.smoothingTimeConstant = 0.3;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
-      monitorAudio();
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 2 seconds for nasal sounds
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 2000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-    }
-    setIsListening(false);
-    setAudioLevel(0);
-    setNasalDetected(false);
-  }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const currentPhonemeValue = getCurrentPhoneme();
+      if (!currentPhonemeValue) return;
       
-      // Focus on lower frequencies for nasal sounds (100-400Hz range)
-      const nasalRange = Math.floor(dataArray.length * 0.2); // First 20% of frequencies
-      let nasalSum = 0;
-      for (let i = 0; i < nasalRange; i++) {
-        nasalSum += dataArray[i];
-      }
+      const result = await scoreSpeech(audioBlob, currentPhonemeValue, 'phoneme');
       
-      const nasalAverage = nasalSum / nasalRange;
-      const level = Math.min((nasalAverage / 40) * 100, 100);
-      
-      setAudioLevel(level);
-      
-      // Detect nasal sounds (m, n sounds have more energy in lower frequencies)
-      const isNasal = level > 25;
-      setNasalDetected(isNasal);
-
-      // Move snail if nasal sound detected
-      if (isNasal && Date.now() - lastMoveTime.current > 500) {
+      if (result.similarityScore >= 80 || result.visemeScore >= 80) {
         moveSnail();
-        lastMoveTime.current = Date.now();
+      } else {
+        setMicrophoneError(`Say "${currentPhonemeValue}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
+    }
   };
 
   const moveSnail = () => {
@@ -129,7 +108,6 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
       
       if (newFlowersCollected >= flowersNeeded) {
         setGameComplete(true);
-        stopListening();
         onComplete?.(newScore);
       }
     } else {
@@ -143,16 +121,22 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
     setScore(0);
     setCurrentPhoneme(0);
     setGameComplete(false);
-    setAudioLevel(0);
-    setNasalDetected(false);
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   const getCurrentPhoneme = () => targetPhonemes[currentPhoneme % targetPhonemes.length];
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
@@ -176,36 +160,25 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Sound Level</span>
-                <span className={`text-sm font-bold ${nasalDetected ? 'text-green-600' : 'text-gray-400'}`}>
-                  {nasalDetected ? '👃 Nasal!' : '👂 Listen...'}
-                </span>
-              </div>
-              <Progress value={audioLevel} className="h-4" />
-            </div>
             
             <div className="text-center">
               <div className="text-2xl font-bold text-green-800 mb-2">
                 Current Sound: /{getCurrentPhoneme()}/
               </div>
+              <p className="text-sm text-green-600 mt-2">
+                Say: "<span className="font-bold text-green-800">{getCurrentPhoneme()}</span>"
+              </p>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => setCurrentPhoneme(prev => (prev + 1) % targetPhonemes.length)}
-                disabled={!isListening}
+                disabled={isRecording}
+                className="mt-2"
               >
                 <Wind className="w-4 h-4 mr-2" />
                 Next Sound
               </Button>
             </div>
-            
-            <p className="text-sm text-center text-gray-600 mt-4">
-              {nasalDetected ? '🐌 Snail is moving!' : 
-               audioLevel > 20 ? '👃 Try nasal sounds (M, N)!' : 
-               '🔇 Make some sound!'}
-            </p>
             {microphoneError && (
               <p className="text-sm text-center text-red-600 mt-2">
                 {microphoneError}
@@ -214,17 +187,6 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete ? '🎉 All flowers collected!' :
-              isListening ? `Say "/${getCurrentPhoneme()}/" to help snail smell flowers!` :
-              'Press start to help the snail!'
-            }
-          />
-        </div>
 
         {/* Garden Path */}
         <Card className="mb-6 bg-gradient-to-r from-green-100 to-green-200">
@@ -257,14 +219,9 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
                 className="absolute bottom-6 transition-all duration-1000 ease-out"
                 style={{ left: `${Math.min(snailPosition, 95)}%` }}
               >
-                <div className={`text-4xl transform ${nasalDetected ? 'animate-bounce' : ''}`}>
+                <div className="text-4xl transform">
                   🐌
                 </div>
-                {nasalDetected && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="text-2xl animate-pulse">👃</div>
-                  </div>
-                )}
               </div>
               
               {/* Progress line */}
@@ -286,14 +243,15 @@ const SniffSnailGame: React.FC<SniffSnailGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Sniffing
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
             </>

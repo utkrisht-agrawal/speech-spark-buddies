@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Volume2, RotateCcw, Trophy, Zap } from 'lucide-react';
-import AvatarGuide from '@/components/AvatarGuide';
 import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface PhonemeRaceGameProps {
@@ -17,98 +16,90 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
   onComplete,
   onBack
 }) => {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [currentPhoneme, setCurrentPhoneme] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
   const [score, setScore] = useState(0);
   const [gameComplete, setGameComplete] = useState(false);
-  const [audioLevel, setAudioLevel] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
   const [raceStarted, setRaceStarted] = useState(false);
   const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastAdvanceTime = useRef(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const isCheckingRef = useRef(false);
-
-  const recordAudioSample = (duration = 1000): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      if (!streamRef.current) {
-        reject(new Error('No audio stream'));
-        return;
-      }
-      const recorder = new MediaRecorder(streamRef.current);
-      const chunks: BlobPart[] = [];
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = () => {
-        resolve(new Blob(chunks, { type: 'audio/webm' }));
-      };
-      recorder.start();
-      setTimeout(() => recorder.stop(), duration);
-    });
-  };
-
-  const checkForPhoneme = async () => {
-    if (isCheckingRef.current) return;
-    isCheckingRef.current = true;
-    try {
-      const audioBlob = await recordAudioSample();
-      const result = await scoreSpeech(audioBlob, getCurrentPhoneme(), 'phoneme');
-      if (result.visemeScore >= 80 || result.similarityScore >= 80) {
-        advancePlayer();
-      }
-    } catch (err) {
-      console.error('Phoneme check failed', err);
-    } finally {
-      isCheckingRef.current = false;
-    }
-  };
 
   const raceLength = 100; // Race progress from 0 to 100
 
-  const startListening = async () => {
+  const startRecording = async () => {
     try {
       setMicrophoneError(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      const microphone = audioContextRef.current.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
 
-      analyserRef.current.fftSize = 512;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      microphone.connect(analyserRef.current);
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
 
-      setIsListening(true);
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
       setRaceStarted(true);
       startTimer();
-      monitorAudio();
+      
+      // Record for 1 second for phonemes
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 1000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
-      setIsListening(false);
+      setIsRecording(false);
     }
   };
 
-  const stopListening = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    try {
+      const currentPhonemeValue = getCurrentPhoneme();
+      if (!currentPhonemeValue) return;
+      
+      const result = await scoreSpeech(audioBlob, currentPhonemeValue, 'phoneme');
+      
+      if (result.similarityScore >= 80 || result.visemeScore >= 80) {
+        advancePlayer();
+      } else {
+        setMicrophoneError(`Say "${currentPhonemeValue}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
+      }
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
     }
+  };
+
+  const stopRecording = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
     }
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    setIsListening(false);
-    setAudioLevel(0);
+    setIsRecording(false);
   }, []);
 
   const startTimer = () => {
@@ -123,31 +114,6 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
     }, 1000);
   };
 
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
-      
-      setAudioLevel(level);
-
-      // Advance in race if sound is strong enough
-      if (level > 25 && Date.now() - lastAdvanceTime.current > 300) {
-        checkForPhoneme();
-        lastAdvanceTime.current = Date.now();
-      }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
-  };
 
   const advancePlayer = () => {
     const advancement = (Math.random() * 3 + 2) * 1.2; // Random advancement 2-5%, boosted by 20%
@@ -165,7 +131,7 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
   const endGame = (won = false) => {
     setGameComplete(true);
     setRaceStarted(false);
-    stopListening();
+    stopRecording();
     
     if (won) {
       onComplete?.(score + timeLeft * 10); // Bonus for time remaining
@@ -181,15 +147,22 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
     setTimeLeft(60);
     setGameComplete(false);
     setRaceStarted(false);
-    setAudioLevel(0);
-    stopListening();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setIsRecording(false);
   };
 
   const getCurrentPhoneme = () => targetPhonemes[currentPhoneme % targetPhonemes.length];
 
   useEffect(() => {
-    return () => stopListening();
-  }, [stopListening]);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 p-4">
@@ -221,18 +194,15 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
               <Progress value={playerPosition} className="h-6" />
             </div>
             
-            <div className="mb-4">
-              <Progress value={audioLevel} className="h-4" />
-              <p className="text-sm text-center text-gray-600 mt-2">
+            
+            <div className="text-center">
+              <p className="text-lg text-orange-700">
                 Current phoneme: /{getCurrentPhoneme()}/
               </p>
+              <p className="text-sm text-orange-600 mt-2">
+                Say: "<span className="font-bold text-orange-800">{getCurrentPhoneme()}</span>"
+              </p>
             </div>
-            
-            <p className="text-sm text-center text-gray-600">
-              {audioLevel > 45 ? '🏃‍♂️ Running fast!' : 
-               audioLevel > 25 ? '🚶‍♂️ Keep going!' : 
-               '⏸️ Say the phoneme to run!'}
-            </p>
             {microphoneError && (
               <p className="text-sm text-center text-red-600 mt-2">
                 {microphoneError}
@@ -241,18 +211,6 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
           </CardContent>
         </Card>
 
-        <div className="flex justify-center mb-6">
-          <AvatarGuide
-            isListening={isListening}
-            mood={gameComplete ? 'celebrating' : 'encouraging'}
-            message={
-              gameComplete && playerPosition >= raceLength ? '🏆 You won the race!' :
-              gameComplete ? '⏰ Time\'s up! Good effort!' :
-              isListening ? `Say "/${getCurrentPhoneme()}/" as fast as you can!` :
-              'Ready to race? Press start!'
-            }
-          />
-        </div>
 
         {/* Race Track */}
         <Card className="mb-6 bg-gradient-to-r from-green-100 via-yellow-100 to-red-100">
@@ -278,7 +236,7 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
                 style={{ left: `${Math.min(playerPosition, 95)}%` }}
               >
                 <div
-                  className={`text-3xl ${audioLevel > 45 ? 'animate-bounce' : ''}`}
+                  className="text-3xl"
                   style={{ transform: 'scaleX(-1)' }}
                 >
                   🏃‍♂️
@@ -321,14 +279,15 @@ const PhonemeRaceGame: React.FC<PhonemeRaceGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
-                <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
+              {!isRecording ? (
+                <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Race
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Race
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
             </>
