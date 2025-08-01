@@ -407,9 +407,10 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
                   </Button>
                   <Button
                     onClick={() => {
-                      const utterance = new SpeechSynthesisUtterance(phoneme);
-                      utterance.rate = 0.6;
-                      speechSynthesis.speak(utterance);
+                        // Remove any numbers from the phoneme string to get the filename
+                        const phonemeName = phoneme.replace(/[0-9]/g, '');
+                        const audio = new Audio(`/sounds/${phonemeName}_trimmed.ogg`);
+                        audio.play();
                     }}
                     variant="ghost"
                     size="sm"
