@@ -505,8 +505,9 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({
             <Card className="p-2 h-full min-h-[162px] flex flex-col">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">Camera Feed</h3>
               <div className="flex-1 min-h-0 overflow-hidden rounded-lg">
-                <CameraWindow 
+                <CameraWindow
                   isActive={isCameraActive}
+                  targetPhoneme={currentWord.phonemes[currentPhonemeIndex]}
                   className="w-full h-full rounded-lg object-cover"
                 />
               </div>
