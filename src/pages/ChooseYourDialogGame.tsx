@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, Mic, Volume2, MessageCircle } from 'lucide-react';
+import { scoreSpeech } from '@/utils/speechRecognition';
 
 interface ChooseYourDialogGameProps {
   onComplete: (score: number) => void;
@@ -51,39 +52,90 @@ const ChooseYourDialogGame: React.FC<ChooseYourDialogGameProps> = ({ onComplete,
   const [currentDialog, setCurrentDialog] = useState(dialogOptions[0]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [score, setScore] = useState(0);
-  const [level, setLevel] = useState(0);
-  const [feedback, setFeedback] = useState('');
   const [gameProgress, setGameProgress] = useState(0);
+  const [feedback, setFeedback] = useState('');
   const [showOptions, setShowOptions] = useState(true);
   const [isGameComplete, setIsGameComplete] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [microphoneError, setMicrophoneError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const lastSpeechTime = useRef(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
-    const setupAudio = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioContextRef.current = new AudioContext();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        const source = audioContextRef.current.createMediaStreamSource(stream);
-        source.connect(analyserRef.current);
-        analyserRef.current.fftSize = 256;
-      } catch (error) {
-        console.error('Error setting up audio:', error);
-      }
-    };
-
-    setupAudio();
     setFeedback(`Choose what to say in this situation: ${currentDialog.situation}`);
+  }, [currentDialog]);
 
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+  const startRecording = async () => {
+    if (selectedOption === null) return;
+    
+    try {
+      setMicrophoneError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        setIsRecording(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      
+      // Record for 4 seconds for sentences
+      setTimeout(() => {
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 4000);
+    } catch (error) {
+      setMicrophoneError('Microphone access denied');
+      setIsRecording(false);
+    }
+  };
+
+  const processRecordedAudio = async (audioBlob: Blob) => {
+    if (selectedOption === null) return;
+    
+    try {
+      const option = currentDialog.options[selectedOption];
+      const result = await scoreSpeech(audioBlob, option.text, 'sentence');
+      
+      if (result.similarityScore >= 80) {
+        const newScore = score + option.points;
+        setScore(newScore);
+        setGameProgress(prev => prev + 1);
+        setFeedback(option.feedback + ` +${option.points} points`);
+        
+        if (gameProgress >= 9) {
+          setIsGameComplete(true);
+          setTimeout(() => onComplete(newScore), 2000);
+        } else {
+          setTimeout(nextDialog, 2000);
+        }
+      } else {
+        setMicrophoneError(`Say "${option.text}" - Score: ${Math.round(result.similarityScore)}%`);
+        setTimeout(() => setMicrophoneError(null), 2000);
       }
-    };
-  }, []);
+    } catch (error) {
+      console.error('Speech scoring failed:', error);
+      setMicrophoneError('Speech recognition failed. Try again!');
+      setTimeout(() => setMicrophoneError(null), 2000);
+    }
+  };
 
   const nextDialog = () => {
     const randomDialog = dialogOptions[Math.floor(Math.random() * dialogOptions.length)];
@@ -100,40 +152,6 @@ const ChooseYourDialogGame: React.FC<ChooseYourDialogGameProps> = ({ onComplete,
     setFeedback(`Great choice! Now say: "${option.text}"`);
   };
 
-  const getAudioLevel = () => {
-    if (!analyserRef.current) return 0;
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-    const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-    return (average / 255) * 100;
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const level = getAudioLevel();
-      setLevel(level);
-      
-      // Speech detection when option is selected
-      if (selectedOption !== null && level > 25 && Date.now() - lastSpeechTime.current > 2000) {
-        lastSpeechTime.current = Date.now();
-        const option = currentDialog.options[selectedOption];
-        const newScore = score + option.points;
-        setScore(newScore);
-        setGameProgress(prev => prev + 1);
-        setFeedback(option.feedback + ` +${option.points} points`);
-        
-        if (gameProgress >= 9) {
-          setIsGameComplete(true);
-          setTimeout(() => onComplete(newScore), 2000);
-        } else {
-          setTimeout(nextDialog, 2000);
-        }
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [selectedOption, score, gameProgress, currentDialog, onComplete]);
-
   const speakSituation = () => {
     const utterance = new SpeechSynthesisUtterance(currentDialog.situation);
     utterance.rate = 0.8;
@@ -145,6 +163,14 @@ const ChooseYourDialogGame: React.FC<ChooseYourDialogGameProps> = ({ onComplete,
     utterance.rate = 0.8;
     speechSynthesis.speak(utterance);
   };
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   if (isGameComplete) {
     return (
@@ -233,26 +259,27 @@ const ChooseYourDialogGame: React.FC<ChooseYourDialogGameProps> = ({ onComplete,
                 "{currentDialog.options[selectedOption].text}"
               </div>
               
-              <div className="relative w-32 h-32 mx-auto mb-6">
-                <div className="absolute inset-0 rounded-full border-4 border-gray-300"></div>
-                <div 
-                  className="absolute inset-2 rounded-full bg-gradient-to-r from-pink-400 to-purple-400 transition-all duration-300"
-                  style={{
-                    transform: `scale(${Math.max(0.3, level / 100)})`,
-                    opacity: Math.max(0.3, level / 100)
-                  }}
-                ></div>
-                <MessageCircle className="absolute inset-0 m-auto w-8 h-8 text-white z-10" />
+              <div className="mb-6">
+                {!isRecording ? (
+                  <Button onClick={startRecording} className="bg-green-500 hover:bg-green-600">
+                    <Mic className="w-4 h-4 mr-2" />
+                    Start Recording
+                  </Button>
+                ) : (
+                  <Button disabled className="bg-gray-400 text-white">
+                    <Mic className="w-4 h-4 mr-2" />
+                    Recording...
+                  </Button>
+                )}
               </div>
               
+              {microphoneError && (
+                <p className="text-sm text-red-600 mb-4">
+                  {microphoneError}
+                </p>
+              )}
+              
               <div className="text-center">
-                <div className="text-sm text-gray-600 mb-2">Speaking Level</div>
-                <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-                  <div 
-                    className="bg-gradient-to-r from-pink-400 to-purple-400 h-4 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(100, level)}%` }}
-                  ></div>
-                </div>
                 <p className="text-sm text-gray-600">{feedback}</p>
               </div>
             </Card>
