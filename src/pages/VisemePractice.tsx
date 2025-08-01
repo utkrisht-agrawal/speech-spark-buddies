@@ -355,7 +355,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
       {/* Main Content Area */}
       <div className="flex-1 px-4 py-2 flex flex-col gap-2 min-h-0 overflow-hidden">
         {/* Top Section: Word + Phonemes */}
-        <div className="flex-shrink-0 h-14 flex flex-col justify-center">
+        <div className="flex-shrink-0 h-16 flex flex-col justify-center">
           <div className="flex items-center gap-3 mb-1">
             <h2 className="text-xl lg:text-2xl font-bold text-gray-800">{currentWord.word}</h2>
             <Button
@@ -416,7 +416,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 flex-1 min-h-0">
           {/* Control Panel */}
           <div className="lg:col-span-3">
-            <Card className="p-2 h-full min-h-[144px] flex flex-col">
+            <Card className="p-2 h-full min-h-[180px] flex flex-col">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">Control Panel</h3>
               
               <div className="flex flex-col gap-2 flex-1">
@@ -471,7 +471,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
 
           {/* Lip Animation Guide */}
           <div className="lg:col-span-5">
-            <Card className="p-2 h-full min-h-[144px] flex flex-col">
+            <Card className="p-2 h-full min-h-[180px] flex flex-col">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">Lip Animation Guide</h3>
               <div className="text-lg font-bold text-purple-600 mb-2">
                 {currentWord.phonemes[currentPhonemeIndex]}
@@ -486,7 +486,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
 
           {/* Camera Feed */}
           <div className="lg:col-span-4">
-            <Card className="p-2 h-full min-h-[144px] flex flex-col">
+            <Card className="p-2 h-full min-h-[180px] flex flex-col">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">Camera Feed</h3>
               <div className="flex-1 min-h-0 overflow-hidden rounded-lg">
                 <CameraWindow 
@@ -499,7 +499,7 @@ const VisemePractice: React.FC<VisemePracticeProps> = ({ onBack, onComplete }) =
         </div>
 
         {/* Bottom Section: Waveform Comparison + Scoring */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-h-[120px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-24 flex-shrink-0">
           {/* Waveform Comparison */}
           <Card className="p-2 flex flex-col">
             <h3 className="text-sm font-semibold text-gray-800 mb-1">Waveform Comparison</h3>
