@@ -18,6 +18,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
   onBack 
 }) => {
   const [isListening, setIsListening] = useState(false);
+  const [isRecordingSession, setIsRecordingSession] = useState(false);
   const [currentWord, setCurrentWord] = useState(0);
   const [buildingProgress, setBuildingProgress] = useState(0);
   const [score, setScore] = useState(0);
@@ -55,11 +56,9 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
     });
   };
 
-  const checkForWord = async () => {
-    if (isCheckingRef.current) return;
-    isCheckingRef.current = true;
+  // New function to process audio after recording
+  const processRecordedAudio = async (audioBlob: Blob) => {
     try {
-      const audioBlob = await recordAudioSample();
       const result = await scoreSpeech(audioBlob, getCurrentWord(), 'word');
       const spoken = result.transcription.toLowerCase();
       if (
@@ -70,14 +69,15 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       }
     } catch (err) {
       console.error('Word check failed', err);
-    } finally {
-      isCheckingRef.current = false;
     }
   };
 
   const startListening = async () => {
     try {
       setMicrophoneError(null);
+      setIsRecordingSession(true);
+      setIsListening(true);
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -89,12 +89,23 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       analyserRef.current.smoothingTimeConstant = 0.8;
       microphone.connect(analyserRef.current);
 
-      setIsListening(true);
-      lastBuildTime.current = Date.now();
-      monitorAudio();
+      // Record for 3 seconds, then process
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = async () => {
+        setIsRecordingSession(false);
+        setIsListening(false);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await processRecordedAudio(audioBlob);
+        stopListening();
+      };
+      recorder.start();
+      setTimeout(() => recorder.stop(), 3000);
     } catch (error) {
       setMicrophoneError('Microphone access denied');
       setIsListening(false);
+      setIsRecordingSession(false);
     }
   };
 
@@ -112,36 +123,6 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
     setAudioLevel(0);
     setWordDetected(false);
   }, []);
-
-  const monitorAudio = () => {
-    if (!analyserRef.current || !streamRef.current) return;
-
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
-    const checkAudio = () => {
-      if (!analyserRef.current || !streamRef.current) return;
-
-      analyserRef.current.getByteFrequencyData(dataArray);
-      const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-      const level = (average / 128) * 100;
-      
-      setAudioLevel(level);
-      
-      // Detect word attempt
-      const detected = level > 30;
-      setWordDetected(detected);
-
-      // Check spoken word if sound level is high
-      if (detected && Date.now() - lastBuildTime.current > 1500) {
-        checkForWord();
-        lastBuildTime.current = Date.now();
-      }
-
-      animationFrameRef.current = requestAnimationFrame(checkAudio);
-    };
-
-    checkAudio();
-  };
 
   const addBuildingBlock = () => {
     if (buildingBlocks.length >= blocksNeeded) return;
@@ -321,14 +302,15 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
         <div className="flex justify-center space-x-4">
           {!gameComplete ? (
             <>
-              {!isListening ? (
+              {!isListening && !isRecordingSession ? (
                 <Button onClick={startListening} className="bg-green-500 hover:bg-green-600">
                   <Volume2 className="w-4 h-4 mr-2" />
-                  Start Building
+                  Start Recording
                 </Button>
               ) : (
-                <Button onClick={stopListening} variant="destructive">
-                  Stop Listening
+                <Button disabled className="bg-gray-400 text-white">
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Recording...
                 </Button>
               )}
             </>
