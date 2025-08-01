@@ -123,25 +123,37 @@ export const CameraWindow: React.FC<CameraWindowProps> = ({
   };
 
   const loadMediaPipeScripts = async () => {
-    // Prevent duplicate loads when the component is mounted multiple times
+    // Avoid loading the same scripts multiple times or in parallel
     if ((window as any).mediapipeScriptsLoaded) {
       setScriptsLoaded(true);
       return;
     }
 
+    if (!(window as any).mediapipeScriptsPromise) {
+      (window as any).mediapipeScriptsPromise = (async () => {
+        console.log('Loading MediaPipe scripts...');
+
+        // Load in the correct order
+        await loadScript(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js'
+        );
+        await loadScript(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js'
+        );
+        await loadScript(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'
+        );
+
+        // Wait a bit for everything to initialize
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        console.log('MediaPipe scripts loaded successfully');
+        (window as any).mediapipeScriptsLoaded = true;
+      })();
+    }
+
     try {
-      console.log('Loading MediaPipe scripts...');
-
-      // Load in the correct order
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
-
-      // Wait a bit for everything to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log('MediaPipe scripts loaded successfully');
-      (window as any).mediapipeScriptsLoaded = true;
+      await (window as any).mediapipeScriptsPromise;
       setScriptsLoaded(true);
     } catch (error) {
       console.error('Error loading MediaPipe scripts:', error);
