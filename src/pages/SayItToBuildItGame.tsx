@@ -38,7 +38,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
 
   const getCurrentWord = () => targetWords[currentWord];
 
-  const recordAudioSample = (duration = 1000): Promise<Blob> => {
+  const recordAudioSample = (duration = 1500): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       if (!streamRef.current) {
         reject(new Error('No audio stream'));
@@ -63,7 +63,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       const result = await scoreSpeech(audioBlob, getCurrentWord(), 'word');
       const spoken = result.transcription.toLowerCase();
       if (
-        result.similarityScore >= 80 ||
+        result.similarityScore >= 80 &&
         spoken.includes(getCurrentWord().toLowerCase())
       ) {
         addBuildingBlock();
@@ -90,6 +90,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       microphone.connect(analyserRef.current);
 
       setIsListening(true);
+      lastBuildTime.current = Date.now();
       monitorAudio();
     } catch (error) {
       setMicrophoneError('Microphone access denied');
@@ -127,7 +128,7 @@ const SayItToBuildItGame: React.FC<SayItToBuildItGameProps> = ({
       setAudioLevel(level);
       
       // Detect word attempt
-      const detected = level > 25;
+      const detected = level > 30;
       setWordDetected(detected);
 
       // Check spoken word if sound level is high
