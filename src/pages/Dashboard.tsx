@@ -44,136 +44,87 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* XP Progress */}
-        <div className="bg-white rounded-3xl p-6 mb-6 shadow-lg border border-gray-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <Target className="w-6 h-6 text-blue-500" />
-            <h2 className="text-xl font-bold text-gray-800">Your Progress</h2>
-          </div>
-          <ProgressBar
-            current={userStats.xp}
-            max={userStats.maxXp}
-            label="Experience Points"
-            color="blue"
-            size="lg"
-          />
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {/* Streak Card */}
-          <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-2 mb-2">
-              <Flame className="w-5 h-5 text-orange-500" />
-              <span className="font-semibold text-gray-700">Streak</span>
-            </div>
-            <p className="text-3xl font-bold text-orange-500">{userStats.streak}</p>
-            <p className="text-sm text-gray-600">Days in a row</p>
-          </div>
-
-          {/* Accuracy */}
-          <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-2 mb-2">
-              <Target className="w-5 h-5 text-blue-500" />
-              <span className="font-semibold text-gray-700">Accuracy</span>
-            </div>
-            <p className="text-3xl font-bold text-blue-500">{userStats.accuracy}%</p>
-            <p className="text-sm text-gray-600">Average score</p>
-          </div>
-        </div>
-
-        {/* Learning Progress Grid */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {/* Phonemes */}
-          <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-2 mb-2">
-              <Mic className="w-4 h-4 text-purple-500" />
-              <span className="font-semibold text-gray-700 text-sm">Phonemes</span>
-            </div>
-            <p className="text-2xl font-bold text-purple-500">{userStats.phonemesLearned}</p>
-            <p className="text-xs text-gray-600">Mastered</p>
-          </div>
-
-          {/* Words */}
-          <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-2 mb-2">
-              <BookOpen className="w-4 h-4 text-green-500" />
-              <span className="font-semibold text-gray-700 text-sm">Words</span>
-            </div>
-            <p className="text-2xl font-bold text-green-500">{userStats.wordsLearned}</p>
-            <p className="text-xs text-gray-600">Learned</p>
-          </div>
-
-          {/* Sentences */}
-          <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
-            <div className="flex items-center space-x-2 mb-2">
-              <Award className="w-4 h-4 text-indigo-500" />
-              <span className="font-semibold text-gray-700 text-sm">Sentences</span>
-            </div>
-            <p className="text-2xl font-bold text-indigo-500">{userStats.sentencesLearned}</p>
-            <p className="text-xs text-gray-600">Completed</p>
-          </div>
-        </div>
-
-        {/* Daily Exercises - New Section */}
-        {user && (
-          <div className="mb-6">
-            <DailyExerciseSection userId={user.id} />
-          </div>
-        )}
-
-        {/* Today's Practice */}
-        <div className="bg-white rounded-3xl p-6 mb-6 shadow-lg border border-gray-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <Calendar className="w-6 h-6 text-purple-500" />
-            <h2 className="text-xl font-bold text-gray-800">Today's Practice</h2>
-          </div>
-          <ProgressBar
-            current={todaysPractice.completed}
-            max={todaysPractice.target}
-            label="Exercises completed today"
-            color="purple"
-            size="md"
-          />
-        </div>
-
-        {/* Badge Collection */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Badges</h2>
-          <div className="grid grid-cols-4 gap-3">
-            {badges.map((badge) => (
-              <div
-                key={badge.id}
-                className={cn(
-                  "aspect-square rounded-2xl border-2 flex flex-col items-center justify-center p-2 transition-all duration-200",
-                  badge.earned 
-                    ? "bg-yellow-50 border-yellow-300 hover:scale-105" 
-                    : "bg-gray-50 border-gray-300 opacity-50"
-                )}
-              >
-                <span className="text-2xl mb-1">{badge.icon}</span>
-                <span className="text-xs font-medium text-center text-gray-700">
-                  {badge.name}
-                </span>
+        {/* Main Layout - Left and Right Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Section - Statistics */}
+          <div className="space-y-6">
+            {/* XP Progress */}
+            <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-100">
+              <div className="flex items-center space-x-3 mb-4">
+                <Target className="w-6 h-6 text-blue-500" />
+                <h2 className="text-xl font-bold text-gray-800">Your Progress</h2>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Quick Action Buttons */}
-        <div className="mt-8 space-y-4">
-          {/* Viseme Practice */}
-          <div className="bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl p-6 shadow-lg">
-            <div className="text-center text-white">
-              <h3 className="text-xl font-bold mb-2">👄 Viseme Practice</h3>
-              <p className="text-sm opacity-90 mb-4">Learn lip movements for better pronunciation!</p>
-              <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('startVisemePractice'))}
-                className="bg-white text-purple-600 font-bold py-3 px-6 rounded-xl hover:bg-purple-50 transition-all duration-200"
-              >
-                Start Learning! 📚
-              </button>
+              <ProgressBar
+                current={userStats.xp}
+                max={userStats.maxXp}
+                label="Experience Points"
+                color="blue"
+                size="lg"
+              />
             </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Streak Card */}
+              <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <span className="font-semibold text-gray-700">Streak</span>
+                </div>
+                <p className="text-3xl font-bold text-orange-500">{userStats.streak}</p>
+                <p className="text-sm text-gray-600">Days in a row</p>
+              </div>
+
+              {/* Accuracy */}
+              <div className="bg-white rounded-2xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Target className="w-5 h-5 text-blue-500" />
+                  <span className="font-semibold text-gray-700">Accuracy</span>
+                </div>
+                <p className="text-3xl font-bold text-blue-500">{userStats.accuracy}%</p>
+                <p className="text-sm text-gray-600">Average score</p>
+              </div>
+            </div>
+
+            {/* Learning Progress Grid */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Phonemes */}
+              <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Mic className="w-4 h-4 text-purple-500" />
+                  <span className="font-semibold text-gray-700 text-sm">Phonemes</span>
+                </div>
+                <p className="text-2xl font-bold text-purple-500">{userStats.phonemesLearned}</p>
+                <p className="text-xs text-gray-600">Mastered</p>
+              </div>
+
+              {/* Words */}
+              <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-2">
+                  <BookOpen className="w-4 h-4 text-green-500" />
+                  <span className="font-semibold text-gray-700 text-sm">Words</span>
+                </div>
+                <p className="text-2xl font-bold text-green-500">{userStats.wordsLearned}</p>
+                <p className="text-xs text-gray-600">Learned</p>
+              </div>
+
+              {/* Sentences */}
+              <div className="bg-white rounded-2xl p-3 shadow-lg border border-gray-100">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Award className="w-4 h-4 text-indigo-500" />
+                  <span className="font-semibold text-gray-700 text-sm">Sentences</span>
+                </div>
+                <p className="text-2xl font-bold text-indigo-500">{userStats.sentencesLearned}</p>
+                <p className="text-xs text-gray-600">Completed</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Section - Daily Practice */}
+          <div className="space-y-6">
+            {user && (
+              <DailyExerciseSection userId={user.id} />
+            )}
           </div>
         </div>
       </div>
