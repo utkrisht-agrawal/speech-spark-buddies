@@ -20,6 +20,7 @@ import { CameraWindow } from '@/components/CameraWindow';
 import AnimatedLips from '@/components/AnimatedLips';
 import { AdvancedSpeechRecognition } from '@/utils/speechRecognition';
 import { useDetailedProgress } from '@/hooks/useDetailedProgress';
+import { useUserProgress } from '@/hooks/useUserProgress';
 
 interface ExerciseData {
   id: string;
@@ -41,6 +42,7 @@ interface ExercisePlayerProps {
 
 const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, onExit }) => {
   const { recordItemProgress, updateLevelProgress, levelConfigs } = useDetailedProgress();
+  const { recordExerciseCompletion } = useUserProgress();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
@@ -229,37 +231,19 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
     });
     
     try {
-      // Save progress to database
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (userData.user) {
-        const progressRecord = {
-          user_id: userData.user.id,
-          exercise_id: exercise.id,
-          exercise_type: exercise.type,
-          score: Math.round(totalAccuracy),
-          accuracy: Math.round(totalAccuracy),
-          xp_earned: passed ? exercise.points : Math.round(exercise.points * 0.5)
-        };
-        
-        console.log('💾 Saving progress record:', progressRecord);
-        
-        const { data, error } = await supabase
-          .from('user_progress')
-          .insert(progressRecord);
-          
-        if (error) {
-          console.error('❌ Database error:', error);
-          throw error;
-        }
+      // Use the proper progress tracking that updates daily activities and user stats
+      await recordExerciseCompletion(
+        exercise.type,
+        Math.round(totalAccuracy),
+        Math.round(totalAccuracy),
+        exercise.id
+      );
 
-        // Update level progress
-        const levelId = exercise.level || 1;
-        await updateLevelProgress(levelId, 1, passed ? 1 : 0, totalAccuracy);
-        
-        console.log('✅ Progress saved successfully:', data);
-      }
+      // Update level progress
+      const levelId = exercise.level || 1;
+      await updateLevelProgress(levelId, 1, passed ? 1 : 0, totalAccuracy);
       
+      console.log('✅ Progress saved successfully using recordExerciseCompletion');
       setShowResults(true);
     } catch (error) {
       console.error('Error saving progress:', error);
