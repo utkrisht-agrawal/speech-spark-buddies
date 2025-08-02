@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Calendar, Clock, Star, Target, Play, CheckCircle, Timer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import ExercisePlayer from './ExercisePlayer';
+import ExerciseView from '@/pages/ExerciseView';
 
 interface DailyExercise {
   id: string;
@@ -122,7 +122,7 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
     setShowPlayer(true);
   };
 
-  const handleExerciseComplete = () => {
+  const handleExerciseComplete = (score: number) => {
     console.log('✅ Exercise completed - refreshing exercise list');
     setShowPlayer(false);
     setCurrentExercise(null);
@@ -178,19 +178,19 @@ const DailyExerciseSection: React.FC<DailyExerciseSectionProps> = ({ userId }) =
   if (showPlayer && currentExercise) {
     return (
       <div className="h-screen w-full overflow-hidden">
-        <ExercisePlayer
+        <ExerciseView
           exercise={{
             id: currentExercise.id,
-            title: currentExercise.title,
             type: currentExercise.type,
+            title: currentExercise.title,
+            instruction: currentExercise.instruction,
+            content: currentExercise.content as string | string[],
             difficulty: currentExercise.difficulty,
             points: currentExercise.points,
-            requiredAccuracy: currentExercise.requiredAccuracy,
-            instruction: currentExercise.instruction,
-            content: Array.isArray(currentExercise.content) ? currentExercise.content : []
+            requiredAccuracy: currentExercise.requiredAccuracy
           }}
           onComplete={handleExerciseComplete}
-          onExit={handleExerciseExit}
+          onBack={handleExerciseExit}
         />
       </div>
     );
