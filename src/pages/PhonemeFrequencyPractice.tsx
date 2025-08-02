@@ -549,44 +549,77 @@ const PhonemeFrequencyPractice: React.FC<PhonemeFrequencyPracticeProps> = ({
     });
   };
 
+  // Utility to compute average absolute difference between target and live data
+  const getAverageAbsDifference = (target: number[], live: number[]) => {
+    if (!target || !live || target.length === 0 || live.length === 0) return 0;
+    const len = Math.min(target.length, live.length);
+    let sum = 0;
+    for (let i = 0; i < len; i++) {
+      sum += Math.abs(target[i] - live[i]);
+    }
+    let ret = ((100-(sum / len))-68)*7;
+    // if (ret < 50) ret = ret/2 ; // Ensure it's not negative
+    // Normalize to a score between 0 and 100
+    // Adjust the scale based on the expected range of differences
+    // For example, if the average difference is around 15, we can scale it to  
+    // a score between 0 and 100
+    ret = Math.min(92.6, ret);
+    ret = Math.max(0, ret); // Ensure it's not negative
+    
+    return ret;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-100 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="ghost" 
             onClick={onBack || (() => navigate(-1))}
-            className="p-2"
+            className="p-2 hover:bg-white/50 rounded-full"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 text-purple-600" />
           </Button>
-          <h1 className="text-3xl font-bold text-foreground">Phoneme Frequency Practice</h1>
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold text-purple-800 mb-2">
+              🎵 Sound Frequency Fun! 🎵
+            </h1>
+            <p className="text-lg text-purple-600">
+              Match the sound waves to learn phonemes! 🌊
+            </p>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Phoneme Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Volume2 className="h-5 w-5" />
-                Select Phoneme to Practice
+          <Card className="bg-gradient-to-br from-blue-100 to-cyan-100 border-4 border-blue-300 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-blue-200 to-cyan-200 rounded-t-lg">
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <Volume2 className="h-6 w-6" />
+                🎯 Choose Your Sound!
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 p-6">
               {/* Phonemes */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Phonemes</h3>
-                <div className="grid grid-cols-4 gap-2">
+                <h3 className="text-xl font-bold mb-4 text-blue-800 flex items-center gap-2">
+                  📚 Sound Library
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
                   {PHONEMES.map((phoneme) => (
                     <Button
                       key={phoneme.symbol}
                       variant={selectedPhoneme === phoneme.symbol ? "default" : "outline"}
-                      className="p-3 text-sm"
+                      className={`p-4 text-sm border-2 transition-all duration-300 transform hover:scale-105 ${
+                        selectedPhoneme === phoneme.symbol 
+                          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-purple-400 shadow-lg" 
+                          : "bg-white hover:bg-purple-50 border-purple-300 text-purple-700 hover:border-purple-400"
+                      }`}
                       onClick={() => handlePhonemeSelect(phoneme.symbol)}
                     >
                       <div className="text-center">
-                        <div className="font-bold">{phoneme.symbol}</div>
-                        <div className="text-xs opacity-70">{phoneme.example}</div>
+                        <div className="font-bold text-lg">{phoneme.symbol}</div>
+                        <div className="text-xs opacity-80">{phoneme.example}</div>
                       </div>
                     </Button>
                   ))}
@@ -594,15 +627,15 @@ const PhonemeFrequencyPractice: React.FC<PhonemeFrequencyPracticeProps> = ({
               </div>
 
               {selectedPhoneme && (
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t-2 border-blue-300">
                   <Button
                     variant="outline"
                     onClick={() => playPhonemeSound(selectedPhoneme)}
                     disabled={isSpeaking}
-                    className="w-full"
+                    className="w-full bg-gradient-to-r from-green-400 to-blue-400 text-white border-0 hover:from-green-500 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 shadow-lg"
                   >
-                    <Play className="h-4 w-4 mr-2" />
-                    Play Example Sound
+                    <Play className="h-5 w-5 mr-2" />
+                    🔊 Hear the Sound!
                   </Button>
                 </div>
               )}
@@ -610,48 +643,51 @@ const PhonemeFrequencyPractice: React.FC<PhonemeFrequencyPracticeProps> = ({
           </Card>
 
           {/* Practice Area */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Frequency Matching Practice</CardTitle>
+          <Card className="bg-gradient-to-br from-pink-100 to-purple-100 border-4 border-pink-300 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-pink-200 to-purple-200 rounded-t-lg">
+              <CardTitle className="text-pink-800">🎪 Practice Arena</CardTitle>
               {selectedPhoneme && (
-                <Badge variant="secondary" className="w-fit">
-                  Practicing: {selectedPhoneme}
+                <Badge variant="secondary" className="w-fit bg-gradient-to-r from-yellow-400 to-orange-400 text-white border-0 text-lg px-3 py-1">
+                  🎯 Practicing: {selectedPhoneme}
                 </Badge>
               )}
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 p-6">
               {selectedPhoneme ? (
                 <>
                   {/* Match Score */}
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-sm text-muted-foreground mb-1">Frequency Match</div>
-                    <div className="text-3xl font-bold text-primary">
-                      {Math.round(frequencyMatch)}%
+                  <div className="text-center p-6 border-4 border-dashed border-yellow-400 rounded-xl bg-gradient-to-br from-yellow-50 to-orange-50">
+                    <div className="text-lg font-bold text-yellow-700 mb-2">
+                      🏆 Your Score! 🏆
                     </div>
-                  </div>
-
-                  {/* Show FFT values */}
-                  <div className="grid grid-cols-2 gap-4 text-center text-sm text-muted-foreground">
-                    <div>
-                      Average FFT Value: {realTimeFrequency.length > 0 ? realTimeFrequency[0].toFixed(2) : '0'}
+                    <div className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                      {getAverageAbsDifference(
+                        selectedPhoneme && referenceDictionary.current[selectedPhoneme]
+                          ? referenceDictionary.current[selectedPhoneme]
+                          : [],
+                        realTimeFrequency
+                      ).toFixed(1)}%
                     </div>
-                    <div>
-                      Max dB: {maxDbValue.toFixed(1)} dB
+                    <div className="text-sm text-yellow-600 mt-2 font-semibold">
+                      🌟 How well you match the sound waves! 🌟
                     </div>
                   </div>
 
                   {/* Waveforms */}
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-muted-foreground">
-                        Target (Blue) & Live (Green) Frequency
+                    <div className="space-y-3">
+                      <div className="text-lg font-bold text-purple-700 text-center">
+                        🌊 Magic Sound Waves 🌊
                       </div>
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="text-sm text-center text-purple-600 mb-2">
+                        🔵 Target Wave | 🟢 Your Wave | 🔴 Peak Lines
+                      </div>
+                      <div className="border-4 border-purple-300 rounded-xl overflow-hidden bg-white shadow-inner">
                         <canvas
                           ref={canvasRef}
                           width={400}
                           height={120}
-                          className="w-full bg-card"
+                          className="w-full bg-gradient-to-r from-blue-50 to-purple-50"
                         />
                       </div>
                     </div>
@@ -662,47 +698,42 @@ const PhonemeFrequencyPractice: React.FC<PhonemeFrequencyPracticeProps> = ({
                     {!isRecording ? (
                       <Button
                         onClick={handleStartPractice}
-                        className="bg-primary hover:bg-primary/90"
+                        className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 px-8 py-4 text-lg transform hover:scale-110 transition-all duration-300 shadow-xl"
                       >
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Practice
+                        <Play className="h-6 w-6 mr-2" />
+                        🎤 Start the Fun!
                       </Button>
                     ) : (
                       <Button
                         onClick={handleStopPractice}
-                        variant="destructive"
+                        className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white border-0 px-8 py-4 text-lg transform hover:scale-110 transition-all duration-300 shadow-xl"
                       >
-                        <Square className="h-4 w-4 mr-2" />
-                        Stop Practice
+                        <Square className="h-6 w-6 mr-2" />
+                        🛑 Stop Recording
                       </Button>
                     )}
-                    <Button
-                      onClick={setLiveAsReference}
-                      variant="outline"
-                      disabled={realTimeFrequency.length === 0}
-                    >
-                      Set Live as Reference
-                    </Button>
-                  </div>
-
-                  <div className="flex justify-center mt-4">
-                    <Button
-                      onClick={dumpDictionaryToJson}
-                      variant="default"
-                    >
-                      Dump Dictionary to JSON
-                    </Button>
                   </div>
 
                   {isRecording && (
-                    <div className="text-center text-sm text-muted-foreground">
-                      🎤 Make continuous "{selectedPhoneme}" sounds to match the target frequency
+                    <div className="text-center p-4 bg-gradient-to-r from-green-100 to-blue-100 rounded-xl border-2 border-green-300">
+                      <div className="text-lg font-bold text-green-700 animate-pulse">
+                        🎤 Make the "{selectedPhoneme}" sound! 🎵
+                      </div>
+                      <div className="text-sm text-green-600 mt-2">
+                        Watch your green wave match the blue target wave! 🌊
+                      </div>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Select a phoneme to start practicing
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🎵</div>
+                  <div className="text-xl font-bold text-purple-600">
+                    Pick a sound to start the fun! 
+                  </div>
+                  <div className="text-lg text-purple-500 mt-2">
+                    Choose from the colorful buttons on the left! 👈
+                  </div>
                 </div>
               )}
             </CardContent>
