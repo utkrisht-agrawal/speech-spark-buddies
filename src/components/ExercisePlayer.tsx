@@ -218,19 +218,36 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
   };
 
   const finishExercise = async () => {
+    console.log('🚀 FINISH EXERCISE CALLED');
+    
+    if (scores.length === 0) {
+      console.log('❌ No scores available, cannot finish exercise');
+      toast.error('Please complete at least one item before finishing');
+      return;
+    }
+
     const totalAccuracy = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     const requiredAccuracy = levelConfigs[exercise.level || 1]?.pass_score || exercise.requiredAccuracy;
     const passed = totalAccuracy >= requiredAccuracy;
     
     console.log('🎯 Finishing exercise:', {
       exerciseId: exercise.id,
+      exerciseType: exercise.type,
       totalAccuracy,
       requiredAccuracy,
       passed,
-      scores
+      scores,
+      scoresLength: scores.length
     });
     
     try {
+      console.log('📊 About to call recordExerciseCompletion with:', {
+        type: exercise.type,
+        score: Math.round(totalAccuracy),
+        accuracy: Math.round(totalAccuracy),
+        exerciseId: exercise.id
+      });
+
       // Use the proper progress tracking that updates daily activities and user stats
       await recordExerciseCompletion(
         exercise.type,
@@ -239,6 +256,8 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
         exercise.id
       );
 
+      console.log('✅ recordExerciseCompletion completed successfully');
+
       // Update level progress
       const levelId = exercise.level || 1;
       await updateLevelProgress(levelId, 1, passed ? 1 : 0, totalAccuracy);
@@ -246,7 +265,7 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
       console.log('✅ Progress saved successfully using recordExerciseCompletion');
       setShowResults(true);
     } catch (error) {
-      console.error('Error saving progress:', error);
+      console.error('❌ Error saving progress:', error);
       toast.error('Error saving your progress');
     }
   };
@@ -439,10 +458,22 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                       onClick={startRecording}
                       variant="default"
                       size="sm"
-                      className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
+                      className="w-full h-8 text-xs mb-2 bg-green-600 hover:bg-green-700"
                       disabled={isRecording || isProcessing}
                     >
                       {isRecording ? 'Recording...' : 'Test Word'}
+                    </Button>
+
+                    {/* Finish Exercise Button - Always Available */}
+                    <Button
+                      onClick={finishExercise}
+                      variant="default"
+                      size="sm"
+                      className="w-full h-8 text-xs mb-2 bg-orange-600 hover:bg-orange-700 text-white"
+                      disabled={isRecording || isProcessing || scores.length === 0}
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Finish Exercise
                     </Button>
 
                     {hasRecorded && showScore && (
