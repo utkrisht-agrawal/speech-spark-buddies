@@ -360,7 +360,18 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
             </p>
           </div>
 
-          <div className="flex items-center gap-1 text-sm">
+          <div className="flex items-center gap-2">
+            {/* Finish Exercise Button - Always visible in header */}
+            <Button
+              onClick={finishExercise}
+              variant="default"
+              size="sm"
+              className="h-8 text-xs bg-orange-600 hover:bg-orange-700 text-white"
+              disabled={isRecording || isProcessing}
+            >
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Finish
+            </Button>
             <div className="text-3xl font-bold text-purple-600">{overallScore}</div>
           </div>
         </div>
@@ -464,17 +475,6 @@ const ExercisePlayer: React.FC<ExercisePlayerProps> = ({ exercise, onComplete, o
                       {isRecording ? 'Recording...' : 'Test Word'}
                     </Button>
 
-                    {/* Finish Exercise Button - Available after any attempt */}
-                    <Button
-                      onClick={finishExercise}
-                      variant="default"
-                      size="sm"
-                      className="w-full h-8 text-xs mb-2 bg-orange-600 hover:bg-orange-700 text-white"
-                      disabled={isRecording || isProcessing || !hasRecorded}
-                    >
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Finish Exercise
-                    </Button>
 
                     {hasRecorded && showScore && (
                       <div className="mt-2 space-y-1">
